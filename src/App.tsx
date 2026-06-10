@@ -46,6 +46,15 @@ import { CourseLandingPage } from './pages/CourseLandingPage';
 import { ProfessionalPage } from './pages/ProfessionalPage';
 import { PrivacyPolicy } from './pages/PrivacyPolicy';
 import { UserAgreement } from './pages/UserAgreement';
+import { Support } from './pages/Support';
+import { Billing } from './pages/Billing';
+import { RestorePassword } from './pages/RestorePassword';
+import { TeachersPage } from './pages/TeachersPage';
+import { CommandersPage } from './pages/CommandersPage';
+import { MyCircle } from './pages/MyCircle';
+import { MyJournal } from './pages/MyJournal';
+import { LeadersPage } from './pages/Leaders';
+import { CompetitionsPage } from './pages/Competitions';
 
 function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -109,11 +118,11 @@ export default function App() {
                 <Route path="/about" element={<Company />} />
                 <Route path="/advertise" element={<Advertising />} />
                 <Route path="/ads" element={<Advertising />} />
-                <Route path="/my-circle" element={<Stub title="Мой круг общения" />} />
-                <Route path="/my-journal" element={<Stub title="Мой Журнал" />} />
-                <Route path="/leaders" element={<Stub title="Лидеры" />} />
-                <Route path="/cities" element={<Stub title="Города" />} />
-                <Route path="/competitions" element={<Stub title="Соревнования" />} />
+                <Route path="/my-circle" element={<MyCircle />} />
+                <Route path="/my-journal" element={<MyJournal />} />
+                <Route path="/leaders" element={<LeadersPage />} />
+                <Route path="/cities" element={<Navigate to="/city/Москва" replace />} />
+                <Route path="/competitions" element={<CompetitionsPage />} />
                 <Route path="/my-courses/:slug/progress" element={<CourseProgressPage />} />
                 <Route path="/lessons/:id"  element={<LessonPage />} />
                 <Route path="/tests/:id"    element={<TestPage />} />
@@ -127,6 +136,12 @@ export default function App() {
                 <Route path="/courses/:slug" element={<CourseLandingPage />} />
                 <Route path="/professional" element={<ProfessionalPage />} />
                 <Route path="/edit-profile" element={<EditProfile />} />
+                {/* Новые страницы */}
+                <Route path="/support" element={<Support />} />
+                <Route path="/billing" element={<ProtectedRoute element={<Billing />} />} />
+                <Route path="/restore" element={<ProtectedRoute element={<RestorePassword />} />} />
+                <Route path="/teachers" element={<TeachersPage />} />
+                <Route path="/commanders" element={<CommandersPage />} />
                 {/* Catch-all */}
                 <Route path="*" element={<Stub title="Страница не найдена" />} />
               </Routes>

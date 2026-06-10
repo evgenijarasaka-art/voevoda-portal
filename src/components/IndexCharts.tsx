@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useMediaQuery } from "../useMediaQuery";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -616,11 +616,31 @@ function StatPanel({ score, delta, up, items, ratings }: {
 }
 
 function DD({ label }: { label: string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+  const options = label.includes("–") || label.includes("-")
+    ? ["31.04 – 12.05", "13.05 – 26.05", "27.05 – 09.06", "10.06 – 23.06"]
+    : ["Среднее", "Максимум", "Минимум", "Последнее"];
   return (
-    <button onClick={() => window.alert(`Фильтр "${label}" применен в демо-режиме`)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", background: "#fff", border: "1px solid #E5E7EB", borderRadius: 10, fontSize: 13, fontWeight: 500, color: "#374151", cursor: "pointer", whiteSpace: "nowrap" }}>
-      {label}
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
-    </button>
+    <div ref={ref} style={{ position: "relative", display: "inline-block" }}>
+      <button onClick={() => setOpen(o => !o)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", background: open ? "#EBF1FF" : "#fff", border: `1px solid ${open ? "#A5B4FC" : "#E5E7EB"}`, borderRadius: 10, fontSize: 13, fontWeight: 500, color: open ? "#375DFB" : "#374151", cursor: "pointer", whiteSpace: "nowrap", transition: "all .15s" }}>
+        {label}
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform .2s" }}><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      {open && (
+        <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, background: "#fff", border: "1px solid #E5E7EB", borderRadius: 10, boxShadow: "0 8px 24px rgba(0,0,0,.1)", zIndex: 50, minWidth: 160, overflow: "hidden", animation: "mpFadeIn .15s ease" }}>
+          {options.map(o => (
+            <button key={o} onClick={() => setOpen(false)} style={{ display: "block", width: "100%", padding: "9px 16px", border: "none", background: o === label ? "#EBF1FF" : "transparent", fontSize: 13, color: o === label ? "#375DFB" : "#374151", fontWeight: o === label ? 600 : 400, cursor: "pointer", textAlign: "left", transition: "background .12s" }} onMouseEnter={e => { if (o !== label) e.currentTarget.style.background = "#F9FAFB"; }} onMouseLeave={e => { if (o !== label) e.currentTarget.style.background = "transparent"; }}>{o}</button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -718,137 +738,78 @@ const SECTION_META: Record<Exclude<SectionKey, "all">, {
   },
 };
 
-function SectionContent({ sectionKey, isMobile, series, onSeriesChange }: {
+type MeasuresView = "history" | "edit" | "chart";
+
+const SEG_BTNS: [MeasuresView, string][] = [
+  ["history", "Смотреть историю"],
+  ["edit",    "Редактировать данные"],
+  ["chart",   "История замеров"],
+];
+
+function SectionContent({ sectionKey, isMobile, series }: {
   sectionKey: Exclude<SectionKey, "all">; isMobile: boolean;
   series: ChartSeries[];
-  onSeriesChange: (s: ChartSeries[]) => void;
 }) {
   const m = SECTION_META[sectionKey];
-  const [editMode, setEditMode] = useState(false);
-  const [draft, setDraft] = useState<number[][]>(() => series.map(s => [...s.data]));
-  const [saved, setSaved] = useState(false);
-
-  const chartSeries = editMode
-    ? series.map((s, i) => ({ ...s, data: draft[i] ?? s.data }))
-    : series;
-
-  const handleSave = () => {
-    onSeriesChange(series.map((s, i) => ({ ...s, data: [...(draft[i] ?? s.data)] })));
-    setSaved(true);
-    setTimeout(() => { setSaved(false); setEditMode(false); }, 900);
-  };
-  const handleCancel = () => {
-    setDraft(series.map(s => [...s.data]));
-    setEditMode(false);
-  };
-  const openEdit = () => {
-    setDraft(series.map(s => [...s.data]));
-    setSaved(false);
-    setEditMode(true);
-  };
-  const updatePoint = (si: number, di: number, val: string) => {
-    const n = parseFloat(val.replace(",", "."));
-    if (isNaN(n)) return;
-    setDraft(prev => prev.map((row, ri) => ri === si ? row.map((v, vi) => vi === di ? n : v) : [...row]));
-  };
+  const [view, setView] = useState<MeasuresView>("chart");
 
   return (
     <div className="mp-section-fade">
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, background: m.noteBg, border: `1px solid ${m.noteBorder}`, borderRadius: 8, padding: "6px 14px" }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill={m.noteColor} stroke="none"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12" stroke="#fff" strokeWidth="2"/><line x1="12" y1="8" x2="12.01" y2="8" stroke="#fff" strokeWidth="2"/></svg>
-          <span style={{ fontSize: 13, color: m.noteColor, fontWeight: 500 }}>{m.noteText}</span>
-        </div>
-        {!editMode ? (
-          <button onClick={openEdit} style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 16px", background: "#EBF1FF", border: "1px solid #C7D2FE", borderRadius: 10, fontSize: 13, fontWeight: 600, color: "#375DFB", cursor: "pointer", transition: "all .15s" }} onMouseEnter={e => { e.currentTarget.style.background = "#DFE8FF"; e.currentTarget.style.borderColor = "#A5B4FC"; }} onMouseLeave={e => { e.currentTarget.style.background = "#EBF1FF"; e.currentTarget.style.borderColor = "#C7D2FE"; }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
-            Редактировать данные
-          </button>
-        ) : (
-          <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={handleCancel} style={{ padding: "7px 14px", background: "#F3F4F6", border: "none", borderRadius: 8, fontSize: 13, color: "#374151", cursor: "pointer", transition: "background .15s" }} onMouseEnter={e => (e.currentTarget.style.background = "#E5E7EB")} onMouseLeave={e => (e.currentTarget.style.background = "#F3F4F6")}>Отмена</button>
-            <button onClick={handleSave} style={{ padding: "7px 18px", background: saved ? "#10B981" : "#375DFB", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, color: "#fff", cursor: "pointer", transition: "background .2s", display: "flex", alignItems: "center", gap: 7 }}>
-              {saved
-                ? <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>Сохранено</>
-                : <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>Сохранить</>
-              }
-            </button>
-          </div>
-        )}
+      {/* ── 3 кнопки-переключателя ── */}
+      <div style={{ display: "flex", border: "1px solid #E5E7EB", borderRadius: 10, overflow: "hidden", marginBottom: 20, width: "fit-content" }}>
+        {SEG_BTNS.map(([v, l], i) => (
+          <button key={v} onClick={() => setView(v)} style={{
+            padding: "8px 18px", border: "none",
+            borderRight: i < SEG_BTNS.length - 1 ? "1px solid #E5E7EB" : "none",
+            fontSize: 13, fontWeight: view === v ? 600 : 400,
+            background: view === v ? "#fff" : "transparent",
+            color: view === v ? "#111" : "#6B7280",
+            cursor: "pointer",
+            boxShadow: view === v ? "0 1px 4px rgba(0,0,0,.08)" : "none",
+            margin: view === v ? "2px" : "0",
+            borderRadius: view === v ? "8px" : "0",
+            transition: "all .15s", whiteSpace: "nowrap" as const,
+          }}>{l}</button>
+        ))}
       </div>
-      <div style={{ display: "flex", gap: 24, flexWrap: isMobile ? "wrap" : "nowrap", alignItems: "stretch" }}>
-        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
-            <DD label="Среднее"/>
-            <DD label="31.04 – 12.05"/>
-            {(sectionKey === "tact" || sectionKey === "cmd" || sectionKey === "instr") && (
-              <button onClick={() => window.alert("Ведомость сформирована в демо-режиме")} style={{ padding: "7px 14px", border: "1px solid #E5E7EB", borderRadius: 10, fontSize: 13, color: "#374151", background: "#fff", cursor: "pointer" }}>Ведомость</button>
-            )}
-            {sectionKey === "phys" && <span style={{ fontSize: 13, color: "#374151" }}>Возраст <strong>29 лет</strong></span>}
+
+      {/* ── Замеры: history + edit (CSS-скрытие — стейт сохраняется) ── */}
+      <div style={{ display: view === "chart" ? "none" : "block", overflowX: "auto" }}>
+        <MeasurementsPanel editable={view === "edit"} />
+      </div>
+
+      {/* ── История замеров: AreaChart + StatPanel ── */}
+      {view === "chart" && (
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, background: m.noteBg, border: `1px solid ${m.noteBorder}`, borderRadius: 8, padding: "6px 14px", marginBottom: 16, width: "fit-content" }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill={m.noteColor} stroke="none"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12" stroke="#fff" strokeWidth="2"/><line x1="12" y1="8" x2="12.01" y2="8" stroke="#fff" strokeWidth="2"/></svg>
+            <span style={{ fontSize: 13, color: m.noteColor, fontWeight: 500 }}>{m.noteText}</span>
           </div>
-          <div style={{ flex: 1, minHeight: 220 }}>
-            <AreaChartRC series={chartSeries} labels={m.labels} yMax={m.yMax} height="100%"/>
-          </div>
-          <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 10 }}>
-            {m.legend.map(x => (
-              <span key={x.l} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#6B7280" }}>
-                <span style={{ width: 10, height: 10, borderRadius: "50%", background: x.c, display: "inline-block" }}/>{x.l}
-              </span>
-            ))}
-          </div>
-          {editMode && (
-            <div style={{ marginTop: 16, border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden", animation: "mpFadeIn .2s ease" }}>
-              <div style={{ background: "#F9FAFB", borderBottom: "1px solid #F0F0F0", padding: "10px 14px", display: "flex", alignItems: "center", gap: 8 }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#375DFB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>Таблица данных</span>
-                <span style={{ fontSize: 12, color: "#9CA3AF" }}>— изменения сразу отражаются на графике</span>
+          <div style={{ display: "flex", gap: 24, flexWrap: isMobile ? "wrap" : "nowrap", alignItems: "stretch" }}>
+            <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+                <DD label="Среднее"/>
+                <DD label="31.04 – 12.05"/>
+                {(sectionKey === "tact" || sectionKey === "cmd" || sectionKey === "instr") && (
+                  <button onClick={() => window.alert("Ведомость сформирована в демо-режиме")} style={{ padding: "7px 14px", border: "1px solid #E5E7EB", borderRadius: 10, fontSize: 13, color: "#374151", background: "#fff", cursor: "pointer" }}>Ведомость</button>
+                )}
+                {sectionKey === "phys" && <span style={{ fontSize: 13, color: "#374151" }}>Возраст <strong>29 лет</strong></span>}
               </div>
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                  <thead>
-                    <tr>
-                      <th style={{ padding: "9px 14px", textAlign: "left" as const, fontSize: 11, fontWeight: 700, color: "#9CA3AF", background: "#FAFAFA", borderBottom: "1px solid #F0F0F0", whiteSpace: "nowrap" as const, minWidth: 72 }}>Дата</th>
-                      {m.legend.map((l, i) => (
-                        <th key={i} style={{ padding: "9px 8px", textAlign: "center" as const, fontSize: 11, fontWeight: 700, color: l.c, background: "#FAFAFA", borderBottom: "1px solid #F0F0F0", whiteSpace: "nowrap" as const }}>
-                          <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-                            <span style={{ width: 8, height: 8, borderRadius: "50%", background: l.c, display: "inline-block", flexShrink: 0 }}/>
-                            {l.l}
-                          </span>
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {m.labels.map((label, di) => (
-                      <tr key={di}
-                        onMouseEnter={e => (e.currentTarget.style.background = "#F8FAFF")}
-                        onMouseLeave={e => (e.currentTarget.style.background = "#fff")}
-                        style={{ borderBottom: di < m.labels.length - 1 ? "1px solid #F5F5F7" : "none", background: "#fff", transition: "background .12s" }}
-                      >
-                        <td style={{ padding: "6px 14px", color: "#374151", fontWeight: 600, fontSize: 12, whiteSpace: "nowrap" as const }}>{label}</td>
-                        {m.legend.map((l, si) => (
-                          <td key={si} style={{ padding: "4px 6px", textAlign: "center" as const }}>
-                            <input
-                              type="number"
-                              step="0.1"
-                              value={draft[si]?.[di] ?? ""}
-                              onChange={e => updatePoint(si, di, e.target.value)}
-                              style={{ width: 68, padding: "5px 6px", border: `1.5px solid ${l.c}33`, borderRadius: 7, fontSize: 12, fontWeight: 600, color: "#111", textAlign: "center" as const, outline: "none", background: `${l.c}0D`, boxSizing: "border-box" as const, transition: "border .12s" }}
-                              onFocus={e => (e.target.style.borderColor = l.c)}
-                              onBlur={e => (e.target.style.borderColor = `${l.c}33`)}
-                            />
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div style={{ flex: 1, minHeight: 220 }}>
+                <AreaChartRC series={series} labels={m.labels} yMax={m.yMax} height="100%"/>
+              </div>
+              <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 10 }}>
+                {m.legend.map(x => (
+                  <span key={x.l} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#6B7280" }}>
+                    <span style={{ width: 10, height: 10, borderRadius: "50%", background: x.c, display: "inline-block" }}/>{x.l}
+                  </span>
+                ))}
               </div>
             </div>
-          )}
+            <StatPanel score={m.score} delta={m.delta} up={m.up} items={m.items} ratings={RATING_ROWS}/>
+          </div>
         </div>
-        <StatPanel score={m.score} delta={m.delta} up={m.up} items={m.items} ratings={RATING_ROWS}/>
-      </div>
+      )}
     </div>
   );
 }
@@ -939,7 +900,6 @@ export function TrainingPanel({ compact: _compact = false }: { compact?: boolean
           sectionKey={activeSection as EditableSectionKey}
           isMobile={isMobile}
           series={seriesData[activeSection as EditableSectionKey]}
-          onSeriesChange={(s) => setSeriesData(p => ({ ...p, [activeSection]: s }))}
         />
       )}
     </div>

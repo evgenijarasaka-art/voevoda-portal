@@ -15,19 +15,20 @@
     .cp-anim-section.visible { opacity:1; transform:translateY(0); }
     .cp-course-card {
       transform:translateZ(0);
-      transform-origin:center;
-      transition:transform .55s cubic-bezier(.22,1,.36,1), border-color .35s ease, box-shadow .55s cubic-bezier(.22,1,.36,1);
+      transform-origin:center bottom;
+      transition:transform .5s cubic-bezier(.22,1,.36,1), border-color .3s ease, box-shadow .5s cubic-bezier(.22,1,.36,1);
       will-change:transform, box-shadow;
       position:relative;
       z-index:1;
     }
     .cp-course-card:hover {
-      transform:translateY(-8px) scale(1.018) !important;
-      border-color:#C7D2FE !important;
-      box-shadow:0 22px 55px rgba(17,24,39,.14),0 10px 26px rgba(55,93,251,.16) !important;
+      transform:translateY(-10px) scale(1.022) !important;
+      border-color:#A5B4FC !important;
+      box-shadow:0 28px 60px rgba(17,24,39,.16),0 12px 30px rgba(55,93,251,.2),0 0 0 1px rgba(165,180,252,.3) !important;
       z-index:30;
     }
-    .cp-course-card img { transition:none !important; }
+    .cp-course-card img { transition:transform .65s cubic-bezier(.4,0,.2,1) !important; }
+    .cp-course-card:hover img { transform:scale(1.08) !important; }
     .cp-hover-panel {
       position:absolute; left:-1px; right:-1px; top:calc(100% - 1px);
       background:#fff; border:1px solid #E5E7EB; border-top:none;
@@ -508,7 +509,7 @@
                     <StatRow icon={<IcPhoto />} label="Фотографии" value={c.photos} link last />
                     <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
                       <SocBtn primary label="Подробнее" onClick={() => navigate('/communities')} />
-                      <SocBtn label="Подать заявку" />
+                      <SocBtn label="Подать заявку" onClick={() => navigate('/communities')} />
                     </div>
                   </div>
                 ))}
@@ -528,7 +529,7 @@
                     <StatRow icon={<IcVideo />} label="Видео" value={c.videos} link last />
                     <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
                       <SocBtn primary label="Подробнее" onClick={() => navigate('/competitions')} />
-                      <SocBtn label="Участники" />
+                      <SocBtn label="Участники" onClick={() => navigate('/competitions')} />
                     </div>
                   </div>
                 ))}

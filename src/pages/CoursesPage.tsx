@@ -22,24 +22,28 @@ const ANIMATIONS_CSS = `
   .anim-section.visible  { opacity:1; transform:translateY(0); }
   .course-card-shell {
     transform:translateZ(0);
-    transform-origin:center;
-    transition:transform .55s cubic-bezier(.22,1,.36,1);
+    transform-origin:center bottom;
+    transition:transform .5s cubic-bezier(.22,1,.36,1), filter .4s ease;
     will-change:transform;
+    position:relative;
+    z-index:1;
   }
-  .course-card-shell:hover { transform:translateY(-8px) scale(1.018); }
+  .course-card-shell:hover { transform:translateY(-10px) scale(1.022); z-index:30; }
   .course-card, .course-card-surface {
-    transition:border-color .35s ease, box-shadow .55s cubic-bezier(.22,1,.36,1), background .35s ease !important;
+    transition:border-color .3s ease, box-shadow .5s cubic-bezier(.22,1,.36,1), background .3s ease !important;
     will-change:box-shadow;
   }
   .course-card-shell:hover .course-card,
   .course-card-shell:hover .course-card-surface {
-    border-color:#C7D2FE !important;
-    box-shadow:0 22px 55px rgba(17,24,39,.14), 0 10px 26px rgba(55,93,251,.16) !important;
+    border-color:#A5B4FC !important;
+    box-shadow:0 28px 60px rgba(17,24,39,.16), 0 12px 30px rgba(55,93,251,.2), 0 0 0 1px rgba(165,180,252,.3) !important;
   }
-  .c-img img { transition:transform .5s cubic-bezier(.4,0,.2,1); }
-  .c-enroll-btn { transition:opacity .15s,transform .12s; }
-  .c-enroll-btn:hover { opacity:.88; transform:translateY(-1px); }
-  .p-card { transition:box-shadow .38s ease, transform .42s cubic-bezier(.34,1.56,.64,1), border-color .22s ease; }
+  .c-img { overflow:hidden; }
+  .c-img img { transition:transform .65s cubic-bezier(.4,0,.2,1); transform-origin:center; }
+  .course-card-shell:hover .c-img img { transform:scale(1.08); }
+  .c-enroll-btn { transition:transform .18s ease, box-shadow .18s ease, background .15s ease !important; }
+  .c-enroll-btn:hover { transform:translateY(-2px) !important; box-shadow:0 8px 20px rgba(55,93,251,.35) !important; }
+  .p-card { transition:box-shadow .4s ease, transform .45s cubic-bezier(.22,1,.36,1), border-color .25s ease; }
   .p-card-photo { transition:transform .7s cubic-bezier(.4,0,.2,1); }
   .offer-card { transition:box-shadow .25s ease,transform .25s ease; }
   .offer-card:hover { box-shadow:0 12px 36px rgba(0,0,0,.12); transform:translateY(-3px); }

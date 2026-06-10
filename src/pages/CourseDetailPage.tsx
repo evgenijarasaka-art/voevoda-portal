@@ -64,7 +64,7 @@ const CSS = `
   .cd-modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:9999; display:flex; align-items:center; justify-content:center; padding:20px; animation:fadeIn .2s ease; backdrop-filter:blur(6px); }
   .cd-modal-box { background:#fff; border-radius:22px; animation:scaleIn .22s cubic-bezier(.4,0,.2,1); }
 
-  .cd-person-card { transition:transform .42s cubic-bezier(.34,1.56,.64,1), box-shadow .38s ease, border-color .22s ease; }
+  .cd-person-card { transition:transform .45s cubic-bezier(.22,1,.36,1), box-shadow .4s ease, border-color .25s ease; }
   .cd-person-card:hover { transform:translateY(-7px) !important; box-shadow:0 22px 60px rgba(55,93,251,.16) !important; border-color:#B8CAFE !important; }
   .cd-person-card:hover .cd-person-photo { transform:scale(1.06); }
   .cd-person-photo { transition:transform .7s cubic-bezier(.4,0,.2,1); }

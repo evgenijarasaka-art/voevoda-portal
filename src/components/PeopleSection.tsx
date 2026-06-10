@@ -421,14 +421,16 @@ function PersonCard({ p, onOpenModal, onOpenAll, animDelay = 0 }: {
 
   return (
     <div
+      onClick={() => onOpenModal(p.id)}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
+        cursor: 'pointer',
         background: '#fff', borderRadius: 22,
         border: `1.5px solid ${hovered ? '#B8CAFE' : '#EAECF0'}`,
         boxShadow: hovered ? '0 22px 60px rgba(55,93,251,.16), 0 6px 20px rgba(0,0,0,.07)' : '0 2px 16px rgba(0,0,0,.07)',
         transform: hovered ? 'translateY(-7px)' : 'translateY(0)',
-        transition: 'transform .42s cubic-bezier(.34,1.56,.64,1), box-shadow .38s ease, border-color .22s ease',
+        transition: 'transform .45s cubic-bezier(.22,1,.36,1), box-shadow .4s ease, border-color .25s ease',
         animation: `vCardIn .55s ${animDelay}ms ease backwards`,
         display: 'flex', flexDirection: 'column',
       }}
@@ -440,7 +442,7 @@ function PersonCard({ p, onOpenModal, onOpenAll, animDelay = 0 }: {
           <span style={{ fontSize: 15, fontWeight: 700, color: '#111' }}>{p.category}</span>
         </div>
         <button
-          onClick={onOpenAll}
+          onClick={(e) => { e.stopPropagation(); onOpenAll(); }}
           onMouseEnter={() => setBtnHovered(true)}
           onMouseLeave={() => setBtnHovered(false)}
           style={{
@@ -513,7 +515,7 @@ function PersonCard({ p, onOpenModal, onOpenAll, animDelay = 0 }: {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 13, fontWeight: 800, color: extraHov ? '#fff' : '#375DFB',
                 cursor: 'pointer', transition: 'all .3s ease',
-                boxShadow: hovered ? '0 6px 20px rgba(55,93,251,.38)' : 'none',
+                boxShadow: extraHov ? '0 6px 20px rgba(55,93,251,.38)' : 'none',
               }}
               onMouseEnter={e => { setExtraHov(true); e.currentTarget.style.transform = 'scale(1.06)'; }}
               onMouseLeave={e => { setExtraHov(false); e.currentTarget.style.transform = 'scale(1)'; }}
@@ -530,7 +532,7 @@ function PersonCard({ p, onOpenModal, onOpenAll, animDelay = 0 }: {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
           <span
             style={{ fontSize: 19, fontWeight: 800, color: '#0D0F14', cursor: 'pointer', letterSpacing: '-.3px', transition: 'color .18s' }}
-            onClick={() => onOpenModal(p.id)}
+            onClick={(e) => { e.stopPropagation(); onOpenModal(p.id); }}
             onMouseEnter={e => (e.currentTarget.style.color = '#375DFB')}
             onMouseLeave={e => (e.currentTarget.style.color = '#0D0F14')}
           >
@@ -544,7 +546,7 @@ function PersonCard({ p, onOpenModal, onOpenAll, animDelay = 0 }: {
       {/* Кнопки */}
       <div style={{ display: 'flex', gap: 9, padding: '0 14px 15px' }}>
         <button
-          onClick={() => onOpenModal(p.id)}
+          onClick={(e) => { e.stopPropagation(); onOpenModal(p.id); }}
           style={{ flex: 1, background: 'linear-gradient(to right, #2F52F0 0%, #5B7FFF 60%, #7B9FFF 100%)', border: 'none', borderRadius: 8, padding: '12px 0', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', boxShadow: '0 5px 18px rgba(55,93,251,.32)', transition: 'transform .22s ease, box-shadow .22s ease' }}
           onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 26px rgba(55,93,251,.46)'; }}
           onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 5px 18px rgba(55,93,251,.32)'; }}
@@ -552,7 +554,7 @@ function PersonCard({ p, onOpenModal, onOpenAll, animDelay = 0 }: {
           Личное дело
         </button>
         <button
-          onClick={() => navigate(personChatPath(p.name))}
+          onClick={(e) => { e.stopPropagation(); navigate(personChatPath(p.name)); }}
           style={{ flex: 1, background: '#F8F9FC', border: '1.5px solid #E5E7EB', borderRadius: 8, padding: '12px 0', color: '#374151', fontSize: 13, fontWeight: 500, cursor: 'pointer', transition: 'all .22s ease' }}
           onMouseEnter={e => { e.currentTarget.style.borderColor = '#C7D2FE'; e.currentTarget.style.color = '#375DFB'; e.currentTarget.style.background = '#EEF3FF'; }}
           onMouseLeave={e => { e.currentTarget.style.borderColor = '#E5E7EB'; e.currentTarget.style.color = '#374151'; e.currentTarget.style.background = '#F8F9FC'; }}
@@ -768,7 +770,7 @@ export function PeopleModal({ people, mode, onClose }: { people: Person[]; mode:
           <button onClick={() => { onClose(); navigate('/profile'); }} style={{ flex: 1, background: 'linear-gradient(to right, #2F52F0 0%, #5B7FFF 60%, #7B9FFF 100%)', border: 'none', borderRadius: 8, padding: '13px 0', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', boxShadow: '0 5px 18px rgba(55,93,251,.32)', transition: 'all .22s ease' }} onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 26px rgba(55,93,251,.46)'; }} onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 5px 18px rgba(55,93,251,.32)'; }}>
             Личное дело
           </button>
-          <button onClick={() => { onClose(); navigate('/profile', { state: { tab: 'График подготовки' } }); }} style={{ flex: 1, background: '#F8F9FC', border: '1.5px solid #E5E7EB', borderRadius: 8, padding: '13px 0', color: '#374151', fontSize: 14, fontWeight: 500, cursor: 'pointer', transition: 'all .22s ease', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#C7D2FE'; e.currentTarget.style.color = '#375DFB'; e.currentTarget.style.background = '#EEF3FF'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = '#E5E7EB'; e.currentTarget.style.color = '#374151'; e.currentTarget.style.background = '#F8F9FC'; }}>
+          <button onClick={() => { onClose(); navigate('/edit-profile'); }} style={{ flex: 1, background: '#F8F9FC', border: '1.5px solid #E5E7EB', borderRadius: 8, padding: '13px 0', color: '#374151', fontSize: 14, fontWeight: 500, cursor: 'pointer', transition: 'all .22s ease', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#C7D2FE'; e.currentTarget.style.color = '#375DFB'; e.currentTarget.style.background = '#EEF3FF'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = '#E5E7EB'; e.currentTarget.style.color = '#374151'; e.currentTarget.style.background = '#F8F9FC'; }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
             Редактировать
           </button>

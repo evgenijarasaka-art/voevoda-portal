@@ -9,31 +9,59 @@ if (typeof document !== 'undefined' && !document.getElementById('courses-styles'
   const s = document.createElement('style');
   s.id = 'courses-styles';
   s.textContent = `
-    @keyframes cCardIn  { from{opacity:0;transform:translateY(14px) scale(.99)} to{opacity:1;transform:translateY(0) scale(1)} }
+    @keyframes cCardIn  { from{opacity:0;transform:translateY(18px) scale(.98)} to{opacity:1;transform:translateY(0) scale(1)} }
     @keyframes cDescIn  { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
     @keyframes cModalIn { from{opacity:0;transform:scale(.95)} to{opacity:1;transform:scale(1)} }
+    @keyframes cImgShine {
+      0%   { background-position: -200% center; }
+      100% { background-position: 200% center; }
+    }
     .course-card-shell {
       transform:translateZ(0);
-      transform-origin:center;
-      transition:transform .55s cubic-bezier(.22,1,.36,1), filter .55s cubic-bezier(.22,1,.36,1);
+      transform-origin:center bottom;
+      transition:transform .5s cubic-bezier(.22,1,.36,1), filter .4s ease;
       will-change:transform;
+      position:relative;
+      z-index:1;
     }
-    .course-card-shell:hover { transform:translateY(-8px) scale(1.018); }
+    .course-card-shell:hover {
+      transform:translateY(-10px) scale(1.022);
+      z-index:30;
+    }
     .course-card-surface {
-      transition:border-color .35s ease, box-shadow .55s cubic-bezier(.22,1,.36,1), background .35s ease !important;
+      transition:border-color .3s ease, box-shadow .5s cubic-bezier(.22,1,.36,1), background .3s ease !important;
       will-change:box-shadow;
     }
     .course-card-shell:hover .course-card-surface {
-      border-color:#C7D2FE !important;
-      box-shadow:0 22px 55px rgba(17,24,39,.14), 0 10px 26px rgba(55,93,251,.16) !important;
+      border-color:#A5B4FC !important;
+      box-shadow:0 28px 60px rgba(17,24,39,.16), 0 12px 30px rgba(55,93,251,.2), 0 0 0 1px rgba(165,180,252,.3) !important;
     }
-    .c-card-img img { transition:transform .5s cubic-bezier(.4,0,.2,1); }
-    .c-fav-btn { transition:transform .15s; }
-    .c-fav-btn:hover { transform:scale(1.22) !important; }
+    .c-card-img { overflow:hidden; }
+    .c-card-img img {
+      transition:transform .65s cubic-bezier(.4,0,.2,1);
+      transform-origin:center center;
+    }
+    .course-card-shell:hover .c-card-img img { transform:scale(1.08); }
+    .c-card-overlay {
+      position:absolute; inset:0; pointer-events:none;
+      background:linear-gradient(to top, rgba(17,24,39,.55) 0%, rgba(17,24,39,.0) 50%);
+      opacity:0; transition:opacity .4s ease;
+    }
+    .course-card-shell:hover .c-card-overlay { opacity:1; }
+    .c-fav-btn { transition:transform .15s, color .15s; }
+    .c-fav-btn:hover { transform:scale(1.28) !important; }
+    .c-enroll-btn {
+      transition:transform .18s ease, box-shadow .18s ease, background .15s ease !important;
+    }
+    .c-enroll-btn:hover {
+      transform:translateY(-2px) !important;
+      box-shadow:0 8px 20px rgba(55,93,251,.35) !important;
+    }
     .c-modal-enter { animation:cModalIn .22s cubic-bezier(.4,0,.2,1); }
     @media (prefers-reduced-motion: reduce) {
       .course-card-shell, .course-card-surface, .c-card-img img { transition:none !important; }
       .course-card-shell:hover { transform:none; }
+      .c-card-overlay { display:none; }
     }
   `;
   document.head.appendChild(s);
@@ -107,8 +135,11 @@ function CourseCard({ c, idx, isFav, onToggleFav, onAddToCart, alreadyInCart, is
   const ImgSection = ({ zoom }: { zoom: boolean }) => (
     <div className="c-card-img" style={{ height: 190, overflow: 'hidden', position: 'relative', borderRadius: '16px 16px 0 0' }}>
       <img src={c.image || '/voen1.png'} alt=""
-        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', transform: zoom ? 'scale(1.05)' : 'scale(1)', transition: 'transform .5s cubic-bezier(.4,0,.2,1)' }}
+        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', transform: zoom ? 'scale(1.09)' : 'scale(1)', transition: 'transform .65s cubic-bezier(.4,0,.2,1)' }}
         onError={e => { (e.target as HTMLImageElement).src = '/voen1.png'; }} />
+      {zoom && (
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(17,24,39,.6) 0%, rgba(17,24,39,.08) 55%, transparent 100%)', pointerEvents: 'none', transition: 'opacity .4s ease' }} />
+      )}
       {c.seriesIndex !== undefined && (
         <div style={{ position: 'absolute', top: 12, left: 12, background: 'rgba(237,196,163,.92)', color: '#7C5A38', fontSize: 16, fontWeight: 700, fontStyle: 'italic', padding: '6px 14px', borderRadius: 10, boxShadow: '0 2px 4px rgba(0,0,0,.08)' }}>
           {String(c.seriesIndex).padStart(2, '0')}
@@ -188,14 +219,14 @@ function CourseCard({ c, idx, isFav, onToggleFav, onAddToCart, alreadyInCart, is
           position: 'absolute', top: 0, left: 0, right: 0, zIndex: 5,
           borderRadius: 16, overflow: 'hidden',
           border: '1px solid #375DFB', background: '#fff',
-          boxShadow: '0 8px 28px rgba(55,93,251,.18)',
+          boxShadow: '0 24px 56px rgba(17,24,39,.18), 0 10px 28px rgba(55,93,251,.22)',
           cursor: 'pointer',
           opacity: hov ? 1 : 0,
           pointerEvents: hov ? 'auto' : 'none',
-          transition: 'opacity .28s ease',
+          transition: 'opacity .25s ease',
         }}
       >
-        <ImgSection zoom={false} />
+        <ImgSection zoom={true} />
         <div style={{ padding: '14px 16px 16px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
             <span style={{ fontSize: 12, color: '#9CA3AF' }}>{c.city}</span>
@@ -229,7 +260,7 @@ function CourseCard({ c, idx, isFav, onToggleFav, onAddToCart, alreadyInCart, is
               }
             </button>
             <button
-              onClick={e => { e.stopPropagation(); navigate(`/Checkout`); }}
+              onClick={e => { e.stopPropagation(); navigate('/checkout'); }}
               className="c-enroll-btn"
               style={{ ...blueBtnBase, flex: 1, height: 46, fontSize: 14, fontWeight: 600 }}
             >

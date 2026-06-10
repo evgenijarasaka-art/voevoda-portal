@@ -312,7 +312,7 @@ function LeaderCard({ onOpenModal, onOpenAll }: { onOpenModal: () => void; onOpe
           ? '0 22px 60px rgba(55,93,251,.16), 0 6px 20px rgba(0,0,0,.07)'
           : '0 2px 16px rgba(0,0,0,.07)',
         transform: hovered ? 'translateY(-7px)' : 'translateY(0)',
-        transition: 'transform .42s cubic-bezier(.34,1.56,.64,1), box-shadow .38s ease, border-color .22s ease',
+        transition: 'transform .45s cubic-bezier(.22,1,.36,1), box-shadow .4s ease, border-color .25s ease',
         animation: 'jpCardIn .55s ease backwards',
         display: 'flex',
         flexDirection: 'column',

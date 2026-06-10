@@ -92,7 +92,7 @@ export function BottomSection() {
               <StatRow icon={<IcPhoto />} label="Фотографии" value={c.photos} link />
               <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
                 <Btn primary label="Подробнее" onClick={() => navigate('/communities')} />
-                <Btn label="Подать заявку" />
+                <Btn label="Подать заявку" onClick={() => navigate('/communities')} />
               </div>
             </div>
           ))}
@@ -117,7 +117,7 @@ export function BottomSection() {
               <StatRow icon={<IcVideo />} label="Видео" value={c.videos} link />
               <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
                 <Btn primary label="Подробнее" onClick={() => navigate('/competitions')} />
-                <Btn label="Участники" />
+                <Btn label="Участники" onClick={() => navigate('/competitions')} />
               </div>
             </div>
           ))}
@@ -127,7 +127,7 @@ export function BottomSection() {
         <div style={{ background: '#fff', borderRadius: 20, padding: '20px 22px', border: '1px solid #E5E7EB' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><IcCity /><span style={{ fontSize: 17, fontWeight: 700, color: '#111' }}>Города</span></div>
-            <AllBtn onClick={() => navigate('/cities')} />
+            <AllBtn onClick={() => navigate('/city/Москва')} />
           </div>
           {CITIES.map(c => (
             <div key={c.id}>
@@ -144,8 +144,8 @@ export function BottomSection() {
               <StatRow icon={<IcAward />} label="Наши герои" value={c.heroes} link />
               <StatRow icon={<IcTarget />} label="Учения" value={c.exercises} link />
               <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-                <Btn primary label="Подробнее" onClick={() => navigate('/cities')} />
-                <Btn label="Участники" />
+                <Btn primary label="Подробнее" onClick={() => navigate('/city/Москва')} />
+                <Btn label="Участники" onClick={() => navigate('/city/Москва')} />
               </div>
             </div>
           ))}

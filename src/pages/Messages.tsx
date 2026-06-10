@@ -124,7 +124,6 @@ const CSS = `
   @keyframes msg-slide-up-panel{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
   @keyframes msg-counter{from{transform:scale(.5);opacity:0}to{transform:none;opacity:1}}
   @keyframes msg-row-appear{from{opacity:0;transform:translateX(-6px)}to{opacity:1;transform:none}}
-  @keyframes msg-sticker-bounce{0%{transform:scale(0) rotate(-15deg)}70%{transform:scale(1.15) rotate(3deg)}100%{transform:scale(1) rotate(0deg)}}
   @keyframes msg-emoji-pop{0%{transform:scale(0)}60%{transform:scale(1.35)}100%{transform:scale(1)}}
   .msg-bubble-me{animation:msg-slide-in-right .22s cubic-bezier(.34,1,.64,1) both;}
   .msg-bubble-them{animation:msg-slide-in-left .22s cubic-bezier(.34,1,.64,1) both;}
@@ -142,9 +141,10 @@ const CSS = `
   .msg-bubble-inner.me{background:var(--msg-me-bg);color:var(--msg-me-text);border-bottom-right-radius:4px;}
   .msg-bubble-inner.them{background:var(--msg-them-bg);color:var(--msg-them-text);border-bottom-left-radius:4px;border:1px solid var(--border);}
   .msg-bubble-inner.deleted{background:var(--surface-3) !important;color:var(--text-muted) !important;font-style:italic;border:1px solid var(--border) !important;box-shadow:none !important;}
-  .msg-reaction{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:12px;border:1.5px solid var(--border);background:#fff;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;animation:msg-reaction-pop .25s cubic-bezier(.34,1.56,.64,1) both;}
-  .msg-reaction:hover{border-color:var(--accent);background:var(--accent-light);}
-  .msg-reaction.active{border-color:var(--accent);background:var(--accent-light);color:var(--accent);}
+  .msg-reaction{display:inline-flex;align-items:center;gap:3px;height:24px;min-width:34px;padding:2px 7px;border-radius:999px;border:1px solid rgba(104,154,216,.28);background:rgba(255,255,255,.92);backdrop-filter:blur(12px);box-shadow:0 1px 2px rgba(13,27,42,.06);font-size:15px;font-weight:700;cursor:pointer;transition:transform .14s cubic-bezier(.2,1.35,.35,1),background .14s,border-color .14s;animation:msg-reaction-pop .22s cubic-bezier(.34,1.56,.64,1) both;line-height:1;}
+  .msg-reaction:hover{transform:scale(1.08);background:#fff;border-color:#74A7E8;}
+  .msg-reaction.active{border-color:#6AB3FF;background:#E8F3FF;color:#2481CC;box-shadow:0 2px 8px rgba(36,129,204,.16);}
+  .msg-reaction-count{font-size:11px;font-weight:800;line-height:1;color:inherit;margin-left:1px;}
   .msg-context{position:fixed;background:#fff;border-radius:14px;border:1px solid var(--border);box-shadow:var(--shadow-lg);z-index:900;min-width:180px;overflow:hidden;animation:msg-context-in .18s cubic-bezier(.34,1.56,.64,1) both;}
   .msg-context-item{display:flex;align-items:center;gap:10px;padding:12px 16px;font-size:13px;cursor:pointer;font-family:var(--font);font-weight:500;color:var(--text-primary);transition:background .12s;border:none;background:none;width:100%;text-align:left;}
   .msg-context-item:hover{background:var(--surface);}
@@ -195,20 +195,35 @@ const CSS = `
   .msg-forward-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:800;display:flex;align-items:center;justify-content:center;padding:24px;backdrop-filter:blur(4px);animation:msg-fade .15s ease;}
   .msg-forward-modal{background:#fff;border-radius:20px;max-width:440px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:var(--shadow-lg);animation:msg-slide-up-panel .25s cubic-bezier(.34,1.56,.64,1);}
   .msg-selected-bar{display:flex;align-items:center;gap:12px;padding:12px 20px;background:var(--accent);animation:msg-slide-up-panel .2s ease;}
-  /* ── EMOJI POPUP ── */
-  .msg-emoji-popup{position:fixed;background:#fff;border-radius:28px;border:1px solid var(--border);box-shadow:0 8px 32px rgba(13,27,42,.18);z-index:950;display:flex;align-items:center;gap:3px;padding:8px 10px;animation:msg-context-in .18s cubic-bezier(.34,1.56,.64,1) both;}
-  .msg-emoji-btn{background:none;border:none;cursor:pointer;font-size:22px;padding:4px 5px;border-radius:10px;transition:transform .12s,background .12s;line-height:1;}
-  .msg-emoji-btn:hover{transform:scale(1.45);background:var(--surface);}
-  /* ── STICKER PANEL ── */
-  .msg-sticker-panel{position:absolute;bottom:76px;right:10px;width:306px;background:#fff;border-radius:20px;border:1px solid var(--border);box-shadow:var(--shadow-lg);z-index:200;overflow:hidden;animation:msg-slide-up-panel .22s cubic-bezier(.34,1.56,.64,1);}
-  .msg-sticker-btn{background:none;border:none;cursor:pointer;font-size:32px;padding:6px;border-radius:12px;transition:transform .12s,background .12s;line-height:1;display:flex;align-items:center;justify-content:center;}
-  .msg-sticker-btn:hover{transform:scale(1.25);background:var(--surface);}
+  /* ── TELEGRAM-LIKE REACTIONS ── */
+  .msg-emoji-popup{position:fixed;background:rgba(255,255,255,.96);border-radius:24px;border:1px solid rgba(209,217,229,.72);box-shadow:0 12px 34px rgba(20,35,54,.24);z-index:950;display:flex;align-items:center;gap:2px;padding:7px 8px;animation:msg-context-in .16s cubic-bezier(.2,1.35,.35,1) both;backdrop-filter:blur(18px);transform-origin:center bottom;}
+  .msg-emoji-popup::after{content:'';position:absolute;left:32px;bottom:-6px;width:12px;height:12px;background:rgba(255,255,255,.96);border-right:1px solid rgba(209,217,229,.72);border-bottom:1px solid rgba(209,217,229,.72);transform:rotate(45deg);}
+  .msg-emoji-btn{position:relative;background:none;border:none;cursor:pointer;font-size:25px;width:34px;height:34px;padding:0;border-radius:50%;transition:transform .13s cubic-bezier(.2,1.45,.35,1),background .13s;line-height:1;display:flex;align-items:center;justify-content:center;z-index:1;}
+  .msg-emoji-btn:hover{transform:translateY(-8px) scale(1.42);background:rgba(238,243,250,.98);}
+  .msg-emoji-more{font-size:18px;color:#6E7D8F;background:#F1F5FA;}
+
+  /* ── TELEGRAM-LIKE STICKERS ── */
+  .msg-sticker-panel{position:absolute;bottom:76px;right:10px;width:380px;background:rgba(255,255,255,.97);border-radius:20px;border:1px solid rgba(209,217,229,.82);box-shadow:0 18px 46px rgba(13,27,42,.22);z-index:260;overflow:hidden;animation:msg-slide-up-panel .2s cubic-bezier(.2,1.22,.35,1);backdrop-filter:blur(18px);}
+  .msg-sticker-search{height:38px;margin:10px 12px 8px;padding:0 12px;border-radius:12px;background:#F2F5F9;color:#8B98A8;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;}
+  .msg-sticker-tabs{display:flex;align-items:center;gap:3px;border-top:1px solid #EEF2F7;background:#FAFBFD;padding:5px 8px;overflow-x:auto;}
+  .msg-sticker-tab{min-width:42px;height:38px;border:none;background:transparent;cursor:pointer;border-radius:11px;font-size:22px;display:flex;align-items:center;justify-content:center;transition:background .13s,transform .13s;position:relative;}
+  .msg-sticker-tab:hover{background:#EEF4FB;transform:translateY(-1px)}
+  .msg-sticker-tab.active{background:#E8F3FF;}
+  .msg-sticker-tab.active::after{content:'';position:absolute;left:11px;right:11px;bottom:2px;height:3px;border-radius:3px;background:#3390EC;}
+  .msg-sticker-grid{height:292px;overflow-y:auto;padding:7px 9px 12px;display:grid;grid-template-columns:repeat(4,1fr);gap:5px;align-content:start;}
+  .msg-sticker-title{font-size:12px;font-weight:800;color:#657487;padding:4px 12px 3px;display:flex;align-items:center;justify-content:space-between;}
+  .msg-sticker-btn{height:82px;background:none;border:none;cursor:pointer;font-size:50px;padding:5px;border-radius:16px;transition:transform .13s cubic-bezier(.2,1.4,.35,1),background .12s,filter .12s;line-height:1;display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 2px 3px rgba(13,27,42,.1));}
+  .msg-sticker-btn:hover{transform:translateY(-4px) scale(1.18) rotate(-2deg);background:#F1F6FC;filter:drop-shadow(0 9px 12px rgba(13,27,42,.14));}
+  .msg-sticker-message{font-size:78px;line-height:1;display:inline-flex;align-items:center;justify-content:center;filter:drop-shadow(0 7px 12px rgba(13,27,42,.16));animation:msg-sticker-bounce .46s cubic-bezier(.34,1.56,.64,1);user-select:none;transform-origin:center bottom;}
+  .msg-sticker-message:hover{animation:msg-sticker-wiggle .58s ease both;}
+  .msg-sticker-time{display:inline-flex;align-items:center;gap:4px;margin-top:2px;padding:2px 6px;border-radius:999px;background:rgba(0,0,0,.28);color:#fff;font-size:10px;font-weight:700;backdrop-filter:blur(6px);}
+  @keyframes msg-sticker-wiggle{0%,100%{transform:rotate(0) scale(1)}20%{transform:rotate(-7deg) scale(1.05)}45%{transform:rotate(6deg) scale(1.08)}70%{transform:rotate(-3deg) scale(1.04)}}
   /* ── PROFILE MODAL ── */
   .msg-profile-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:1000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(12px);animation:msg-fade .2s ease;padding:20px;}
-  .msg-profile-modal{background:#fff;border-radius:24px;width:400px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.35);animation:msg-slide-up-panel .3s cubic-bezier(.34,1.56,.64,1);}
+  .msg-profile-modal{background:#fff;border-radius:26px;width:430px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.35);animation:msg-slide-up-panel .3s cubic-bezier(.34,1.56,.64,1);}
   .msg-profile-modal::-webkit-scrollbar{width:0;}
-  .msg-profile-cover{width:100%;height:160px;object-fit:cover;display:block;}
-  .msg-profile-avatar{width:80px;height:80px;border-radius:50%;border:4px solid #fff;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.2);}
+  .msg-profile-cover{width:100%;height:190px;object-fit:cover;display:block;}
+  .msg-profile-avatar{width:86px;height:86px;border-radius:50%;border:4px solid #fff;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.2);}
   /* ── LIGHTBOX ── */
   .msg-lightbox{position:fixed;inset:0;background:rgba(0,0,0,.96);z-index:1100;display:flex;align-items:center;justify-content:center;animation:msg-fade .15s ease;}
   .msg-lightbox img{max-width:90vw;max-height:85vh;border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,.5);object-fit:contain;}
@@ -227,6 +242,54 @@ const CSS = `
   .msg-video-badge{position:absolute;left:14px;bottom:14px;padding:7px 10px;border-radius:999px;background:rgba(0,0,0,.42);backdrop-filter:blur(8px);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;gap:6px;}
   .msg-call-side{display:flex;flex-direction:column;gap:14px;min-width:0;}
   .msg-screen-tile{height:160px;border:1px dashed rgba(255,255,255,.2);border-radius:18px;background:rgba(255,255,255,.045);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.62);text-align:center;font-size:12px;padding:16px;overflow:hidden;}
+  .msg-call-tile-actions{position:absolute;top:10px;right:10px;display:flex;gap:6px;z-index:5;opacity:0;transition:opacity .15s;}
+  .msg-video-tile:hover .msg-call-tile-actions{opacity:1;}
+  .msg-call-tile-btn{height:30px;min-width:30px;border:none;border-radius:10px;background:rgba(0,0,0,.45);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(10px);font-size:11px;font-weight:800;padding:0 9px;}
+  .msg-call-tile-btn:hover{background:rgba(255,255,255,.18);}
+  .msg-call-expanded{position:fixed;inset:0;background:#05080f;z-index:1400;display:flex;flex-direction:column;animation:msg-fade .14s ease;}
+  .msg-call-expanded-head{height:58px;display:flex;align-items:center;justify-content:space-between;padding:0 18px;border-bottom:1px solid rgba(255,255,255,.08);color:#fff;font-size:13px;font-weight:800;background:rgba(5,8,15,.88);backdrop-filter:blur(14px);}
+  .msg-call-expanded-body{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:72px 18px 24px;position:relative;}
+  .msg-call-expanded-body video{width:100%;height:100%;object-fit:contain;background:#000;border-radius:18px;box-shadow:0 18px 80px rgba(0,0,0,.45);}
+  .msg-call-participants{position:absolute;top:72px;left:50%;transform:translateX(-50%);display:flex;gap:10px;z-index:3;max-width:calc(100vw - 40px);overflow-x:auto;padding:4px;}
+  .msg-call-participant{width:138px;height:82px;border-radius:16px;overflow:hidden;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.13);box-shadow:0 10px 30px rgba(0,0,0,.35);position:relative;display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0;}
+  .msg-call-participant video{width:100%;height:100%;object-fit:cover;border-radius:0;box-shadow:none;}
+  .msg-call-participant-label{position:absolute;left:7px;bottom:7px;padding:4px 7px;border-radius:999px;background:rgba(0,0,0,.48);font-size:10px;font-weight:800;color:#fff;backdrop-filter:blur(8px);}
+  .msg-call-screen-safe{width:100%;height:100%;display:flex;align-items:center;justify-content:center;text-align:center;padding:22px;border-radius:18px;background:linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,255,255,.025));color:rgba(255,255,255,.72);font-size:13px;line-height:1.55;}
+  .msg-call-share-preview{position:fixed;right:22px;bottom:112px;width:300px;height:188px;border-radius:20px;background:rgba(5,13,24,.88);border:1px solid rgba(255,255,255,.14);box-shadow:0 20px 70px rgba(0,0,0,.42);z-index:1450;overflow:hidden;backdrop-filter:blur(18px);animation:msg-slide-up-panel .2s cubic-bezier(.34,1.56,.64,1);user-select:none;}
+  .msg-call-share-preview.dragging{transition:none;cursor:grabbing;}
+  .msg-call-share-preview-head{height:38px;display:flex;align-items:center;justify-content:space-between;padding:0 10px 0 12px;color:#fff;font-size:11px;font-weight:900;background:rgba(0,0,0,.34);cursor:grab;}
+  .msg-call-share-preview-body{height:calc(100% - 38px);position:relative;background:#000;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.68);font-size:12px;text-align:center;}
+  .msg-call-share-preview-body video{width:100%;height:100%;object-fit:contain;background:#000;display:block;}
+  .msg-call-share-preview-actions{display:flex;gap:6px;align-items:center;}
+  .msg-call-mini-btn{height:26px;padding:0 9px;border-radius:999px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.1);color:#fff;font-size:10px;font-weight:900;cursor:pointer;font-family:var(--font);display:inline-flex;align-items:center;gap:5px;transition:background .12s,transform .12s;}
+  .msg-call-mini-btn:hover{background:rgba(255,255,255,.18);transform:translateY(-1px);}
+  .msg-call-mini-btn.danger{background:rgba(220,38,38,.82);border-color:rgba(255,255,255,.1);}
+  .msg-call-mini-btn.danger:hover{background:#DC2626;}
+  .msg-call-pip-hidden{position:fixed;width:1px;height:1px;left:-9999px;top:-9999px;opacity:.01;pointer-events:none;}
+  .msg-call-share-hint{position:absolute;left:10px;bottom:10px;right:10px;padding:8px 10px;border-radius:12px;background:rgba(0,0,0,.55);color:#fff;font-size:11px;font-weight:700;line-height:1.35;backdrop-filter:blur(10px);} 
+
+  .msg-active-call-pill{position:fixed;left:22px;bottom:22px;z-index:1500;display:flex;align-items:center;gap:8px;padding:10px;background:linear-gradient(135deg,rgba(26,86,219,.96),rgba(16,34,54,.97));border:1px solid rgba(255,255,255,.18);border-radius:22px;box-shadow:0 18px 60px rgba(5,13,24,.34),0 0 0 1px rgba(37,99,235,.12);backdrop-filter:blur(20px);animation:msg-slide-up-panel .22s cubic-bezier(.34,1.56,.64,1);font-family:var(--font);}
+  .msg-active-call-pill::before{content:'';position:absolute;inset:-1px;border-radius:22px;background:linear-gradient(135deg,rgba(255,255,255,.16),transparent 46%,rgba(235,242,255,.08));pointer-events:none;}
+  .msg-active-call-main{position:relative;display:flex;align-items:center;gap:10px;min-width:208px;padding:8px 10px;border:none;background:rgba(255,255,255,.1);border-radius:16px;color:#fff;cursor:pointer;text-align:left;font-family:var(--font);transition:background .14s,transform .14s;}
+  .msg-active-call-main:hover{background:rgba(255,255,255,.17);transform:translateY(-1px);}
+  .msg-active-call-main b{display:block;font-size:13px;font-weight:900;line-height:1.15;max-width:164px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .msg-active-call-main small{display:block;margin-top:3px;font-size:10px;font-weight:700;color:rgba(255,255,255,.72);max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .msg-active-call-dot{width:10px;height:10px;border-radius:50%;background:#22C55E;box-shadow:0 0 0 4px rgba(34,197,94,.18),0 0 18px rgba(34,197,94,.55);flex-shrink:0;animation:msg-record-pulse 1.6s ease infinite;}
+  .msg-active-call-action{position:relative;width:36px;height:36px;border-radius:14px;border:1px solid rgba(255,255,255,.17);background:rgba(235,242,255,.14);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:900;font-family:var(--font);transition:transform .14s,background .14s,border-color .14s,box-shadow .14s;}
+  .msg-active-call-action:hover{transform:translateY(-2px);background:rgba(255,255,255,.23);box-shadow:0 8px 22px rgba(0,0,0,.18);}
+  .msg-active-call-action.active{background:#fff;color:var(--accent);border-color:#fff;box-shadow:0 8px 22px rgba(0,0,0,.18);}
+  .msg-active-call-action.danger{background:#DC2626;border-color:rgba(255,255,255,.16);color:#fff;}
+  .msg-active-call-action.danger:hover{background:#B91C1C;}
+  .msg-active-call-action.pip{width:36px;min-width:36px;padding:0;}
+  .msg-active-call-action svg{display:block;}
+  .msg-call-live-dot{width:7px;height:7px;border-radius:50%;background:#22C55E;box-shadow:0 0 0 3px rgba(34,197,94,.18);display:inline-block;margin-right:7px;vertical-align:1px;}
+  .msg-chat-call-banner{margin:0 14px 10px;padding:9px 12px;border:none;border-radius:15px;background:linear-gradient(135deg,var(--accent),var(--navy-600));color:#fff;box-shadow:0 10px 26px rgba(26,86,219,.24);display:flex;align-items:center;gap:10px;cursor:pointer;font-family:var(--font);animation:msg-pin-drop .2s ease;}
+  .msg-chat-call-banner:hover{filter:brightness(1.04);}
+  .msg-chat-call-live{display:inline-flex;align-items:center;gap:6px;padding:5px 8px;border-radius:999px;background:rgba(34,197,94,.18);font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.45px;white-space:nowrap;}
+  .msg-chat-call-live-dot{width:7px;height:7px;border-radius:50%;background:#22C55E;box-shadow:0 0 0 3px rgba(34,197,94,.18);}
+  .msg-chat-call-title{font-size:13px;font-weight:900;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .msg-chat-call-time{margin-left:auto;font-size:12px;font-weight:900;font-variant-numeric:tabular-nums;color:rgba(255,255,255,.88);white-space:nowrap;}
+  .msg-chat-call-return{font-size:11px;font-weight:900;color:#fff;background:rgba(255,255,255,.16);padding:6px 9px;border-radius:999px;white-space:nowrap;}
   .msg-call-controls{display:flex;align-items:center;justify-content:center;gap:12px;padding:16px 20px 20px;border-top:1px solid rgba(255,255,255,.08);}
   .msg-call-btn.active{background:#fff !important;color:var(--accent) !important;}
   .msg-call-btn.active svg{stroke:var(--accent) !important;}
@@ -235,15 +298,20 @@ const CSS = `
   @media (max-width: 920px){.msg-call-stage{grid-template-columns:1fr}.msg-call-side{display:grid;grid-template-columns:1fr 1fr}.msg-call-modal.wide{min-height:560px}.msg-info-panel{display:none}.msg-bubble{max-width:84%;}}
 `;
 
+
 /* ─── STICKER PACKS ─── */
 const STICKER_PACKS = [
-  { id: 'react', icon: 'Да', name: 'Реакции', stickers: ['Принял','Так точно','Готов','Отлично','Важно','Сделано','Команда','На месте','В строю','Есть','Жду','Понял'] },
-  { id: 'tactic', icon: 'Так', name: 'Тактика', stickers: ['Цель','Карта','Связь','Щит','Маршрут','Рубеж','Звание','Награда','Пост','Шлем','Выход','Поле'] },
-  { id: 'emo', icon: 'Тон', name: 'Эмоции', stickers: ['Хорошо','Думаю','Внимание','Спокойно','Срочно','Жарко','Холодно','Жду','Согласен','Проверю','Спасибо','Порядок'] },
-  { id: 'meme', icon: 'Шут', name: 'Короткие', stickers: ['Готово','Крепко','Смотрю','Держим','Может быть','Браво','Разумно','Вижу','Сердце','Порядок','Покажу','Карточка'] },
+  { id: 'fav', icon: '⭐️', name: 'Избранные', stickers: ['😀','😁','😂','🤣','😍','😘','😎','🤩','🥳','😇','🙃','😉','😌','🥹','😅','😋'] },
+  { id: 'cat', icon: '🐱', name: 'Коты', stickers: ['😺','😸','😹','😻','😼','😽','🙀','😿','😾','🐱','🐈','🐾','🦁','🐯','🐶','🦊'] },
+  { id: 'hands', icon: '👍', name: 'Жесты', stickers: ['👍','👎','👏','🙌','👌','🤝','🙏','💪','👀','✍️','🤌','🫡','✌️','🤙','👊','🫶'] },
+  { id: 'hearts', icon: '❤️', name: 'Любимые', stickers: ['❤️','🧡','💛','💚','💙','💜','🖤','🤍','💔','💯','🔥','🎉','✨','⭐️','🌟','💫'] },
+  { id: 'faces', icon: '😎', name: 'Эмоции', stickers: ['🥰','😭','😡','🤯','🥶','😴','🤔','😐','😬','😱','🤫','🤭','😤','😈','🤠','🫠'] },
+  { id: 'tactic', icon: '🎖️', name: 'Тактика', stickers: ['🎖️','🛡️','🧭','🗺️','📡','🎯','🚁','⛺️','🔦','🧰','📍','🏕️','🪖','📌','✅','⚠️'] },
+  { id: 'party', icon: '🎉', name: 'Праздник', stickers: ['🎉','🎊','🥳','🏆','🥇','💥','🚀','⚡️','🌈','☀️','🍀','🎁','🪩','🎈','🫡','🔥'] },
 ] as const;
 
-const QUICK_EMOJIS = ['Принял','Да','Понял','Важно','Срочно','Отлично','Готов','Спасибо'];
+/* ─── QUICK REACTIONS ─── */
+const QUICK_EMOJIS = ['👍','❤️','🔥','🥰','👏','😁','🤔','😢'];
 
 /* ─── CHAT DATA ─── */
 const CHATS: ChatUser[] = [
@@ -297,6 +365,51 @@ const CHATS: ChatUser[] = [
     bio: 'Курсант 3-го набора. Специализируюсь на радиосвязи и РЭБ. Фоторепортёр группы.',
     coverSeed: 'nexus-tech', rating: 4.2, missions: 8, role: 'Связист / фото', location: 'РЭБ-группа', joined: '2024', skills: ['Радиосвязь','РЭБ','Фото'], achievements: ['8 задач','Архивариус группы'],
   },
+  {
+    id: 8, name: 'Вега', callsign: 'Вега', login: 'vega',
+    avatar: 'https://i.pravatar.cc/150?img=47',
+    rank: 'Сержант', lastMsg: 'Завтра прогоняем связь на коротких дистанциях',
+    time: '09:44', unread: 1, online: true, unit: 'РЭБ-группа',
+    bio: 'Инструктор по связи, радиодисциплине и базовой РЭБ. Любит короткие чек-листы и чистый эфир.',
+    coverSeed: 'vega-radio', rating: 4.6, missions: 18, role: 'Связь / РЭБ', location: 'Узел связи', joined: '2023', skills: ['Радиосеть','Шифрование','РЭБ'], achievements: ['18 задач','Чистый эфир'],
+  },
+  {
+    id: 9, name: 'Атлас', callsign: 'Атлас', login: 'atlas',
+    avatar: 'https://i.pravatar.cc/150?img=12',
+    rank: 'Капитан', lastMsg: 'Скинул новый маршрут и точки контроля',
+    time: '08:17', unread: 0, online: false, lastSeen: '20 минут назад', unit: 'Топография',
+    bio: 'Навигация, карты, ориентирование и подготовка маршрутов. Делает сложные схемы понятными.',
+    coverSeed: 'atlas-map', rating: 4.9, missions: 63, role: 'Навигатор', location: 'Картографический класс', joined: '2021', skills: ['Ориентирование','Маршруты','Карты'], achievements: ['63 маршрута','Лучший навигатор'],
+  },
+  {
+    id: 10, name: 'Искра', callsign: 'Искра', login: 'iskra',
+    avatar: 'https://i.pravatar.cc/150?img=44',
+    rank: 'Лейтенант', lastMsg: 'Разбор после тренировки будет в 19:30',
+    time: 'Вчера', unread: 3, online: true, unit: 'Аналитика',
+    bio: 'Отвечает за видеоразборы, дневники прогресса и обратную связь после тренировок.',
+    coverSeed: 'iskra-briefing', rating: 4.8, missions: 31, role: 'Аналитик курса', location: 'Класс разбора', joined: '2022', skills: ['Видеоразбор','Метрики','Планирование'], achievements: ['31 разбор','Точность'],
+  },
+  {
+    id: 11, name: 'Гранит', callsign: 'Гранит', login: 'granit',
+    avatar: 'https://i.pravatar.cc/150?img=68',
+    rank: 'Старшина', lastMsg: 'Проверь экипировку по списку до выхода',
+    time: 'Вт', unread: 0, online: false, lastSeen: 'вчера', unit: 'Снабжение',
+    bio: 'Экипировка, склад, контроль комплектов и порядок перед выездом.',
+    coverSeed: 'granit-gear', rating: 4.5, missions: 40, role: 'Снаряжение', location: 'Склад №2', joined: '2022', skills: ['Комплектация','Логистика','Контроль'], achievements: ['40 выдач','Без потерь'],
+  },
+  {
+    id: 12, name: 'Группа Связь-12', callsign: 'Связь-12', avatar: '',
+    lastMsg: 'Вега: канал резервный оставляем открытым до 18:00',
+    time: 'Пн', unread: 5, online: false, isGroup: true, membersCount: 16,
+  },
+  {
+    id: 13, name: 'Рубеж', callsign: 'Рубеж', login: 'rubezh',
+    avatar: 'https://i.pravatar.cc/150?img=59',
+    rank: 'Инструктор', lastMsg: 'Сегодня работаем спокойно: техника важнее скорости',
+    time: 'Пн', unread: 0, online: false, lastSeen: '2 дня назад', unit: 'Полоса препятствий',
+    bio: 'Физподготовка, полоса препятствий и восстановление после нагрузок.',
+    coverSeed: 'rubezh-fitness', rating: 4.7, missions: 22, role: 'Физподготовка', location: 'Полоса №1', joined: '2023', skills: ['Выносливость','Полоса','Восстановление'], achievements: ['22 тренировки','Темп'],
+  },
 ];
 
 const VOICE_BARS = [3, 8, 14, 22, 18, 26, 20, 14, 8, 18, 24, 16, 10, 20, 28, 22, 16, 10, 8, 12, 20, 16, 10, 6];
@@ -304,7 +417,7 @@ const VOICE_BARS = [3, 8, 14, 22, 18, 26, 20, 14, 8, 18, 24, 16, 10, 20, 28, 22,
 const makeInitialMessages = (): Record<number, Message[]> => ({
   1: [
     { id: 1, from: 'them', text: 'Привет, боец. Как продвигается подготовка к следующим учениям?', time: '13:45', status: 'read', reactions: [] },
-    { id: 2, from: 'me', text: 'Работаем по плану. Сегодня пробежал 5 км на время — 24 минуты.', time: '13:52', status: 'read', reactions: [{ emoji: 'Принял', count: 1, reacted: false }] },
+    { id: 2, from: 'me', text: 'Работаем по плану. Сегодня пробежал 5 км на время — 24 минуты.', time: '13:52', status: 'read', reactions: [{ emoji: '👍', count: 1, reacted: false }] },
     { id: 3, from: 'them', text: 'Неплохо. Цель — до 22 минут к концу месяца. Продолжай в том же духе.', time: '13:55', status: 'read', reactions: [] },
     { id: 4, from: 'me', text: 'Так точно. Также проработал тактику движения в городских условиях по записям с прошлого курса.', time: '14:10', status: 'read', reactions: [], attachment: { type: 'file', name: 'taktika_gorod.pdf', size: '2.4 МБ' } },
     { id: 5, from: 'them', text: 'Вот схема маршрутов для следующего упражнения.', time: '14:20', status: 'read', reactions: [], attachment: { type: 'image', url: 'https://picsum.photos/seed/tactic-map1/400/280', name: 'схема.jpg' } },
@@ -314,27 +427,65 @@ const makeInitialMessages = (): Record<number, Message[]> => ({
   2: [
     { id: 1, from: 'them', text: 'Проверил домашнее задание по тактической медицине', time: '10:55', status: 'read', reactions: [] },
     { id: 2, from: 'me', text: 'Ждал с нетерпением. Как результат?', time: '11:02', status: 'read', reactions: [] },
-    { id: 3, from: 'them', text: 'ДЗ принято, работа выполнена на отлично. Особенно понравилась схема тампонады.', time: '11:08', status: 'read', reactions: [{ emoji: 'Сильно', count: 1, reacted: true }] },
-    { id: 4, from: 'them', text: '', time: '11:10', status: 'read', reactions: [], attachment: { type: 'sticker', emoji: 'Зачет' } },
+    { id: 3, from: 'them', text: 'ДЗ принято, работа выполнена на отлично. Особенно понравилась схема тампонады.', time: '11:08', status: 'read', reactions: [{ emoji: '🔥', count: 1, reacted: true }] },
+    { id: 4, from: 'me', text: 'Отлично, закрепил схему в конспекте.', time: '11:12', status: 'read', reactions: [{ emoji: '👍', count: 1, reacted: false }] },
+    { id: 5, from: 'them', text: '', time: '11:13', status: 'read', reactions: [], attachment: { type: 'sticker', emoji: '🫡' } },
   ],
   4: [
     { id: 1, from: 'them', text: 'Кто едет в субботу на полигон? Нужно набрать минимум 8 человек.', time: '09:00', status: 'read', reactions: [] },
     { id: 2, from: 'me', text: 'Я буду. Выехать могу от метро Сокольники, готов взять двоих на борт.', time: '09:18', status: 'read', reactions: [] },
     { id: 3, from: 'them', text: 'Отлично, учитываем. Сбор в 08:00 у КПП.', time: '09:30', status: 'read', reactions: [] },
     { id: 4, from: 'them', text: '', time: '09:35', status: 'read', reactions: [], attachment: { type: 'image', url: 'https://picsum.photos/seed/polygon-range/400/260', name: 'полигон.jpg' } },
+    { id: 5, from: 'me', text: '', time: '09:37', status: 'read', reactions: [], attachment: { type: 'sticker', emoji: '👍' } },
   ],
-  3: [], 5: [], 6: [], 7: [],
+  3: [
+    { id: 1, from: 'them', text: 'Снаряжение на складе. Проверь список перед выездом.', time: '16:20', status: 'read', reactions: [] },
+    { id: 2, from: 'me', text: 'Принял. Заберу комплект завтра утром.', time: '16:27', status: 'read', reactions: [{ emoji: '👍', count: 1, reacted: true }] },
+  ],
+  5: [
+    { id: 1, from: 'them', text: 'Посмотри видео: стойка стабильная, но работа спуском пока резкая.', time: '12:05', status: 'read', reactions: [] },
+    { id: 2, from: 'me', text: 'Понял, сегодня отдельно отработаю плавный спуск.', time: '12:11', status: 'read', reactions: [] },
+  ],
+  6: [
+    { id: 1, from: 'them', text: 'Следующее занятие 15 апреля в 09:00. Форма полевая, блокнот обязательно.', time: '18:40', status: 'read', reactions: [{ emoji: '🔥', count: 2, reacted: false }] },
+  ],
+  7: [
+    { id: 1, from: 'them', text: 'Принято, буду на полигоне. Возьму камеру для отчёта.', time: '15:30', status: 'read', reactions: [] },
+  ],
+  8: [
+    { id: 1, from: 'them', text: 'Завтра прогоняем связь на коротких дистанциях. Нужны гарнитура и запасной аккумулятор.', time: '09:44', status: 'delivered', reactions: [] },
+  ],
+  9: [
+    { id: 1, from: 'them', text: 'Скинул новый маршрут и точки контроля.', time: '08:17', status: 'read', reactions: [], attachment: { type: 'image', url: 'https://picsum.photos/seed/atlas-route/400/260', name: 'route.jpg' } },
+    { id: 2, from: 'me', text: 'Вижу. Отмечу сложные участки и вернусь с вопросами.', time: '08:25', status: 'read', reactions: [] },
+  ],
+  10: [
+    { id: 1, from: 'them', text: 'Разбор после тренировки будет в 19:30. Возьми записи по таймингам.', time: '17:02', status: 'read', reactions: [] },
+    { id: 2, from: 'me', text: 'Буду. Подготовлю три момента, где просел темп.', time: '17:05', status: 'read', reactions: [{ emoji: '👏', count: 1, reacted: false }] },
+  ],
+  11: [
+    { id: 1, from: 'them', text: 'Проверь экипировку по списку до выхода: аптечка, фонарь, перчатки, вода.', time: '10:10', status: 'read', reactions: [] },
+  ],
+  12: [
+    { id: 1, from: 'them', text: 'Канал резервный оставляем открытым до 18:00.', time: '13:00', status: 'read', reactions: [] },
+    { id: 2, from: 'me', text: 'Понял, основной канал не трогаю.', time: '13:04', status: 'read', reactions: [] },
+  ],
+  13: [
+    { id: 1, from: 'them', text: 'Сегодня работаем спокойно: техника важнее скорости.', time: '07:40', status: 'read', reactions: [] },
+  ],
 });
 
 const stampDemoMessages = (base: Record<number, Message[]>) => {
-  const loginByChat: Record<number, string> = { 1: 'tornado', 2: 'bek', 3: 'koba', 4: 'koba', 5: 'shooter', 6: 'shooter', 7: 'nexus' };
+  const loginByChat: Record<number, string> = { 1: 'tornado', 2: 'bek', 3: 'koba', 4: 'koba', 5: 'shooter', 6: 'shooter', 7: 'nexus', 8: 'vega', 9: 'atlas', 10: 'iskra', 11: 'granit', 12: 'vega', 13: 'rubezh' };
   return Object.fromEntries(
     Object.entries(base).map(([chatId, list]) => [
       chatId,
-      list.map((msg) => ({
-        ...msg,
-        senderLogin: msg.senderLogin || (msg.from === 'me' ? 'tornado' : loginByChat[Number(chatId)] || 'tornado'),
-      })),
+      list
+        .map((msg) => ({
+          ...msg,
+          reactions: (msg.reactions || []).filter(r => QUICK_EMOJIS.includes(r.emoji)),
+          senderLogin: msg.senderLogin || (msg.from === 'me' ? 'tornado' : loginByChat[Number(chatId)] || 'tornado'),
+        })),
     ])
   ) as Record<number, Message[]>;
 };
@@ -342,7 +493,7 @@ const stampDemoMessages = (base: Record<number, Message[]>) => {
 const loadDemoMessages = () => {
   if (typeof window === 'undefined') return makeInitialMessages();
   try {
-    const saved = localStorage.getItem('voevoda_demo_messages_v2');
+    const saved = localStorage.getItem('voevoda_demo_messages_v4');
     return saved ? stampDemoMessages(JSON.parse(saved) as Record<number, Message[]>) : stampDemoMessages(makeInitialMessages());
   } catch {
     return stampDemoMessages(makeInitialMessages());
@@ -462,48 +613,61 @@ function EmojiReactionPopup({ x, y, onReact, onClose }: {
     return () => window.removeEventListener('mousedown', h);
   }, [onClose]);
 
-  const left = Math.min(x, window.innerWidth - 340);
-  const top  = y - 60;
+  const width = 326;
+  const left = Math.max(10, Math.min(x - 38, window.innerWidth - width - 10));
+  const top  = Math.max(10, y - 58);
 
   return (
     <div className="msg-emoji-popup" style={{ left, top }}>
       {QUICK_EMOJIS.map(e => (
-        <button key={e} className="msg-emoji-btn" onMouseDown={() => { onReact(e); onClose(); }}>{e}</button>
+        <button key={e} className="msg-emoji-btn" onMouseDown={() => { onReact(e); onClose(); }} aria-label={`Реакция ${e}`}>{e}</button>
       ))}
-      <div style={{ width:1, height:24, background:'var(--border)', margin:'0 4px' }} />
-      <button className="msg-emoji-btn" onMouseDown={() => { onReact('Хлопок'); onClose(); }} style={{ fontSize:14, color:'var(--text-muted)' }}>
-        <Ico d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" size={16} />
+      <div style={{ width:1, height:26, background:'#E6ECF3', margin:'0 5px' }} />
+      <button className="msg-emoji-btn msg-emoji-more" onMouseDown={() => { onReact('👍'); onClose(); }} aria-label="Ещё реакции">
+        <Ico d="M12 5v14M5 12h14" size={18} stroke="currentColor" sw={2.4} />
       </button>
     </div>
   );
 }
 
+
 /* ─── STICKER PANEL ─── */
 function StickerPanel({ onSend, onClose }: { onSend: (emoji: string) => void; onClose: () => void; }) {
   const [packIdx, setPackIdx] = useState(0);
+  const [query, setQuery] = useState('');
   const pack = STICKER_PACKS[packIdx];
+  const stickers = pack.stickers.filter(s => !query.trim() || s.includes(query.trim()));
+
+  useEffect(() => {
+    const close = (e: MouseEvent) => { if (!(e.target as Element).closest('.msg-sticker-panel')) onClose(); };
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    setTimeout(() => window.addEventListener('mousedown', close), 100);
+    window.addEventListener('keydown', esc);
+    return () => { window.removeEventListener('mousedown', close); window.removeEventListener('keydown', esc); };
+  }, [onClose]);
+
   return (
-    <div className="msg-sticker-panel">
-      {/* Pack tabs */}
-      <div style={{ display:'flex', borderBottom:'1px solid var(--border)', padding:'8px 10px 0' }}>
-        {STICKER_PACKS.map((p, i) => (
-          <button key={p.id} onClick={() => setPackIdx(i)} style={{
-            flex:1, padding:'6px 0', border:'none', cursor:'pointer', background:'none',
-            fontSize:20, borderBottom: i===packIdx ? '2.5px solid var(--accent)' : '2.5px solid transparent',
-            transition:'all .12s', borderRadius:0,
-          }}>{p.icon}</button>
-        ))}
-        <button onClick={onClose} style={{ width:32, border:'none', background:'none', cursor:'pointer', color:'var(--text-muted)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+    <div className="msg-sticker-panel" onMouseDown={e => e.stopPropagation()}>
+      <div className="msg-sticker-search">
+        <Ico d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" size={15} stroke="#8B98A8" />
+        <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Поиск стикеров"
+          style={{ flex:1, border:'none', outline:'none', background:'transparent', fontSize:13, fontFamily:'var(--font)', color:'#526274', fontWeight:600 }} />
+      </div>
+      <div className="msg-sticker-title">
+        <span>{pack.name}</span>
+        <button onClick={onClose} style={{ border:'none', background:'transparent', cursor:'pointer', color:'#8B98A8', display:'flex', alignItems:'center' }} aria-label="Закрыть стикеры">
           <Ico d="M6 18L18 6M6 6l12 12" size={16} stroke="currentColor" sw={2} />
         </button>
       </div>
-      <div style={{ padding:'4px 4px 8px', height:200, overflowY:'auto' }}>
-        <div style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.5px', padding:'8px 8px 4px' }}>{pack.name}</div>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)' }}>
-          {pack.stickers.map(s => (
-            <button key={s} className="msg-sticker-btn" onClick={() => { onSend(s); onClose(); }}>{s}</button>
-          ))}
-        </div>
+      <div className="msg-sticker-grid">
+        {stickers.map((s, i) => (
+          <button key={`${pack.id}-${s}-${i}`} className="msg-sticker-btn" onClick={() => { onSend(s); onClose(); }} aria-label={`Стикер ${s}`}>{s}</button>
+        ))}
+      </div>
+      <div className="msg-sticker-tabs">
+        {STICKER_PACKS.map((p, i) => (
+          <button key={p.id} onClick={() => { setPackIdx(i); setQuery(''); }} className={`msg-sticker-tab${i===packIdx?' active':''}`} aria-label={p.name}>{p.icon}</button>
+        ))}
       </div>
     </div>
   );
@@ -540,25 +704,38 @@ function ProfileModal({ user, onClose, onCall, onMessage, onOpenMedia, onOpenGal
             alt="" className="msg-profile-cover" onClick={() => onOpenMedia(coverUrl, `${user.name} · обложка`)} style={{ cursor:'zoom-in' }}
             onError={e => { const t = e.target as HTMLImageElement; t.style.background='linear-gradient(135deg,var(--navy-700),var(--navy-500))'; t.style.display='block'; }}
           />
-          <div style={{ position:'absolute', inset:0, background:'linear-gradient(to bottom, transparent 40%, rgba(0,0,0,.35))', pointerEvents:'none' }} />
+          <div style={{ position:'absolute', inset:0, background:'linear-gradient(to bottom, rgba(5,13,24,.08) 0%, rgba(5,13,24,.16) 38%, rgba(5,13,24,.82) 100%)', pointerEvents:'none' }} />
+          <div style={{ position:'absolute', left:18, right:58, bottom:18, display:'flex', alignItems:'center', gap:12 }}>
+            <div style={{ minWidth:0, padding:'10px 12px', borderRadius:16, background:'rgba(5,13,24,.46)', border:'1px solid rgba(255,255,255,.14)', backdropFilter:'blur(12px)', boxShadow:'0 10px 28px rgba(0,0,0,.22)' }}>
+              <div style={{ fontSize:22, fontWeight:900, color:'#fff', lineHeight:1.05, textShadow:'0 2px 10px rgba(0,0,0,.35)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{user.name}</div>
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:5, flexWrap:'wrap' }}>
+                {user.login && <span style={{ fontSize:12, color:'rgba(255,255,255,.82)', fontWeight:700 }}>@{user.login}</span>}
+                {user.rank && <span style={{ fontSize:12, color:'#BFD9FF', fontWeight:800 }}>{user.rank}</span>}
+                <span style={{ fontSize:12, color: user.online ? '#60D394' : 'rgba(255,255,255,.68)', fontWeight:700 }}>{user.online ? '● в сети' : `был(а) ${user.lastSeen ?? 'давно'}`}</span>
+              </div>
+            </div>
+          </div>
           {/* Close btn */}
-          <button onClick={onClose} style={{ position:'absolute', top:12, right:12, width:32, height:32, borderRadius:10, background:'rgba(0,0,0,.35)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff' }}>
+          <button onClick={onClose} style={{ position:'absolute', top:12, right:12, width:34, height:34, borderRadius:12, background:'rgba(0,0,0,.38)', border:'1px solid rgba(255,255,255,.12)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', backdropFilter:'blur(10px)' }}>
             <Ico d="M6 18L18 6M6 6l12 12" size={16} stroke="#fff" sw={2.2} />
           </button>
         </div>
 
         {/* Avatar + info */}
-        <div style={{ padding:'0 24px 0', marginTop:-40, position:'relative', zIndex:1 }}>
-          <div style={{ display:'flex', alignItems:'flex-end', gap:14, marginBottom:16 }}>
-            <div className="msg-profile-avatar" onClick={() => onOpenMedia(avatarUrl, `${user.name} · аватар`)} style={{ cursor:'zoom-in' }}>
+        <div style={{ padding:'0 24px 0', position:'relative', zIndex:1 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:14, marginTop:-23, marginBottom:16, padding:'12px', borderRadius:20, background:'#fff', boxShadow:'0 14px 34px rgba(13,27,42,.12)', border:'1px solid rgba(221,227,238,.9)' }}>
+            <div className="msg-profile-avatar" onClick={() => onOpenMedia(avatarUrl, `${user.name} · аватар`)} style={{ cursor:'zoom-in', flexShrink:0 }}>
               <img src={avatarUrl}
                 alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}
                 onError={e => { (e.target as HTMLImageElement).style.display='none'; }} />
             </div>
-            <div style={{ paddingBottom:6 }}>
-              <div style={{ fontSize:18, fontWeight:800, color:'var(--text-primary)', lineHeight:1.2 }}>{user.name}</div>
-              {user.rank && <div style={{ fontSize:12, color:'var(--accent)', fontWeight:700, marginTop:2 }}>{user.rank}</div>}
-              <div style={{ fontSize:12, color: user.online ? 'var(--success)' : 'var(--text-muted)', marginTop:2, fontWeight:500 }}>
+            <div style={{ minWidth:0 }}>
+              <div style={{ fontSize:20, fontWeight:900, color:'var(--text-primary)', lineHeight:1.12, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{user.name}</div>
+              <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap', marginTop:4 }}>
+                {user.login && <span style={{ fontSize:12, color:'var(--accent)', fontWeight:800 }}>@{user.login}</span>}
+                {user.rank && <span style={{ fontSize:12, color:'var(--text-secondary)', fontWeight:700 }}>{user.rank}</span>}
+              </div>
+              <div style={{ fontSize:12, color: user.online ? 'var(--success)' : 'var(--text-muted)', marginTop:4, fontWeight:700 }}>
                 {user.online ? '● В сети' : `Был(а) ${user.lastSeen ?? 'давно'}`}
               </div>
             </div>
@@ -652,29 +829,83 @@ function ProfileModal({ user, onClose, onCall, onMessage, onOpenMedia, onOpenGal
 
 /* ─── IMAGE LIGHTBOX ─── */
 function ImageLightbox({ url, name, onClose }: { url: string; name?: string; onClose: () => void; }) {
-  const [zoom, setZoom] = useState(false);
+  const [scale, setScale] = useState(1);
+  const [pos, setPos] = useState({ x: 0, y: 0 });
+  const [drag, setDrag] = useState<{ x: number; y: number; px: number; py: number } | null>(null);
+
+  const clampScale = (v: number) => Math.min(5, Math.max(0.65, Number(v.toFixed(2))));
+  const resetZoom = () => { setScale(1); setPos({ x: 0, y: 0 }); };
+  const zoomBy = (delta: number) => setScale(v => clampScale(v + delta));
+
   useEffect(() => {
-    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', h);
+    const h = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+      if ((e.ctrlKey || e.metaKey) && (e.key === '+' || e.key === '=')) { e.preventDefault(); zoomBy(.25); }
+      if ((e.ctrlKey || e.metaKey) && e.key === '-') { e.preventDefault(); zoomBy(-.25); }
+      if ((e.ctrlKey || e.metaKey) && e.key === '0') { e.preventDefault(); resetZoom(); }
+    };
+    window.addEventListener('keydown', h, { passive:false });
     return () => window.removeEventListener('keydown', h);
   }, [onClose]);
+
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const delta = e.deltaY < 0 ? 0.18 : -0.18;
+    setScale(v => {
+      const next = clampScale(v + delta);
+      if (next <= 1) setPos({ x: 0, y: 0 });
+      return next;
+    });
+  };
+
+  const onPointerMove = (e: React.PointerEvent<HTMLImageElement>) => {
+    if (!drag) return;
+    e.preventDefault();
+    setPos({ x: drag.px + e.clientX - drag.x, y: drag.py + e.clientY - drag.y });
+  };
+
   return (
-    <div className="msg-lightbox" onClick={onClose}>
+    <div className="msg-lightbox" onClick={onClose} onWheel={handleWheel} style={{ overscrollBehavior:'contain', touchAction:'none' }}>
       {/* Toolbar */}
       <div style={{ position:'fixed', top:0, left:0, right:0, padding:'16px 20px', display:'flex', justifyContent:'space-between', alignItems:'center', background:'linear-gradient(to bottom,rgba(0,0,0,.6),transparent)', zIndex:10 }}
-        onClick={e => e.stopPropagation()}>
-        <span style={{ fontSize:13, color:'rgba(255,255,255,.8)', fontFamily:'var(--font)', fontWeight:500 }}>{name ?? 'Изображение'}</span>
-        <div style={{ display:'flex', gap:8 }}>
-          <button onClick={() => setZoom(z => !z)} style={{ width:36, height:36, borderRadius:10, background:'rgba(255,255,255,.12)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff' }}>
-            <Ico d={zoom ? 'M21 21l-6-6m-2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7' : 'M21 21l-6-6m-2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7'} size={16} stroke="#fff" />
+        onClick={e => e.stopPropagation()} onWheel={handleWheel}>
+        <div>
+          <span style={{ fontSize:13, color:'rgba(255,255,255,.86)', fontFamily:'var(--font)', fontWeight:600 }}>{name ?? 'Изображение'}</span>
+          <div style={{ fontSize:11, color:'rgba(255,255,255,.5)', marginTop:3 }}>Колесико / Ctrl+колесико — масштаб фото, перетаскивание — сдвиг</div>
+        </div>
+        <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+          <button onClick={() => zoomBy(-.25)} style={{ width:36, height:36, borderRadius:10, background:'rgba(255,255,255,.12)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff' }} title="Уменьшить фото">
+            <Ico d="M21 21l-6-6m-2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" size={16} stroke="#fff" />
+          </button>
+          <button onClick={() => zoomBy(.25)} style={{ width:36, height:36, borderRadius:10, background:'rgba(255,255,255,.12)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff' }} title="Увеличить фото">
+            <Ico d="M21 21l-6-6m-2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" size={16} stroke="#fff" />
+          </button>
+          <button onClick={resetZoom} style={{ minWidth:54, height:36, borderRadius:10, background:'rgba(255,255,255,.12)', border:'none', cursor:'pointer', color:'#fff', fontSize:12, fontWeight:800 }} title="Сбросить масштаб">
+            {Math.round(scale * 100)}%
           </button>
           <button onClick={onClose} style={{ width:36, height:36, borderRadius:10, background:'rgba(255,255,255,.12)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff' }}>
             <Ico d="M6 18L18 6M6 6l12 12" size={18} stroke="#fff" sw={2} />
           </button>
         </div>
       </div>
-      <img src={url} alt={name} onClick={e => { e.stopPropagation(); setZoom(z => !z); }}
-        style={{ maxWidth: zoom ? '98vw' : '85vw', maxHeight: zoom ? '98vh' : '82vh', borderRadius: zoom ? 4 : 12, cursor:'zoom-in', objectFit:'contain', transition:'all .2s' }} />
+      <img
+        src={url}
+        alt={name}
+        draggable={false}
+        onClick={e => { e.stopPropagation(); zoomBy(scale > 1 ? -.5 : .75); }}
+        onPointerDown={e => { e.stopPropagation(); (e.currentTarget as HTMLImageElement).setPointerCapture(e.pointerId); setDrag({ x:e.clientX, y:e.clientY, px:pos.x, py:pos.y }); }}
+        onPointerMove={onPointerMove}
+        onPointerUp={e => { e.stopPropagation(); setDrag(null); }}
+        onPointerCancel={() => setDrag(null)}
+        style={{
+          maxWidth:'88vw', maxHeight:'84vh', borderRadius: scale > 1 ? 4 : 12, objectFit:'contain',
+          cursor: drag ? 'grabbing' : (scale > 1 ? 'grab' : 'zoom-in'),
+          transform:`translate3d(${pos.x}px, ${pos.y}px, 0) scale(${scale})`,
+          transformOrigin:'center center', transition: drag ? 'none' : 'transform .14s ease, border-radius .14s ease',
+          willChange:'transform', userSelect:'none', touchAction:'none'
+        }}
+      />
     </div>
   );
 }
@@ -754,7 +985,7 @@ function IncomingCallBanner({ call, onAccept, onDecline }: {
           Входящий {call.kind === 'video' ? 'видео-звонок' : 'аудио-звонок'}
         </div>
         <div style={{ display:'flex', gap:18, justifyContent:'center', position:'relative', zIndex:1 }}>
-          <button className="msg-call-btn end" onClick={onDecline} title="Отклонить">
+          <button className="msg-call-btn end" onClick={e => { e.stopPropagation(); onDecline(); }} title="Отклонить">
             <Ico d="M16.72 11.06A10.94 10.94 0 0119 12.55M5 19l14-14m0 0L5 19m14-14l-4.73 4.73A10.89 10.89 0 0112.3 5c-3.92-.07-7.6 2-9.3 5.2L1 13" size={24} stroke="#fff" sw={1.8} />
           </button>
           <button className="msg-call-btn accept" onClick={onAccept} title="Принять">
@@ -778,34 +1009,130 @@ function CallModal({ chat, kind, mode, socket, selfUserId, remoteUserId, initial
 }) {
   const [state, setState] = useState<'calling' | 'connected'>('calling');
   const [muted, setMuted] = useState(false);
-  const [cameraOn, setCameraOn] = useState(kind === 'video');
+  const [cameraOn, setCameraOn] = useState(false);
   const [screenOn, setScreenOn] = useState(false);
   const [permissionError, setPermissionError] = useState('');
+  const [callNotice, setCallNotice] = useState('');
   const [seconds, setSeconds] = useState(0);
   const [remoteStreamReady, setRemoteStreamReady] = useState(false);
+  const [screenExpanded, setScreenExpanded] = useState(false);
+  const [screenPipOn, setScreenPipOn] = useState(false);
+  const [screenPreviewHidden, setScreenPreviewHidden] = useState(false);
+  const [miniPos, setMiniPos] = useState({ x: 22, y: 112 });
+  const [miniDragging, setMiniDragging] = useState(false);
+  const [minimized, setMinimized] = useState(false);
+
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
   const screenPreviewRef = useRef<HTMLVideoElement | null>(null);
+  const screenExpandedVideoRef = useRef<HTMLVideoElement | null>(null);
+  const screenFloatingVideoRef = useRef<HTMLVideoElement | null>(null);
+  const screenPipVideoRef = useRef<HTMLVideoElement | null>(null);
+  const expandedLocalVideoRef = useRef<HTMLVideoElement | null>(null);
+  const expandedRemoteVideoRef = useRef<HTMLVideoElement | null>(null);
+
   const peerRef = useRef<RTCPeerConnection | null>(null);
-  const localStreamRef = useRef<MediaStream | null>(null);
-  const screenStreamRef = useRef<MediaStream | null>(null);
+  const localStreamRef = useRef<MediaStream>(new MediaStream());
   const remoteStreamRef = useRef<MediaStream>(new MediaStream());
+  const screenStreamRef = useRef<MediaStream | null>(null);
+  const cameraTrackRef = useRef<MediaStreamTrack | null>(null);
+  const audioTrackRef = useRef<MediaStreamTrack | null>(null);
+  const screenTrackRef = useRef<MediaStreamTrack | null>(null);
+  const ownedStreamsRef = useRef<Set<MediaStream>>(new Set());
+  const ownedTracksRef = useRef<Set<MediaStreamTrack>>(new Set());
+  const screenIsCurrentTabRef = useRef(false);
+  const screenOnRef = useRef(false);
+  const cameraOnRef = useRef(false);
+  const closedRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startedRef = useRef(false);
-  const closedRef = useRef(false);
+  const startupRunIdRef = useRef(0);
+  const miniDragRef = useRef<{ startX: number; startY: number; startPosX: number; startPosY: number } | null>(null);
 
   const mediaDevices = typeof navigator !== 'undefined'
     ? (navigator as Navigator & { mediaDevices?: MediaDevices }).mediaDevices
     : undefined;
   const hasGetUserMedia = typeof mediaDevices?.getUserMedia === 'function';
   const hasGetDisplayMedia = typeof (mediaDevices as (MediaDevices & { getDisplayMedia?: unknown }) | undefined)?.getDisplayMedia === 'function';
+  const hasPictureInPicture = typeof document !== 'undefined'
+    && 'pictureInPictureEnabled' in document
+    && Boolean((document as Document & { pictureInPictureEnabled?: boolean }).pictureInPictureEnabled)
+    && typeof HTMLVideoElement !== 'undefined'
+    && 'requestPictureInPicture' in HTMLVideoElement.prototype;
 
-  const stopStream = (stream: MediaStream | null) => stream?.getTracks().forEach(t => t.stop());
   const fmt = (s: number) => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
   const avatarImg = chat.avatar || `https://i.pravatar.cc/200?img=33`;
 
+  const setTemporaryError = (text: string) => {
+    setPermissionError(text);
+    window.setTimeout(() => setPermissionError(prev => prev === text ? '' : prev), 4200);
+  };
+
+  const registerStream = (stream: MediaStream | null) => {
+    if (!stream) return stream;
+    ownedStreamsRef.current.add(stream);
+    stream.getTracks().forEach(track => ownedTracksRef.current.add(track));
+    return stream;
+  };
+
+  const registerTrack = (track: MediaStreamTrack | null | undefined) => {
+    if (track) ownedTracksRef.current.add(track);
+    return track;
+  };
+
+  const stopTrackHard = (track: MediaStreamTrack | null | undefined) => {
+    if (!track) return;
+    try { track.enabled = false; } catch {}
+    try { track.onended = null; } catch {}
+    try { track.stop(); } catch {}
+    ownedTracksRef.current.delete(track);
+  };
+
+  const stopStreamHard = (stream: MediaStream | null | undefined) => {
+    if (!stream) return;
+    stream.getTracks().forEach(stopTrackHard);
+    ownedStreamsRef.current.delete(stream);
+  };
+
+  const clearVideo = (node: HTMLVideoElement | null) => {
+    if (!node) return;
+    try { node.pause(); } catch {}
+    try { node.srcObject = null; } catch {}
+    try { node.removeAttribute('src'); } catch {}
+    try { node.load(); } catch {}
+  };
+
+  const bindVideos = () => {
+    const local = localStreamRef.current;
+    const remote = remoteStreamRef.current;
+    const screen = screenStreamRef.current;
+    if (localVideoRef.current) localVideoRef.current.srcObject = cameraTrackRef.current ? local : null;
+    if (expandedLocalVideoRef.current) expandedLocalVideoRef.current.srcObject = cameraTrackRef.current ? local : null;
+    if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remote;
+    if (expandedRemoteVideoRef.current) expandedRemoteVideoRef.current.srcObject = remote;
+    if (screenPreviewRef.current) screenPreviewRef.current.srcObject = screenIsCurrentTabRef.current ? null : screen;
+    if (screenExpandedVideoRef.current) screenExpandedVideoRef.current.srcObject = screenIsCurrentTabRef.current ? null : screen;
+    if (screenFloatingVideoRef.current) screenFloatingVideoRef.current.srcObject = screenIsCurrentTabRef.current ? null : screen;
+    if (screenPipVideoRef.current) screenPipVideoRef.current.srcObject = screenIsCurrentTabRef.current ? null : screen;
+  };
+
+  const findVideoSender = () => {
+    const peer = peerRef.current;
+    if (!peer) return null;
+    return peer.getSenders().find(s => s.track === screenTrackRef.current || s.track === cameraTrackRef.current || s.track?.kind === 'video' || s.track === null) ?? null;
+  };
+
+  const ensureVideoSender = () => {
+    const peer = peerRef.current;
+    if (!peer) return null;
+    const existing = findVideoSender();
+    if (existing) return existing;
+    const transceiver = peer.addTransceiver('video', { direction: 'sendrecv' });
+    return transceiver.sender;
+  };
+
   const startTimer = () => {
-    clearInterval(timerRef.current!);
+    if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = setInterval(() => setSeconds(s => s + 1), 1000);
   };
 
@@ -817,92 +1144,397 @@ function CallModal({ chat, kind, mode, socket, selfUserId, remoteUserId, initial
       ],
     });
     peer.onicecandidate = e => {
-      if (e.candidate) {
-        socket?.emit('call:ice-candidate', { from: selfUserId, to: remoteUserId, candidate: e.candidate.toJSON() });
-      }
+      if (e.candidate) socket?.emit('call:ice-candidate', { from: selfUserId, to: remoteUserId, candidate: e.candidate.toJSON() });
     };
     peer.ontrack = e => {
       e.streams[0]?.getTracks().forEach(track => {
+        registerTrack(track);
         if (!remoteStreamRef.current.getTracks().some(t => t.id === track.id)) remoteStreamRef.current.addTrack(track);
       });
-      if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteStreamRef.current;
-      setRemoteStreamReady(true);
+      setRemoteStreamReady(remoteStreamRef.current.getTracks().length > 0);
       setState('connected');
+      bindVideos();
     };
     peer.onconnectionstatechange = () => {
       if (peer.connectionState === 'connected') { setState('connected'); startTimer(); }
-      if (['failed', 'disconnected', 'closed'].includes(peer.connectionState)) {
-        if (!closedRef.current) setPermissionError('Соединение прервано. Проверьте интернет или TURN-сервер.');
+      if (['failed','disconnected'].includes(peer.connectionState) && !closedRef.current) {
+        setCallNotice('Связь с собеседником потеряна, но камера и демонстрация доступны локально.');
       }
     };
     peerRef.current = peer;
     return peer;
   };
 
-  const getLocalStream = async (withVideo: boolean) => {
-    if (!hasGetUserMedia || !mediaDevices) throw new Error('mediaDevices is not available');
-    const stream = await mediaDevices.getUserMedia({ audio: true, video: withVideo });
-    stream.getAudioTracks().forEach(t => { t.enabled = !muted; });
-    stream.getVideoTracks().forEach(t => { t.enabled = withVideo; });
-    localStreamRef.current = stream;
-    if (localVideoRef.current) localVideoRef.current.srcObject = stream;
-    return stream;
+  const cleanupCallMedia = () => {
+    screenOnRef.current = false;
+    cameraOnRef.current = false;
+
+    try { peerRef.current?.getSenders().forEach(sender => { try { void sender.replaceTrack(null); } catch {}; }); } catch {}
+    try { peerRef.current?.getTransceivers().forEach(t => { try { void t.sender.replaceTrack(null); } catch {}; try { t.stop(); } catch {}; }); } catch {}
+
+    stopTrackHard(cameraTrackRef.current);
+    stopTrackHard(audioTrackRef.current);
+    stopTrackHard(screenTrackRef.current);
+    stopStreamHard(screenStreamRef.current);
+    stopStreamHard(localStreamRef.current);
+    stopStreamHard(remoteStreamRef.current);
+    ownedStreamsRef.current.forEach(stopStreamHard);
+    ownedTracksRef.current.forEach(stopTrackHard);
+    ownedStreamsRef.current.clear();
+    ownedTracksRef.current.clear();
+
+    cameraTrackRef.current = null;
+    audioTrackRef.current = null;
+    screenTrackRef.current = null;
+    screenStreamRef.current = null;
+    localStreamRef.current = new MediaStream();
+    remoteStreamRef.current = new MediaStream();
+    screenIsCurrentTabRef.current = false;
+
+    clearVideo(localVideoRef.current);
+    clearVideo(remoteVideoRef.current);
+    void exitScreenPip();
+    clearVideo(screenPreviewRef.current);
+    clearVideo(screenExpandedVideoRef.current);
+    clearVideo(screenFloatingVideoRef.current);
+    clearVideo(screenPipVideoRef.current);
+    clearVideo(expandedLocalVideoRef.current);
+    clearVideo(expandedRemoteVideoRef.current);
+
+    setCameraOn(false);
+    setScreenOn(false);
+    setScreenExpanded(false);
+    setScreenPipOn(false);
+    setScreenPreviewHidden(false);
+    setRemoteStreamReady(false);
   };
 
-  const addLocalTracks = (peer: RTCPeerConnection, stream: MediaStream) => {
-    stream.getTracks().forEach(track => peer.addTrack(track, stream));
+  const minimizeCall = () => {
+    setScreenExpanded(false);
+    setMinimized(true);
+    requestAnimationFrame(bindVideos);
   };
 
-  const startOutgoing = async () => {
-    if (!socket?.connected) throw new Error('signaling is not connected');
-    const peer = createPeer();
-    const stream = await getLocalStream(kind === 'video');
-    addLocalTracks(peer, stream);
-    const offer = await peer.createOffer();
-    await peer.setLocalDescription(offer);
-    socket.emit('call:offer', { from: selfUserId, to: remoteUserId, kind, offer });
-  };
-
-  const startIncoming = async () => {
-    if (!socket?.connected || !initialOffer) throw new Error('incoming call data is missing');
-    const peer = createPeer();
-    const stream = await getLocalStream(kind === 'video');
-    addLocalTracks(peer, stream);
-    await peer.setRemoteDescription(new RTCSessionDescription(initialOffer));
-    const answer = await peer.createAnswer();
-    await peer.setLocalDescription(answer);
-    socket.emit('call:answer', { from: selfUserId, to: remoteUserId, answer });
-    setState('connected');
-    startTimer();
+  const restoreCall = () => {
+    setMinimized(false);
+    requestAnimationFrame(bindVideos);
   };
 
   useEffect(() => {
-    if (startedRef.current) return;
+    const h = () => restoreCall();
+    window.addEventListener('messages:restore-active-call', h);
+    return () => window.removeEventListener('messages:restore-active-call', h);
+  }, []);
+
+  const handleClose = (notify = true) => {
+    if (closedRef.current) { onClose(); return; }
+    closedRef.current = true;
+    try { sounds.stopRinging(); } catch {}
+    try { sounds.playCallEnd(); } catch {}
+    try { if (notify) socket?.emit('call:end', { from: selfUserId, to: remoteUserId }); } catch {}
+    try { if (timerRef.current) clearInterval(timerRef.current); } catch {}
+    try { cleanupCallMedia(); } catch {}
+    try { peerRef.current?.close(); } catch {}
+    peerRef.current = null;
+    onClose();
+  };
+
+  const attachAudioIfPossible = async () => {
+    if (!hasGetUserMedia || !mediaDevices || audioTrackRef.current) return;
+    try {
+      const stream = registerStream(await mediaDevices.getUserMedia({ audio: true, video: false }))!;
+      if (closedRef.current) { stopStreamHard(stream); return; }
+      const track = registerTrack(stream.getAudioTracks()[0]);
+      if (!track) return;
+      track.enabled = !muted;
+      audioTrackRef.current = track;
+      localStreamRef.current.addTrack(track);
+      const peer = peerRef.current;
+      if (peer) peer.addTrack(track, localStreamRef.current);
+    } catch {
+      // Микрофон не должен ломать камеру и демонстрацию.
+      setCallNotice('Микрофон недоступен или запрещён, но камера и демонстрация могут работать.');
+    }
+  };
+
+  const startCamera = async () => {
+    if (closedRef.current) return;
+    setPermissionError('');
+    if (!hasGetUserMedia || !mediaDevices) {
+      setTemporaryError('Браузер не дал доступ к камере. Нужен HTTPS/localhost и разрешение камеры.');
+      return;
+    }
+    try {
+      const stream = registerStream(await mediaDevices.getUserMedia({ video: true, audio: false }))!;
+      if (closedRef.current) { stopStreamHard(stream); return; }
+      const track = registerTrack(stream.getVideoTracks()[0]);
+      if (!track) throw new Error('no video track');
+      stopTrackHard(cameraTrackRef.current);
+      cameraTrackRef.current = track;
+      localStreamRef.current.getVideoTracks().forEach(t => localStreamRef.current.removeTrack(t));
+      localStreamRef.current.addTrack(track);
+      cameraOnRef.current = true;
+      setCameraOn(true);
+      if (!screenOnRef.current) {
+        const sender = ensureVideoSender();
+        try { await sender?.replaceTrack(track); } catch {}
+      }
+      bindVideos();
+    } catch {
+      cameraOnRef.current = false;
+      setCameraOn(false);
+      setTemporaryError('Камера не включилась. Проверь разрешение камеры в браузере и что камера не занята другой программой.');
+    }
+  };
+
+  const stopCamera = async () => {
+    const track = cameraTrackRef.current;
+    cameraTrackRef.current = null;
+    cameraOnRef.current = false;
+    setCameraOn(false);
+    localStreamRef.current.getVideoTracks().forEach(t => {
+      localStreamRef.current.removeTrack(t);
+      if (t === track) stopTrackHard(t);
+    });
+    stopTrackHard(track);
+    if (!screenOnRef.current) {
+      try { await findVideoSender()?.replaceTrack(null); } catch {}
+    }
+    bindVideos();
+  };
+
+  const toggleCamera = async () => {
+    if (cameraOnRef.current) await stopCamera();
+    else await startCamera();
+  };
+
+  const stopScreenShare = async () => {
+    const stream = screenStreamRef.current;
+    const track = screenTrackRef.current;
+    screenStreamRef.current = null;
+    screenTrackRef.current = null;
+    screenIsCurrentTabRef.current = false;
+    screenOnRef.current = false;
+    setScreenOn(false);
+    setScreenExpanded(false);
+    setScreenPipOn(false);
+    setScreenPreviewHidden(false);
+    await exitScreenPip();
+
+    const sender = findVideoSender();
+    try { await sender?.replaceTrack(cameraTrackRef.current ?? null); } catch {}
+    stopTrackHard(track);
+    stopStreamHard(stream);
+    clearVideo(screenPreviewRef.current);
+    clearVideo(screenExpandedVideoRef.current);
+    clearVideo(screenFloatingVideoRef.current);
+    clearVideo(screenPipVideoRef.current);
+    bindVideos();
+  };
+
+  const startScreenShare = async () => {
+    if (closedRef.current) return;
+    setPermissionError('');
+    if (!window.isSecureContext && window.location.hostname !== 'localhost') {
+      setTemporaryError('Демонстрация экрана работает только на HTTPS или localhost.');
+      return;
+    }
+    if (!hasGetDisplayMedia || !mediaDevices) {
+      setTemporaryError('Этот браузер не поддерживает демонстрацию экрана.');
+      return;
+    }
+    try {
+      const getDisplayMedia = (mediaDevices as MediaDevices & { getDisplayMedia: (constraints?: DisplayMediaStreamOptions) => Promise<MediaStream> }).getDisplayMedia.bind(mediaDevices);
+      const displayConstraints = {
+        video: {
+          displaySurface: 'monitor',
+          cursor: 'always',
+        },
+        audio: false,
+        preferCurrentTab: false,
+        selfBrowserSurface: 'exclude',
+        surfaceSwitching: 'include',
+        monitorTypeSurfaces: 'include',
+      } as DisplayMediaStreamOptions;
+      const stream = registerStream(await getDisplayMedia(displayConstraints))!;
+      if (closedRef.current) { stopStreamHard(stream); return; }
+      const track = registerTrack(stream.getVideoTracks()[0]);
+      if (!track) throw new Error('no screen track');
+      await stopScreenShare();
+      screenStreamRef.current = stream;
+      screenTrackRef.current = track;
+      const displaySurface = (track.getSettings?.() as MediaTrackSettings & { displaySurface?: string })?.displaySurface;
+      screenIsCurrentTabRef.current = displaySurface === 'browser';
+      screenOnRef.current = true;
+      setScreenOn(true);
+      setScreenPreviewHidden(false);
+      setCallNotice('');
+      const sender = ensureVideoSender();
+      try { await sender?.replaceTrack(track); } catch {}
+      track.addEventListener('ended', () => { if (!closedRef.current) void stopScreenShare(); }, { once:true });
+      requestAnimationFrame(bindVideos);
+    } catch {
+      screenOnRef.current = false;
+      setScreenOn(false);
+      setTemporaryError('Демонстрация не включилась. Проверь разрешение браузера и попробуй выбрать окно или весь экран.');
+    }
+  };
+
+  const toggleScreen = async () => {
+    if (screenOnRef.current) await stopScreenShare();
+    else await startScreenShare();
+  };
+
+  const openScreenFullscreen = () => {
+    if (!screenOnRef.current) return;
+    setScreenExpanded(true);
+    requestAnimationFrame(bindVideos);
+  };
+
+  const exitScreenPip = async () => {
+    try {
+      const doc = document as Document & { pictureInPictureElement?: Element | null; exitPictureInPicture?: () => Promise<void> };
+      if (doc.pictureInPictureElement && typeof doc.exitPictureInPicture === 'function') {
+        await doc.exitPictureInPicture();
+      }
+    } catch {}
+    setScreenPipOn(false);
+  };
+
+  const openScreenPip = async () => {
+    const doc = document as Document & { pictureInPictureElement?: Element | null; exitPictureInPicture?: () => Promise<void> };
+
+    // Повторное нажатие на ту же кнопку теперь работает как toggle:
+    // если PiP уже открыт — закрываем его без сброса звонка и без остановки демонстрации.
+    if (doc.pictureInPictureElement) {
+      await exitScreenPip();
+      setScreenPreviewHidden(false);
+      setCallNotice('PiP закрыт. Встроенное превью снова доступно.');
+      return;
+    }
+
+    if (!screenOnRef.current || !screenStreamRef.current) return;
+    if (screenIsCurrentTabRef.current) {
+      setTemporaryError('PiP скрыт для текущей вкладки, чтобы не создавать бесконечное зеркало. Выбери весь экран или отдельное окно.');
+      return;
+    }
+    if (!hasPictureInPicture) {
+      setTemporaryError('Этот браузер не поддерживает Picture-in-Picture для предпросмотра демонстрации.');
+      return;
+    }
+    const node = screenPipVideoRef.current || screenFloatingVideoRef.current || screenPreviewRef.current;
+    if (!node) return;
+    try {
+      node.srcObject = screenStreamRef.current;
+      node.muted = true;
+      node.playsInline = true;
+      await node.play().catch(() => undefined);
+      const video = node as HTMLVideoElement & { requestPictureInPicture?: () => Promise<unknown> };
+      if (typeof video.requestPictureInPicture === 'function') {
+        await video.requestPictureInPicture();
+        setScreenPipOn(true);
+        setScreenPreviewHidden(true);
+        setCallNotice('PiP открыт. Встроенное превью скрыто, демонстрация продолжается.');
+      }
+    } catch {
+      setTemporaryError('Не удалось открыть мини-окно. Нажми кнопку PiP ещё раз или проверь поддержку браузера.');
+    }
+  };
+
+  const onMiniPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if ((e.target as Element).closest('button')) return;
+    miniDragRef.current = { startX: e.clientX, startY: e.clientY, startPosX: miniPos.x, startPosY: miniPos.y };
+    setMiniDragging(true);
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const onMiniPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const drag = miniDragRef.current;
+    if (!drag) return;
+    const nextX = Math.max(10, Math.min(window.innerWidth - 320, drag.startPosX - (e.clientX - drag.startX)));
+    const nextY = Math.max(88, Math.min(window.innerHeight - 210, drag.startPosY - (e.clientY - drag.startY)));
+    setMiniPos({ x: nextX, y: nextY });
+  };
+
+  const onMiniPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    miniDragRef.current = null;
+    setMiniDragging(false);
+    try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {}
+  };
+
+  useEffect(() => {
+    // В React StrictMode эффект звонка в dev-сборке специально запускается,
+    // сразу чистится и запускается повторно. Раньше из-за этого closedRef/startedRef
+    // оставались в закрытом состоянии, поэтому кнопки камеры и экрана визуально
+    // нажимались, но startCamera/startScreenShare мгновенно выходили по closedRef.
+    const runId = startupRunIdRef.current + 1;
+    startupRunIdRef.current = runId;
+    closedRef.current = false;
     startedRef.current = true;
     sounds.startRinging();
+
+    const isStale = () => closedRef.current || startupRunIdRef.current !== runId;
+
     const start = async () => {
       try {
-        if (!socket) throw new Error('socket is not ready');
-        if (!window.isSecureContext && window.location.hostname !== 'localhost') {
-          setPermissionError('Камера, микрофон и экран работают только на HTTPS или localhost.');
+        if (socket?.connected) {
+          const peer = createPeer();
+          ensureVideoSender();
+          if (mode === 'incoming' && initialOffer) {
+            await peer.setRemoteDescription(new RTCSessionDescription(initialOffer));
+            if (isStale()) return;
+            const answer = await peer.createAnswer();
+            await peer.setLocalDescription(answer);
+            if (isStale()) return;
+            socket.emit('call:answer', { from: selfUserId, to: remoteUserId, answer });
+          } else {
+            const offer = await peer.createOffer();
+            await peer.setLocalDescription(offer);
+            if (isStale()) return;
+            socket.emit('call:offer', { from: selfUserId, to: remoteUserId, kind, offer });
+          }
+        } else {
+          if (isStale()) return;
+          setCallNotice('Локальный режим: камера и демонстрация работают без signaling-сервера.');
         }
-        if (mode === 'incoming') await startIncoming();
-        else await startOutgoing();
-      } catch (err) {
-        console.error(err);
-        setPermissionError('Не удалось начать звонок. Проверьте signaling-сервер, HTTPS/localhost и разрешения камеры/микрофона.');
+        if (isStale()) return;
+        setState('connected');
+        startTimer();
+        void attachAudioIfPossible();
+        if (kind === 'video') void startCamera();
+      } catch {
+        if (isStale()) return;
+        setState('connected');
+        startTimer();
+        setCallNotice('Звонок открыт локально. Камеру и демонстрацию можно включить кнопками ниже.');
       } finally {
-        sounds.stopRinging();
+        if (!isStale()) sounds.stopRinging();
       }
     };
     void start();
     return () => {
+      // Реальная размонтировка и dev-cleanup StrictMode должны гасить текущие tracks,
+      // но не должны навсегда блокировать следующий запуск этого же компонента.
       closedRef.current = true;
+      startedRef.current = false;
       sounds.stopRinging();
-      clearInterval(timerRef.current!);
-      stopStream(localStreamRef.current);
-      stopStream(screenStreamRef.current);
-      peerRef.current?.close();
+      if (timerRef.current) clearInterval(timerRef.current);
+      cleanupCallMedia();
+      try { peerRef.current?.close(); } catch {}
+      peerRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    const cleanup = () => {
+      try { cleanupCallMedia(); } catch {}
+      try { peerRef.current?.close(); } catch {}
+    };
+    window.addEventListener('pagehide', cleanup);
+    window.addEventListener('beforeunload', cleanup);
+    return () => {
+      window.removeEventListener('pagehide', cleanup);
+      window.removeEventListener('beforeunload', cleanup);
     };
   }, []);
 
@@ -917,8 +1549,7 @@ function CallModal({ chat, kind, mode, socket, selfUserId, remoteUserId, initial
     };
     const onIce = async (payload: CallSignalIce) => {
       if (payload.from !== remoteUserId || payload.to !== selfUserId || !payload.candidate) return;
-      try { await peerRef.current?.addIceCandidate(new RTCIceCandidate(payload.candidate)); }
-      catch (err) { console.warn('ICE candidate error', err); }
+      try { await peerRef.current?.addIceCandidate(new RTCIceCandidate(payload.candidate)); } catch {}
     };
     const onEnd = (payload: { from: string; to: string }) => {
       if (payload.from === remoteUserId && payload.to === selfUserId) handleClose(false);
@@ -934,106 +1565,179 @@ function CallModal({ chat, kind, mode, socket, selfUserId, remoteUserId, initial
   }, [socket, remoteUserId, selfUserId]);
 
   useEffect(() => {
-    localStreamRef.current?.getAudioTracks().forEach(t => { t.enabled = !muted; });
+    audioTrackRef.current && (audioTrackRef.current.enabled = !muted);
   }, [muted]);
 
   useEffect(() => {
-    if (localVideoRef.current) localVideoRef.current.srcObject = localStreamRef.current;
-    if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteStreamRef.current;
-    if (screenPreviewRef.current) screenPreviewRef.current.srcObject = screenStreamRef.current;
-  }, [state, cameraOn, screenOn]);
+    const node = screenPipVideoRef.current;
+    if (!node) return;
+    const enter = () => setScreenPipOn(true);
+    const leave = () => { setScreenPipOn(false); setScreenPreviewHidden(false); };
+    node.addEventListener('enterpictureinpicture', enter);
+    node.addEventListener('leavepictureinpicture', leave);
+    return () => {
+      node.removeEventListener('enterpictureinpicture', enter);
+      node.removeEventListener('leavepictureinpicture', leave);
+    };
+  }, [screenOn]);
 
-  const handleClose = (notify = true) => {
-    if (closedRef.current) return;
-    closedRef.current = true;
-    sounds.stopRinging();
-    sounds.playCallEnd();
-    if (notify) socket?.emit('call:end', { from: selfUserId, to: remoteUserId });
-    clearInterval(timerRef.current!);
-    stopStream(localStreamRef.current);
-    stopStream(screenStreamRef.current);
-    peerRef.current?.close();
-    onClose();
-  };
-
-  const toggleCamera = async () => {
-    try {
-      const next = !cameraOn;
-      setCameraOn(next);
-      const peer = peerRef.current;
-      if (!peer) return;
-      const currentStream = localStreamRef.current;
-      let videoTrack = currentStream?.getVideoTracks()[0];
-      const sender = peer.getSenders().find(s => s.track?.kind === 'video');
-      if (next) {
-        if (!videoTrack || videoTrack.readyState === 'ended') {
-          if (!hasGetUserMedia || !mediaDevices) throw new Error('no camera');
-          const cam = await mediaDevices.getUserMedia({ video: true, audio: false });
-          videoTrack = cam.getVideoTracks()[0];
-          if (currentStream && videoTrack) currentStream.addTrack(videoTrack);
-        }
-        if (videoTrack) videoTrack.enabled = true;
-        if (sender && videoTrack) await sender.replaceTrack(videoTrack);
-        else if (videoTrack && currentStream) peer.addTrack(videoTrack, currentStream);
-      } else {
-        if (videoTrack) videoTrack.enabled = false;
-      }
-      if (localVideoRef.current) localVideoRef.current.srcObject = localStreamRef.current;
-    } catch {
-      setCameraOn(false);
-      setPermissionError('Не удалось переключить камеру. Проверьте разрешения браузера.');
-    }
-  };
-
-  const toggleScreen = async () => {
-    const peer = peerRef.current;
-    if (!peer) return;
-    if (screenOn) {
-      stopStream(screenStreamRef.current);
-      screenStreamRef.current = null;
-      const camTrack = localStreamRef.current?.getVideoTracks()[0] ?? null;
-      const sender = peer.getSenders().find(s => s.track?.kind === 'video');
-      if (sender) await sender.replaceTrack(camTrack);
-      if (screenPreviewRef.current) screenPreviewRef.current.srcObject = null;
-      setScreenOn(false);
-      return;
-    }
-    try {
-      if (!window.isSecureContext && window.location.hostname !== 'localhost') throw new Error('screen share requires secure context');
-      if (!hasGetDisplayMedia || !mediaDevices) throw new Error('no display media');
-      const getDisplayMedia = (mediaDevices as MediaDevices & { getDisplayMedia: (constraints?: DisplayMediaStreamOptions) => Promise<MediaStream> }).getDisplayMedia.bind(mediaDevices);
-      const stream = await getDisplayMedia({ video: true, audio: false });
-      const screenTrack = stream.getVideoTracks()[0];
-      screenStreamRef.current = stream;
-      const sender = peer.getSenders().find(s => s.track?.kind === 'video');
-      if (sender && screenTrack) await sender.replaceTrack(screenTrack);
-      else if (screenTrack) peer.addTrack(screenTrack, stream);
-      screenTrack?.addEventListener('ended', () => { void toggleScreen(); });
-      setScreenOn(true);
-      setPermissionError('');
-      setTimeout(() => { if (screenPreviewRef.current) screenPreviewRef.current.srcObject = stream; }, 0);
-    } catch {
-      setScreenOn(false);
-      setPermissionError('Не удалось включить демонстрацию экрана. Нужен HTTPS/localhost и разрешение браузера.');
-    }
-  };
+  useEffect(() => { bindVideos(); }, [cameraOn, screenOn, screenExpanded, remoteStreamReady, screenPipOn, screenPreviewHidden, minimized]);
 
   const statusText = state === 'calling'
     ? (mode === 'incoming' ? 'Подключаемся' : 'Звоним')
     : `${kind === 'video' ? 'Видео-звонок' : 'Аудио-звонок'} · ${fmt(seconds)}`;
 
+  if (minimized) {
+    return (
+      <>
+        <video ref={screenPipVideoRef} className="msg-call-pip-hidden" autoPlay muted playsInline />
+        {screenOn && !screenPipOn && !screenPreviewHidden && (
+          <div
+            className={`msg-call-share-preview${miniDragging ? ' dragging' : ''}`}
+            style={{ right: miniPos.x, bottom: miniPos.y }}
+            onPointerDown={onMiniPointerDown}
+            onPointerMove={onMiniPointerMove}
+            onPointerUp={onMiniPointerUp}
+            onPointerCancel={onMiniPointerUp}
+          >
+            <div className="msg-call-share-preview-head">
+              <span><i className="msg-call-live-dot" />Вы показываете экран</span>
+              <div className="msg-call-share-preview-actions">
+                <button className="msg-call-mini-btn" onClick={e => { e.stopPropagation(); void openScreenPip(); }}>{screenPipOn ? 'Закрыть PiP' : 'PiP'}</button>
+                <button className="msg-call-mini-btn" onClick={e => { e.stopPropagation(); restoreCall(); openScreenFullscreen(); }}>Большой</button>
+                <button className="msg-call-mini-btn" onClick={e => { e.stopPropagation(); setScreenPreviewHidden(true); }}>Скрыть</button>
+                <button className="msg-call-mini-btn danger" onClick={e => { e.stopPropagation(); void stopScreenShare(); }}>Стоп</button>
+              </div>
+            </div>
+            <div className="msg-call-share-preview-body" onDoubleClick={() => { restoreCall(); openScreenFullscreen(); }}>
+              {screenIsCurrentTabRef.current ? (
+                <div style={{ padding:14 }}>Предпросмотр скрыт для текущей вкладки, чтобы не было зеркала.</div>
+              ) : (
+                <video ref={screenFloatingVideoRef} autoPlay muted playsInline />
+              )}
+              {!screenIsCurrentTabRef.current && !screenPipOn && (
+                <div className="msg-call-share-hint">PiP оставит превью поверх других вкладок и приложений</div>
+              )}
+            </div>
+          </div>
+        )}
+        <div className="msg-active-call-pill">
+          <button className="msg-active-call-main" onClick={restoreCall}>
+            <span className="msg-active-call-dot" />
+            <span>
+              <b>{chat.name}</b>
+              <small>{statusText}{screenOn ? ' · экран' : ''}</small>
+            </span>
+          </button>
+          <button className={`msg-active-call-action${muted ? ' active' : ''}`} onClick={() => setMuted(m => !m)} title={muted?'Включить микрофон':'Выключить микрофон'}>
+            <Ico d={muted ? 'M9 9v3a3 3 0 005.12 2.12M12 1a3 3 0 013 3M6.7 6.7L3 3m18 18l-3.88-3.88M19 10v2a7 7 0 01-.35 2.19M4.35 4.35A7 7 0 003 10v2' : 'M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3zM19 10v2a7 7 0 01-14 0v-2M12 19v4M8 23h8'} size={18} stroke="currentColor" sw={1.9} />
+          </button>
+          <button className={`msg-active-call-action${cameraOn ? ' active' : ''}`} onClick={() => void toggleCamera()} title={cameraOn?'Выключить камеру':'Включить камеру'}>
+            <Ico d="M23 7l-7 5 7 5V7zM1 5h15v14H1z" size={18} stroke="currentColor" sw={1.9} />
+          </button>
+          <button className={`msg-active-call-action${screenOn ? ' active' : ''}`} onClick={() => void toggleScreen()} title={screenOn?'Остановить экран':'Демонстрация экрана'}>
+            <Ico d="M8 21h8M12 17v4M3 4h18v12H3z" size={18} stroke="currentColor" sw={1.9} />
+          </button>
+          {screenOn && <button className="msg-active-call-action pip" onClick={() => void openScreenPip()} title={screenPipOn ? "Закрыть PiP" : "Открыть PiP"}>
+            <Ico d="M8 8h9a2 2 0 012 2v6M5 5h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2zM15 13h6v6h-6z" size={17} stroke="currentColor" sw={1.8} />
+          </button>}
+          {screenOn && screenPreviewHidden && !screenPipOn && <button className="msg-active-call-action" onClick={() => setScreenPreviewHidden(false)} title="Показать встроенное превью">
+            <Ico d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7zM12 9a3 3 0 100 6 3 3 0 000-6z" size={17} stroke="currentColor" sw={1.8} />
+          </button>}
+          <button className="msg-active-call-action danger" onClick={() => handleClose()} title="Завершить звонок">
+            <Ico d="M6 18L18 6M6 6l12 12" size={18} stroke="currentColor" sw={2.2} />
+          </button>
+        </div>
+      </>
+    );
+  }
+
   return (
-    <div className="msg-call-overlay" onClick={() => handleClose()}>
-      <div className="msg-call-modal wide" onClick={e => e.stopPropagation()}>
+    <div className="msg-call-overlay" onClick={minimizeCall}>
+      <div className="msg-call-modal wide" onClick={e => e.stopPropagation()} style={{ position:'relative' }}>
         <div className="msg-call-topbar">
           <div>
             <div style={{ fontSize:16, fontWeight:800 }}>{chat.name}</div>
             <div style={{ fontSize:12, color:'rgba(255,255,255,.55)', marginTop:2 }}>{statusText}</div>
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:8, fontSize:12, color:'rgba(255,255,255,.65)' }}>
-            {screenOn ? 'Экран демонстрируется' : socket?.connected ? 'Связь доступна' : 'Связь недоступна'}
+            {screenOn ? (screenPipOn ? 'Экран · PiP активно' : 'Экран демонстрируется') : socket?.connected ? 'Связь доступна' : 'Локальный режим'}
+            <button className="msg-call-btn mute" onClick={e => { e.stopPropagation(); minimizeCall(); }} title="Свернуть звонок" style={{ width:36, height:36 }}>
+              <Ico d="M6 18L18 6M6 6l12 12" size={18} stroke="#fff" sw={2} />
+            </button>
           </div>
         </div>
+
+        <video ref={screenPipVideoRef} className="msg-call-pip-hidden" autoPlay muted playsInline />
+
+        {screenOn && !screenPipOn && !screenPreviewHidden && (
+          <div
+            className={`msg-call-share-preview${miniDragging ? ' dragging' : ''}`}
+            style={{ right: miniPos.x, bottom: miniPos.y }}
+            onPointerDown={onMiniPointerDown}
+            onPointerMove={onMiniPointerMove}
+            onPointerUp={onMiniPointerUp}
+            onPointerCancel={onMiniPointerUp}
+          >
+            <div className="msg-call-share-preview-head">
+              <span><i className="msg-call-live-dot" />Вы показываете экран</span>
+              <div className="msg-call-share-preview-actions">
+                <button className="msg-call-mini-btn" onClick={e => { e.stopPropagation(); void openScreenPip(); }} title="Открыть поверх вкладок и приложений">
+                  {screenPipOn ? 'Закрыть PiP' : 'PiP'}
+                </button>
+                <button className="msg-call-mini-btn" onClick={e => { e.stopPropagation(); openScreenFullscreen(); }}>Большой</button>
+                <button className="msg-call-mini-btn" onClick={e => { e.stopPropagation(); setScreenPreviewHidden(true); }}>Скрыть</button>
+                <button className="msg-call-mini-btn danger" onClick={e => { e.stopPropagation(); void stopScreenShare(); }}>Стоп</button>
+              </div>
+            </div>
+            <div className="msg-call-share-preview-body" onDoubleClick={openScreenFullscreen}>
+              {screenIsCurrentTabRef.current ? (
+                <div style={{ padding:14 }}>Предпросмотр скрыт для текущей вкладки, чтобы не было зеркала. Для нормального превью выбери весь экран или окно.</div>
+              ) : (
+                <video ref={screenFloatingVideoRef} autoPlay muted playsInline />
+              )}
+              {!screenIsCurrentTabRef.current && !screenPipOn && (
+                <div className="msg-call-share-hint">Нажми PiP — мини-окно останется поверх других вкладок и приложений</div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {screenExpanded && (
+          <div className="msg-call-expanded" onClick={e => e.stopPropagation()}>
+            <div className="msg-call-expanded-head">
+              <span>Демонстрация экрана</span>
+              <div style={{ display:'flex', gap:8 }}>
+                <button className="msg-call-tile-btn" onClick={e => { e.stopPropagation(); void openScreenPip(); }}>{screenPipOn ? 'Закрыть PiP' : 'Открыть PiP'}</button>
+                <button className="msg-call-tile-btn" onClick={e => { e.stopPropagation(); void stopScreenShare(); }}>Отключить демонстрацию</button>
+                <button className="msg-call-tile-btn" onClick={e => { e.stopPropagation(); setScreenExpanded(false); }}>Свернуть</button>
+                <button className="msg-call-tile-btn" onClick={e => { e.stopPropagation(); handleClose(); }}>Завершить звонок</button>
+              </div>
+            </div>
+            <div className="msg-call-expanded-body">
+              <div className="msg-call-participants">
+                <div className="msg-call-participant">
+                  {cameraOn ? <video ref={expandedLocalVideoRef} autoPlay muted playsInline /> : <Ico d="M23 7l-7 5 7 5V7zM1 5h15v14H1zM4 4l16 16" size={26} stroke="rgba(255,255,255,.7)" />}
+                  <span className="msg-call-participant-label">Вы</span>
+                </div>
+                <div className="msg-call-participant">
+                  {remoteStreamReady ? <video ref={expandedRemoteVideoRef} autoPlay playsInline /> : (chat.isGroup ? <Ico d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" size={27} stroke="rgba(255,255,255,.72)" /> : <img src={avatarImg} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />)}
+                  <span className="msg-call-participant-label">{chat.name}</span>
+                </div>
+              </div>
+              {screenIsCurrentTabRef.current ? (
+                <div className="msg-call-screen-safe">
+                  <div>
+                    <div style={{ fontSize:20, fontWeight:900, color:'#fff', marginBottom:8 }}>Предпросмотр скрыт</div>
+                    <div>Выбрана текущая вкладка. Предпросмотр скрыт, чтобы не было бесконечного зеркала. Для нормального просмотра выбери отдельное окно или весь экран.</div>
+                  </div>
+                </div>
+              ) : (
+                <video ref={screenExpandedVideoRef} autoPlay muted playsInline />
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="msg-call-stage">
           <div className="msg-video-tile">
@@ -1044,7 +1748,7 @@ function CallModal({ chat, kind, mode, socket, selfUserId, remoteUserId, initial
                   {chat.isGroup ? <Ico d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" size={38} stroke="rgba(255,255,255,.72)" /> : <img src={avatarImg} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />}
                 </div>
                 <div style={{ fontSize:18, fontWeight:800 }}>{chat.name}</div>
-                <div style={{ fontSize:12, color:'rgba(255,255,255,.55)', marginTop:6 }}>{state === 'calling' ? 'Ожидаем ответ' : 'Аудио подключено'}</div>
+                <div style={{ fontSize:12, color:'rgba(255,255,255,.55)', marginTop:6 }}>{state === 'calling' ? 'Ожидаем ответ' : 'Локальный предпросмотр'}</div>
               </div>
             )}
             <div className="msg-video-badge">🎧 Собеседник</div>
@@ -1060,8 +1764,25 @@ function CallModal({ chat, kind, mode, socket, selfUserId, remoteUserId, initial
               )}
               <div className="msg-video-badge">Вы</div>
             </div>
-            <div className="msg-video-tile" style={{ height:150 }}>
-              {screenOn ? <video ref={screenPreviewRef} autoPlay muted playsInline /> : (
+            <div className="msg-video-tile" style={{ height:150, cursor:screenOn?'zoom-in':'default' }} onDoubleClick={openScreenFullscreen}>
+              {screenOn ? (
+                <>
+                  {screenIsCurrentTabRef.current ? (
+                    <div className="msg-call-screen-safe" style={{ fontSize:11, borderRadius:0 }}>
+                      Предпросмотр текущей вкладки скрыт, чтобы не было бесконечного зеркала.
+                    </div>
+                  ) : (
+                    <video ref={screenPreviewRef} autoPlay muted playsInline />
+                  )}
+                  <div className="msg-call-tile-actions">
+                    <button className="msg-call-tile-btn" onClick={e => { e.stopPropagation(); void openScreenPip(); }} title={screenPipOn ? "Закрыть PiP" : "Мини-окно поверх других окон"}>PiP</button>
+                    <button className="msg-call-tile-btn" onClick={e => { e.stopPropagation(); openScreenFullscreen(); }} title="Развернуть демонстрацию">
+                      <Ico d="M8 3H5a2 2 0 00-2 2v3M16 3h3a2 2 0 012 2v3M8 21H5a2 2 0 01-2-2v-3M16 21h3a2 2 0 002-2v-3" size={15} stroke="#fff" sw={2} />
+                    </button>
+                    <button className="msg-call-tile-btn" onClick={e => { e.stopPropagation(); void stopScreenShare(); }} title="Остановить демонстрацию">Стоп</button>
+                  </div>
+                </>
+              ) : (
                 <div className="msg-screen-tile" style={{ height:'100%', border:'none' }}>Демонстрация экрана выключена</div>
               )}
               <div className="msg-video-badge">Экран</div>
@@ -1070,18 +1791,19 @@ function CallModal({ chat, kind, mode, socket, selfUserId, remoteUserId, initial
         </div>
 
         {permissionError && <div className="msg-call-permission">{permissionError}</div>}
+        {!permissionError && callNotice && <div className="msg-call-permission" style={{ background:'rgba(26,86,219,.88)' }}>{callNotice}</div>}
 
         <div className="msg-call-controls">
-          <button className={`msg-call-btn mute${muted?' active':''}`} onClick={() => setMuted(m => !m)} title={muted?'Включить микрофон':'Выключить микрофон'}>
+          <button className={`msg-call-btn mute${muted?' active':''}`} onClick={e => { e.stopPropagation(); setMuted(m => !m); }} title={muted?'Включить микрофон':'Выключить микрофон'}>
             <Ico d={muted ? 'M9 9v3a3 3 0 005.12 2.12M12 1a3 3 0 013 3M6.7 6.7L3 3m18 18l-3.88-3.88M19 10v2a7 7 0 01-.35 2.19M4.35 4.35A7 7 0 003 10v2' : 'M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3zM19 10v2a7 7 0 01-14 0v-2M12 19v4M8 23h8'} size={22} stroke="#fff" sw={1.8} />
           </button>
-          <button className={`msg-call-btn mute${cameraOn?' active':''}`} onClick={toggleCamera} title={cameraOn?'Выключить камеру':'Включить камеру'}>
+          <button className={`msg-call-btn mute${cameraOn?' active':''}`} onClick={e => { e.stopPropagation(); void toggleCamera(); }} title={cameraOn?'Выключить камеру':'Включить камеру'}>
             <Ico d="M23 7l-7 5 7 5V7zM1 5h15v14H1z" size={22} stroke="#fff" sw={1.8} />
           </button>
-          <button className={`msg-call-btn mute${screenOn?' active':''}`} onClick={toggleScreen} title={screenOn?'Остановить экран':'Демонстрация экрана'}>
+          <button className={`msg-call-btn mute${screenOn?' active':''}`} onClick={e => { e.stopPropagation(); void toggleScreen(); }} title={screenOn?'Остановить экран':'Демонстрация экрана'}>
             <Ico d="M8 21h8M12 17v4M3 4h18v12H3z" size={22} stroke="#fff" sw={1.8} />
           </button>
-          <button className="msg-call-btn end" onClick={() => handleClose()} title="Завершить">
+          <button className="msg-call-btn end" onClick={e => { e.stopPropagation(); handleClose(); }} title="Завершить">
             <Ico d="M16.72 11.06A10.94 10.94 0 0119 12.55M5 19l14-14m0 0L5 19m14-14l-4.73 4.73A10.89 10.89 0 0112.3 5c-3.92-.07-7.6 2-9.3 5.2L1 13" size={24} stroke="#fff" sw={1.8} />
           </button>
         </div>
@@ -1161,6 +1883,8 @@ export function Messages() {
   const [socketReady, setSocketReady] = useState(false);
   const [incomingCall, setIncomingCall] = useState<IncomingCallState | null>(null);
   const [showCall, setShowCall] = useState<{ kind: CallKind; mode: CallMode; chat: ChatUser; remoteUserId: string; offer?: RTCSessionDescriptionInit } | null>(null);
+  const [callStartedAt, setCallStartedAt] = useState<number | null>(null);
+  const [callClock, setCallClock] = useState(() => Date.now());
   const [showInfo, setShowInfo] = useState(false);
   const [forwardMsg, setForwardMsg] = useState<Message | null>(null);
   const [selectedMsgs, setSelectedMsgs] = useState<number[]>([]);
@@ -1197,7 +1921,7 @@ export function Messages() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('voevoda_demo_messages_v2', JSON.stringify(messages));
+      localStorage.setItem('voevoda_demo_messages_v4', JSON.stringify(messages));
     } catch {}
   }, [messages]);
 
@@ -1232,6 +1956,23 @@ export function Messages() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, activeChat.id, typing]);
 
+  useEffect(() => {
+    if (!showCall || !callStartedAt) return;
+    setCallClock(Date.now());
+    const id = setInterval(() => setCallClock(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [showCall, callStartedAt]);
+
+  const formatActiveCallDuration = () => {
+    if (!callStartedAt) return '00:00';
+    const total = Math.max(0, Math.floor((callClock - callStartedAt) / 1000));
+    const h = Math.floor(total / 3600);
+    const m = Math.floor((total % 3600) / 60);
+    const sec = total % 60;
+    return h > 0
+      ? `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
+      : `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+  };
 
   useEffect(() => {
     const socket = io(SIGNALING_URL, { transports: ['websocket', 'polling'] });
@@ -1262,6 +2003,7 @@ export function Messages() {
       sounds.stopRinging();
       setIncomingCall(prev => prev?.fromUserId === payload.from ? null : prev);
       setShowCall(prev => prev?.remoteUserId === payload.from ? null : prev);
+      setCallStartedAt(null);
     });
     return () => {
       sounds.stopRinging();
@@ -1272,12 +2014,14 @@ export function Messages() {
 
   const startRealCall = (chat: ChatUser, kind: CallKind) => {
     if (chat.isGroup) return;
+    setCallStartedAt(Date.now());
     setShowCall({ kind, mode:'outgoing', chat, remoteUserId:String(chat.id) });
   };
 
   const acceptIncomingCall = () => {
     if (!incomingCall) return;
     sounds.stopRinging();
+    setCallStartedAt(Date.now());
     setShowCall({
       kind: incomingCall.kind,
       mode:'incoming',
@@ -1344,7 +2088,6 @@ export function Messages() {
 
   const startRecording = async () => {
     if (isRecording) return;
-    setShowStickers(false);
     setRecordTime(0);
     recordTimeRef.current = 0;
     recordStartedAtRef.current = Date.now();
@@ -1474,7 +2217,7 @@ export function Messages() {
     localStorage.setItem('voevoda-active-chat', String(chat.id));
     navigate(`/messages?chat=${chat.id}`, { replace: true });
     setChats(prev => prev.map(c => c.id===chat.id ? { ...c, unread:0 } : c));
-    setReplyTo(null); setSelectedMsgs([]); setShowMsgSearch(false); setShowInfo(false); setShowStickers(false);
+    setReplyTo(null); setSelectedMsgs([]); setShowMsgSearch(false); setShowInfo(false);
   };
 
   const handleContextMenu = (e: React.MouseEvent, msg: Message) => {
@@ -1622,6 +2365,25 @@ export function Messages() {
             </div>
           )}
 
+          {showCall && selectedMsgs.length===0 && (
+            <button
+              className="msg-chat-call-banner"
+              onClick={() => {
+                if (showCall.chat.id !== activeChat.id) {
+                  setActiveChat(showCall.chat);
+                  navigate(`/messages?chat=${showCall.chat.id}`);
+                }
+                window.dispatchEvent(new Event('messages:restore-active-call'));
+              }}
+              title="Вернуться в активный звонок"
+            >
+              <span className="msg-chat-call-live"><span className="msg-chat-call-live-dot" />В звонке</span>
+              <span className="msg-chat-call-title">{showCall.chat.name}</span>
+              <span className="msg-chat-call-time">{formatActiveCallDuration()}</span>
+              <span className="msg-chat-call-return">Вернуться</span>
+            </button>
+          )}
+
           {/* Message search */}
           {showMsgSearch && (
             <div style={{ padding:'8px 18px', background:'#fff', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', gap:10 }}>
@@ -1646,7 +2408,7 @@ export function Messages() {
           )}
 
           {/* Messages list */}
-          <div style={{ flex:1, overflowY:'auto', padding:'16px 20px' }} onClick={() => { setShowStickers(false); setReactionPicker(null); }}>
+          <div style={{ flex:1, overflowY:'auto', padding:'16px 20px' }} onClick={() => { setReactionPicker(null); }}>
             {currentMsgs.length===0 && (
               <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'100%', color:'var(--text-muted)' }}>
                 <div style={{ width:60, height:60, borderRadius:18, background:'var(--surface-3)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:14 }}>
@@ -1663,7 +2425,7 @@ export function Messages() {
               const replyMsg = msg.replyTo ? currentMsgs.find(m => m.id===msg.replyTo) : null;
               const replyIsMe = replyMsg ? (replyMsg.senderLogin ? replyMsg.senderLogin === currentLogin : replyMsg.from === 'me') : false;
               const isSelected = selectedMsgs.includes(msg.id);
-              const isSticker = msg.attachment?.type==='sticker' && !msg.deleted;
+              const isSticker = msg.attachment?.type === 'sticker' && !!msg.attachment.emoji && !msg.deleted;
 
               return (
                 <div key={msg.id}
@@ -1704,23 +2466,19 @@ export function Messages() {
                       </button>
                     )}
 
-                    {/* Sticker */}
                     {isSticker ? (
-                      <div>
-                        <div style={{ minWidth:84, minHeight:58, padding:'14px 18px', borderRadius:18,
-                          background:isMe?'linear-gradient(135deg,#DDE7FF,#fff)':'linear-gradient(135deg,#F8FAFC,#EEF2FF)',
-                          border:'1px solid var(--border)', color:'var(--accent)', fontSize:18, fontWeight:900,
-                          letterSpacing:'.6px', display:'inline-flex', alignItems:'center', justifyContent:'center',
-                          filter:'drop-shadow(0 2px 6px rgba(0,0,0,.1))', animation:'msg-sticker-bounce .4s cubic-bezier(.34,1.56,.64,1)', cursor:'default' }}>
+                      <div style={{ display:'flex', flexDirection:'column', alignItems:isMe?'flex-end':'flex-start' }}>
+                        <div className="msg-sticker-message" title="Стикер">
                           {msg.attachment!.emoji}
                         </div>
-                        <div style={{ display:'flex', alignItems:'center', justifyContent:isMe?'flex-end':'flex-start', gap:4, marginTop:3 }}>
-                          <span style={{ fontSize:10, color:'var(--text-muted)' }}>{msg.time}</span>
+                        <div className="msg-sticker-time" style={{ background:isMe?'rgba(36,129,204,.78)':'rgba(20,35,54,.34)' }}>
+                          <span>{msg.time}</span>
                           {isMe && <CheckDouble read={msg.status==='read'} />}
                         </div>
                       </div>
                     ) : (
                       <>
+
                         {/* Reply */}
                         {replyMsg && !replyMsg.deleted && (
                           <div style={{ background:isMe?'rgba(255,255,255,.15)':'var(--surface)', borderRadius:'10px 10px 0 0', borderLeft:`3px solid ${isMe?'rgba(255,255,255,.6)':'var(--accent)'}`, padding:'7px 12px', marginBottom:2 }}>
@@ -1780,11 +2538,11 @@ export function Messages() {
 
                     {/* Reactions */}
                     {msg.reactions.length>0 && !msg.deleted && (
-                      <div style={{ display:'flex', gap:4, flexWrap:'wrap', marginTop:5, justifyContent:isMe?'flex-end':'flex-start' }}>
+                      <div style={{ display:'flex', gap:4, flexWrap:'wrap', marginTop:5, justifyContent:isMe?'flex-end':'flex-start', position:'relative', zIndex:2 }}>
                         {msg.reactions.map((r, ri) => (
                           <button key={ri} className={`msg-reaction${r.reacted?' active':''}`}
-                            onClick={() => toggleReaction(msg.id, r.emoji)}>
-                            {r.emoji} {r.count}
+                            onClick={() => toggleReaction(msg.id, r.emoji)} aria-label={`Реакция ${r.emoji}: ${r.count}`}>
+                            <span>{r.emoji}</span>{r.count > 1 && <span className="msg-reaction-count">{r.count}</span>}
                           </button>
                         ))}
                       </div>
@@ -1854,15 +2612,14 @@ export function Messages() {
                 onClick={() => sendMessage('', { type:'file', name:'dokument.pdf', size:'1.2 МБ' })}>
                 <Ico d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" size={18} />
               </button>
+              <button className={`msg-icon-btn${showStickers?' send':''}`} title="Стикеры"
+                onClick={() => setShowStickers(s => !s)}>
+                <span style={{ fontSize:22, lineHeight:1 }}>😊</span>
+              </button>
               <div className="msg-input-bg">
                 <textarea ref={inputRef} className="msg-input" value={input}
                   onChange={handleInputChange} onKeyDown={handleKeyDown}
                   placeholder={`Сообщение для ${activeChat.callsign}...`} rows={1} style={{ lineHeight:1.6 }} />
-                <button className="msg-icon-btn" style={{ width:32, height:32, flexShrink:0, marginLeft:4, fontSize:18, transition:'transform .12s' }}
-                  title="Стикеры и эмодзи"
-                  onClick={e => { e.stopPropagation(); setShowStickers(s => !s); }}>
-                  <Ico d={showStickers ? 'M6 18L18 6M6 6l12 12' : 'M12 5v14M5 12h14'} size={18} stroke="currentColor" sw={2.1} />
-                </button>
               </div>
               {input.trim()
                 ? <button className="msg-icon-btn send" onClick={() => sendMessage(input)}>
@@ -1979,7 +2736,7 @@ export function Messages() {
           selfUserId={currentUserId}
           remoteUserId={showCall.remoteUserId}
           initialOffer={showCall.offer}
-          onClose={() => setShowCall(null)}
+          onClose={() => { setShowCall(null); setCallStartedAt(null); }}
         />
       )}
       {forwardMsg && <ForwardModal message={forwardMsg} chats={CHATS} onClose={() => setForwardMsg(null)} />}
