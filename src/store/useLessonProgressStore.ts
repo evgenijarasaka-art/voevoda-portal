@@ -28,6 +28,7 @@ interface LessonProgressState {
   markLessonOpened: (input: TrackLessonInput) => void;
   markLessonViewed: (input: TrackLessonInput) => void;
   resetLesson: (id: string | number) => void;
+  resetAll: () => void;
   isLessonViewed: (id: string | number) => boolean;
   getLesson: (id: string | number) => LessonProgressEntry | undefined;
   getViewedCount: (ids?: Array<string | number>) => number;
@@ -93,6 +94,8 @@ export const useLessonProgressStore = create<LessonProgressState>()(
         set({ lessons: rest });
       },
 
+      resetAll: () => set({ lessons: {} }),
+
       isLessonViewed: (lessonId) => get().lessons[toLessonId(lessonId)]?.status === 'viewed',
 
       getLesson: (lessonId) => get().lessons[toLessonId(lessonId)],
@@ -106,6 +109,6 @@ export const useLessonProgressStore = create<LessonProgressState>()(
         }).length;
       },
     }),
-    { name: 'voevoda-lesson-progress-v1' },
+    { name: 'voevoda-lesson-progress-v2' },
   ),
 );

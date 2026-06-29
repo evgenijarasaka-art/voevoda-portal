@@ -1,5 +1,7 @@
 ﻿import { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { useLearningStore } from '../store/useLearningStore';
+import { PortalBreadcrumb } from '../components/PortalBreadcrumb';
 
 const CSS = `
   @keyframes fadeIn  { from{opacity:0} to{opacity:1} }
@@ -179,6 +181,8 @@ export function HomeworkPage() {
 
   const hwId = id ? parseInt(id) : 2;
   const hw = HW_DATA.find(h => h.id === hwId) ?? HW_DATA[1];
+  const submissions = useLearningStore(state => state.submissions);
+  const submission = submissions[String(hw.id)];
   const showNotice = (text: string) => {
     setNotice(text);
     window.setTimeout(() => setNotice(''), 2400);
@@ -188,12 +192,12 @@ export function HomeworkPage() {
   const shortTitle = resolvedTitle.length > 20 ? resolvedTitle.slice(0, 20) + '…' : resolvedTitle;
 
   // ↓ FIX: динамический breadcrumb — больше нет захардкоженного slug
-  type Crumb = [string, string | null, Record<string, unknown> | null];
-  const BREADCRUMB: Crumb[] = [
-    ['Мои курсы', '/my-courses', null],
-    [shortTitle, `/my-courses/${resolvedSlug}`, { title: resolvedTitle }],
-    ['Личная тактическ...', `/lessons/1`, null],
-    [`Домашнее задание №${hwId}`, null, null],
+  const BREADCRUMB = [
+    { label:'Главная', to:'/' },
+    { label:'Мои курсы', to:'/my-courses' },
+    { label:shortTitle, to:`/my-courses/${resolvedSlug}`, state:{ title:resolvedTitle } },
+    { label:'Личная тактическ...', to:'/lessons/1' },
+    { label:`Домашнее задание №${hwId}` },
   ];
 
   return (
@@ -204,20 +208,8 @@ export function HomeworkPage() {
         </div>
       )}
       {/* Breadcrumb */}
-      <div style={{ background: '#fff', borderBottom: '1px solid #E5E7EB', padding: '9px 28px', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#9CA3AF', flexWrap: 'wrap' }}>
-        {BREADCRUMB.map(([label, path, state], i) => (
-          <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-            {path
-              ? <span
-                  onClick={() => navigate(path, state ? { state } : {})}
-                  style={{ cursor: 'pointer', transition: 'color .15s' }}
-                  onMouseEnter={e => (e.currentTarget.style.color = '#375DFB')}
-                  onMouseLeave={e => (e.currentTarget.style.color = '#9CA3AF')}
-                >{label}</span>
-              : <span style={{ color: '#374151', fontWeight: 500 }}>{label}</span>}
-            {i < BREADCRUMB.length - 1 && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="1.5"><polyline points="9 18 15 12 9 6"/></svg>}
-          </span>
-        ))}
+      <div style={{ background:'#fff', borderBottom:'1px solid #E5E7EB', padding:'9px 28px' }}>
+        <PortalBreadcrumb className="course-breadcrumb" items={BREADCRUMB} />
       </div>
 
       <div style={{ padding: '24px 28px 60px', maxWidth: 1100, margin: '0 auto' }}>
@@ -259,6 +251,26 @@ export function HomeworkPage() {
           </div>
         </div>
 
+        {submission && (
+          <div style={{ marginBottom: 20, padding: '18px 20px', borderRadius: 18, background: submission.passed ? '#F0FDF4' : '#FFF7ED', border: `1px solid ${submission.passed ? '#BBF7D0' : '#FED7AA'}`, display: 'grid', gridTemplateColumns: 'auto 1fr auto', alignItems: 'center', gap: 16 }}>
+            <div style={{ width: 46, height: 46, borderRadius: 14, background: submission.passed ? '#DCFCE7' : '#FFEDD5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: submission.passed ? '#059669' : '#EA580C', fontWeight: 900 }}>
+              {submission.score}%
+            </div>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: '#111827', marginBottom: 4 }}>
+                {submission.passed ? 'Домашнее задание зачтено' : 'Нужна повторная попытка'}
+              </div>
+              <div style={{ fontSize: 13, lineHeight: 1.5, color: '#4B5563' }}>{submission.feedback}</div>
+              <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 5 }}>
+                Отправлено {new Date(submission.submittedAt).toLocaleString('ru-RU')} · верно {submission.correct} из {submission.total}
+              </div>
+            </div>
+            <button className="hw-btn-sec" onClick={() => navigate(`/tests/${hw.id}`)} style={{ padding: '9px 15px', background: '#fff', border: '1px solid #E5E7EB', borderRadius: 11, fontSize: 12, color: '#374151', cursor: 'pointer' }}>
+              {submission.passed ? 'Посмотреть разбор' : 'Пройти снова'}
+            </button>
+          </div>
+        )}
+
         {/* Main grid */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 20, alignItems: 'start' }}>
           {/* LEFT: tabs */}
@@ -283,8 +295,8 @@ export function HomeworkPage() {
                 {HW_DATA.map((item, idx) => (
                   <div key={item.id} className="hw-row"
                     style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 20px', borderBottom: idx < HW_DATA.length - 1 ? '1px solid #F5F5F7' : 'none' }}>
-                    <div style={{ width: 36, height: 36, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: doneIds.includes(item.id) ? '#F0FDF4' : item.status === 'locked' ? '#F3F4F6' : '#EBF1FF', border: `1px solid ${doneIds.includes(item.id) ? '#BBF7D0' : item.status === 'locked' ? '#E5E7EB' : '#C7D2FE'}`, fontSize: 13, fontWeight: 700, color: doneIds.includes(item.id) ? '#10B981' : item.status === 'locked' ? '#D1D5DB' : '#375DFB' }}>
-                      {doneIds.includes(item.id)
+                    <div style={{ width: 36, height: 36, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: doneIds.includes(item.id) || submissions[String(item.id)]?.passed ? '#F0FDF4' : item.status === 'locked' ? '#F3F4F6' : '#EBF1FF', border: `1px solid ${doneIds.includes(item.id) || submissions[String(item.id)]?.passed ? '#BBF7D0' : item.status === 'locked' ? '#E5E7EB' : '#C7D2FE'}`, fontSize: 13, fontWeight: 700, color: doneIds.includes(item.id) || submissions[String(item.id)]?.passed ? '#10B981' : item.status === 'locked' ? '#D1D5DB' : '#375DFB' }}>
+                      {doneIds.includes(item.id) || submissions[String(item.id)]?.passed
                         ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                         : item.status === 'locked'
                         ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="1.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
@@ -294,22 +306,22 @@ export function HomeworkPage() {
                       <div style={{ fontSize: 14, fontWeight: 600, color: item.status === 'locked' ? '#9CA3AF' : '#111', marginBottom: 2 }}>{item.title}</div>
                       <div style={{ fontSize: 12, color: '#9CA3AF' }}>{item.sub}</div>
                     </div>
-                    {!doneIds.includes(item.id) && item.status !== 'locked' && item.deadline && (
+                    {!doneIds.includes(item.id) && !submissions[String(item.id)]?.passed && item.status !== 'locked' && item.deadline && (
                       <div style={{ background: item.deadlineColor + '18', border: `1px solid ${item.deadlineColor}30`, borderRadius: 8, padding: '4px 10px', fontSize: 12, color: item.deadlineColor, fontWeight: 600, flexShrink: 0 }}>{item.deadline}</div>
                     )}
-                    {!doneIds.includes(item.id) && item.status === 'retry' && (
+                    {!doneIds.includes(item.id) && !submissions[String(item.id)]?.passed && item.status === 'retry' && (
                       <button className="hw-btn-prim" onClick={() => setReviewTarget(item)}
                         style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '7px 14px', background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 10, fontSize: 13, color: '#D97706', cursor: 'pointer', flexShrink: 0 }}>
                         Пройти снова <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
                       </button>
                     )}
-                    {!doneIds.includes(item.id) && item.status === 'test' && (
+                    {!doneIds.includes(item.id) && !submissions[String(item.id)]?.passed && item.status === 'test' && (
                       <button className="hw-btn-prim" onClick={() => setReviewTarget(item)}
                         style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '7px 14px', background: '#EBF1FF', border: '1px solid #C7D2FE', borderRadius: 10, fontSize: 13, fontWeight: 600, color: '#375DFB', cursor: 'pointer', flexShrink: 0 }}>
                         Пройти тест <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
                       </button>
                     )}
-                    {doneIds.includes(item.id) && (
+                    {(doneIds.includes(item.id) || submissions[String(item.id)]?.passed) && (
                       <span style={{ fontSize: 12, color: '#10B981', fontWeight: 600, flexShrink: 0 }}>Выполнено</span>
                     )}
                   </div>

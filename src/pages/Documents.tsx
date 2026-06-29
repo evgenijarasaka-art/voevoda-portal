@@ -1,6 +1,4 @@
 ﻿import { useState } from 'react';
-import { Header } from '../components/Header';
-import { Sidebar } from '../components/Sidebar';
 
 type Section = { id: string; title: string; shortTitle?: string; };
 
@@ -372,70 +370,55 @@ export function Documents() {
   const [active, setActive] = useState('privacy');
 
   return (
-    <div style={{ minHeight: '100vh', background: '#fff' }}>
-      <Header />
-      <Sidebar />
+    <div style={{ display: 'flex', background: '#fff', minHeight: 'calc(100vh - 120px)' }}>
 
-      {/*
-        Ключевое исправление:
-        - marginTop: 60  → контент не уходит под фиксированный Header (height: 60px)
-        - marginLeft: 260 → контент не уходит под фиксированный Sidebar (width: 260px)
-        Оба значения должны совпадать с реальными размерами Header и Sidebar.
-      */}
+      {/* Левая навигация по разделам */}
       <div style={{
-        marginTop: 60,
-        marginLeft: 260,
-        display: 'flex',
-        minHeight: 'calc(100vh - 60px)',
+        width: 280,
+        flexShrink: 0,
+        borderRight: '1px solid #F0F0F0',
+        paddingTop: 8,
+        paddingBottom: 32,
+        overflowY: 'auto',
+        maxHeight: 'calc(100vh - 120px)',
+        position: 'sticky',
+        top: 120,
+        alignSelf: 'flex-start',
       }}>
-
-        {/* Левая навигация по разделам */}
-        <div style={{
-          width: 280,
-          flexShrink: 0,
-          borderRight: '1px solid #F0F0F0',
-          paddingTop: 16,
-          paddingBottom: 32,
-          overflowY: 'auto',
-          height: 'calc(100vh - 60px)',
-          position: 'sticky',
-          top: 60,
-        }}>
-          {SECTIONS.map(s => (
-            <button
-              key={s.id}
-              onClick={() => setActive(s.id)}
-              style={{
-                display: 'block',
-                width: '100%',
-                textAlign: 'left',
-                padding: '10px 20px',
-                background: active === s.id ? '#F3F4FF' : 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: 14,
-                color: active === s.id ? '#375DFB' : '#374151',
-                fontWeight: active === s.id ? 600 : 400,
-                borderLeft: active === s.id ? '3px solid #375DFB' : '3px solid transparent',
-                lineHeight: 1.4,
-              }}
-            >
-              {s.shortTitle || s.title}
-            </button>
-          ))}
-        </div>
-
-        {/* Основной контент */}
-        <div style={{
-          flex: 1,
-          padding: '40px 60px',
-          overflowY: 'auto',
-          maxWidth: 900,
-        }}>
-          <SectionContent id={active} />
-        </div>
-
+        {SECTIONS.map(s => (
+          <button
+            key={s.id}
+            onClick={() => setActive(s.id)}
+            style={{
+              display: 'block',
+              width: '100%',
+              textAlign: 'left',
+              padding: '10px 20px',
+              background: active === s.id ? '#F3F4FF' : 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: 14,
+              color: active === s.id ? '#375DFB' : '#374151',
+              fontWeight: active === s.id ? 600 : 400,
+              borderLeft: active === s.id ? '3px solid #375DFB' : '3px solid transparent',
+              lineHeight: 1.4,
+            }}
+          >
+            {s.shortTitle || s.title}
+          </button>
+        ))}
       </div>
+
+      {/* Основной контент */}
+      <div style={{
+        flex: 1,
+        padding: '40px 60px 80px',
+        minWidth: 0,
+        maxWidth: 900,
+      }}>
+        <SectionContent id={active} />
+      </div>
+
     </div>
   );
 }

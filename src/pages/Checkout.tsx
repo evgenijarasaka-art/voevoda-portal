@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useCartStore } from '../store/useCartStore';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useCartStore, type CartItem } from '../store/useCartStore';
 import { usePurchasedCoursesStore } from '../store/usePurchasedCoursesStore';
 import { createCheckoutPayment, getPaymentOrder, type CheckoutPaymentItem } from '../api/payments';
 
@@ -74,6 +74,7 @@ function PartsTimeline({ months, perMonth }: { months: number; perMonth: number 
 
 export function Checkout() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const { items, total, discount } = useCartStore();
   const { confirmPending, pending } = usePurchasedCoursesStore();
@@ -86,9 +87,38 @@ export function Checkout() {
   const [isPaying, setIsPaying] = useState(false);
   const [paymentError, setPaymentError] = useState('');
 
-  const totalAmt = total();
-  const discountAmt = discount();
+  const directStateItem = (location.state as { directItem?: CartItem } | null)?.directItem;
+  const linkedItem = (() => {
+    const value = searchParams.get('item');
+    if (!value) return undefined;
+    const [kind, rawId] = value.split(':');
+    const id = Number(rawId);
+    if ((kind !== 'course' && kind !== 'product') || !Number.isFinite(id)) return undefined;
+    return items.find(item => item.kind === kind && item.id === id);
+  })();
+  const directItem = directStateItem ?? linkedItem;
+  const totalAmt = directItem
+    ? directItem.price * (directItem.kind === 'product' ? directItem.qty : 1)
+    : total();
+  const discountAmt = directItem?.oldPrice
+    ? (directItem.oldPrice - directItem.price) * (directItem.kind === 'product' ? directItem.qty : 1)
+    : directItem ? 0 : discount();
   const bonuses = 429;
+  const selectedCartItems = directItem ? [directItem] : items.filter(item => item.isSelected);
+  const displayItems = selectedCartItems.length > 0
+    ? selectedCartItems
+    : pending
+      ? [{
+          id: pending.slug,
+          kind: 'course' as const,
+          title: pending.title,
+          city: pending.city,
+          price: pending.price,
+          image: pending.img,
+        }]
+      : [];
+  const effectiveTotal = selectedCartItems.length > 0 ? totalAmt : pending?.price ?? 0;
+  const effectiveDiscount = selectedCartItems.length > 0 ? discountAmt : 0;
 
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
 
@@ -135,7 +165,7 @@ export function Checkout() {
   }, [confirmPending, searchParams]);
 
   const buildPaymentItems = (): CheckoutPaymentItem[] => {
-    const selected = items.filter(i => i.isSelected).map(item => ({
+    const selected = (directItem ? [directItem] : items.filter(i => i.isSelected)).map(item => ({
       id: String(item.id),
       kind: item.kind,
       title: item.title,
@@ -210,8 +240,8 @@ export function Checkout() {
   }
 
   return (
-    <div style={{ paddingTop: 60, marginLeft: 56, minHeight: '100vh', background: '#F8F9FB' }}>
-      <div style={{ padding: '24px 24px 40px', maxWidth: 1080, margin: '0 auto' }}>
+    <div style={{ paddingTop: 60, marginLeft: 56, minHeight: 'calc(100vh - 116px)', background: '#F8F9FB', display:'flex', flexDirection:'column' }}>
+      <div style={{ padding: '24px 24px 96px', maxWidth: 1080, width:'100%', margin: '0 auto', flex:1 }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, alignItems: 'start' }}>
 
           {/* ── Левая колонка — Оформление ── */}
@@ -233,40 +263,30 @@ export function Checkout() {
                 </div>
               </div>
 
-              {items.length > 0 && (
+              {displayItems.length > 0 && (
                 <div style={{ borderTop: '1px solid #F0F0F0', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {items.filter(i => i.isSelected).slice(0, 3).map(item => (
+                  {displayItems.slice(0, 3).map(item => (
                     <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                       <div style={{ width: 64, height: 64, borderRadius: 10, overflow: 'hidden', flexShrink: 0, background: '#F3F4F6' }}>
-                        <img src={item.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                        <img src={item.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: item.kind === 'course' ? 'center top' : 'center' }} onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 13, fontWeight: 600, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</div>
-                        <div style={{ fontSize: 12, color: '#9CA3AF' }}>{'brand' in item ? (item as any).brand : (item as any).city}</div>
+                        <div style={{ fontSize: 12, color: '#9CA3AF' }}>{'brand' in item ? item.brand : item.city}</div>
                       </div>
                       <div style={{ fontSize: 14, fontWeight: 700, color: '#374151', flexShrink: 0 }}>{item.price.toLocaleString()} ₽</div>
                     </div>
                   ))}
-                  {items.filter(i => i.isSelected).length > 3 && (
-                    <div style={{ fontSize: 12, color: '#9CA3AF', textAlign: 'center' }}>+ ещё {items.filter(i => i.isSelected).length - 3} товаров</div>
+                  {displayItems.length > 3 && (
+                    <div style={{ fontSize: 12, color: '#9CA3AF', textAlign: 'center' }}>+ ещё {displayItems.length - 3} товаров</div>
                   )}
                 </div>
               )}
 
-              {items.length === 0 && (
-                <div style={{ borderTop: '1px solid #F0F0F0', paddingTop: 16 }}>
-                  {[{ img: '/kyrs1.png', title: 'Ремень брючный RusForce Outdoor...', brand: 'Точка Group', price: 1445 }, { img: '/kyrs2.png', title: 'Кобура поясная VEKTOR 14-26...', brand: 'Точка Group', price: 1020 }, { img: '/kyrs3.png', title: 'Ремень брючный RusForce Out...', brand: 'Точка Group', price: 12200 }].map((item, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-                      <div style={{ width: 64, height: 64, borderRadius: 10, overflow: 'hidden', flexShrink: 0, background: '#F3F4F6' }}>
-                        <img src={item.img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</div>
-                        <div style={{ fontSize: 12, color: '#9CA3AF' }}>{item.brand}</div>
-                      </div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: '#374151', flexShrink: 0 }}>{item.price.toLocaleString()} ₽</div>
-                    </div>
-                  ))}
+              {displayItems.length === 0 && (
+                <div style={{ borderTop: '1px solid #F0F0F0', paddingTop: 16, fontSize:13, lineHeight:1.5, color:'#6B7280' }}>
+                  В заказе пока ничего нет. Вернитесь в каталог и выберите курс или товар.
+                  <button onClick={() => navigate('/courses')} style={{ display:'block', marginTop:10, border:'none', background:'transparent', color:'#375DFB', fontSize:13, fontWeight:700, cursor:'pointer', padding:0 }}>Перейти к курсам →</button>
                 </div>
               )}
             </div>
@@ -281,12 +301,12 @@ export function Checkout() {
             <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
                 <span style={{ color: '#374151' }}>Всего:</span>
-                <span style={{ color: '#9CA3AF' }}>{items.filter(i => i.isSelected).length || 3} товара</span>
+                <span style={{ color: '#9CA3AF' }}>{displayItems.length} {displayItems.length === 1 ? 'позиция' : 'позиции'}</span>
               </div>
-              {(discountAmt > 0 || true) && (
+              {effectiveDiscount > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
                   <span style={{ color: '#374151' }}>Скидка:</span>
-                  <span style={{ color: '#EF4444', fontWeight: 600 }}>-{(discountAmt || 8600).toLocaleString()} ₽</span>
+                  <span style={{ color: '#EF4444', fontWeight: 600 }}>-{effectiveDiscount.toLocaleString()} ₽</span>
                 </div>
               )}
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
@@ -301,7 +321,7 @@ export function Checkout() {
               <div style={{ height: 1, background: '#F0F0F0' }} />
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: 15, fontWeight: 600, color: '#111' }}>Итого:</span>
-                <span style={{ fontSize: 24, fontWeight: 700, color: '#059669' }}>{(totalAmt || 32800).toLocaleString()} ₽</span>
+                <span style={{ fontSize: 24, fontWeight: 700, color: '#059669' }}>{effectiveTotal.toLocaleString()} ₽</span>
               </div>
 
               <div style={{ marginTop: 4 }}>
@@ -315,22 +335,22 @@ export function Checkout() {
                 {payMode === 'full' && (
                   <div style={{ background: '#F9FAFB', borderRadius: 12, padding: '16px', border: '1px solid #E5E7EB', textAlign: 'center' }}>
                     <div style={{ fontSize: 13, color: '#6B7280', marginBottom: 4 }}>Единовременный платёж</div>
-                    <div style={{ fontSize: 28, fontWeight: 700, color: '#059669' }}>{(totalAmt || 32800).toLocaleString()} ₽</div>
+                    <div style={{ fontSize: 28, fontWeight: 700, color: '#059669' }}>{effectiveTotal.toLocaleString()} ₽</div>
                   </div>
                 )}
 
                 {payMode === 'credit' && (
                   <div style={{ background: '#F9FAFB', borderRadius: 12, padding: '16px', border: '1px solid #E5E7EB' }}>
                     <div style={{ fontSize: 13, color: '#6B7280', marginBottom: 4 }}>Кредит на 12 месяцев</div>
-                    <div style={{ fontSize: 24, fontWeight: 700, color: '#374151' }}>от {Math.ceil((totalAmt || 32800) / 12).toLocaleString()} ₽/мес</div>
-                    <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 4 }}>Переплата ~{Math.ceil((totalAmt || 32800) * 0.15).toLocaleString()} ₽</div>
+                    <div style={{ fontSize: 24, fontWeight: 700, color: '#374151' }}>от {Math.ceil(effectiveTotal / 12).toLocaleString()} ₽/мес</div>
+                    <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 4 }}>Переплата ~{Math.ceil(effectiveTotal * 0.15).toLocaleString()} ₽</div>
                   </div>
                 )}
 
                 {payMode === 'installment' && (
                   <div style={{ background: '#F9FAFB', borderRadius: 12, padding: '16px', border: '1px solid #E5E7EB' }}>
                     <div style={{ fontSize: 13, color: '#6B7280', marginBottom: 4 }}>Рассрочка на 10 месяцев</div>
-                    <div style={{ fontSize: 24, fontWeight: 700, color: '#374151' }}>от {Math.ceil((totalAmt || 32800) / 10).toLocaleString()} ₽/мес</div>
+                    <div style={{ fontSize: 24, fontWeight: 700, color: '#374151' }}>от {Math.ceil(effectiveTotal / 10).toLocaleString()} ₽/мес</div>
                     <div style={{ fontSize: 12, color: '#10B981', marginTop: 4 }}>Без переплат</div>
                   </div>
                 )}
@@ -380,13 +400,13 @@ export function Checkout() {
 
         </div>
 
-        <div style={{ marginTop: 24, textAlign: 'center', fontSize: 12, color: '#9CA3AF', display: 'flex', justifyContent: 'center', gap: 24 }}>
-          <span>© 2015–2026 УТЦ «ВОЕВОДА»</span>
-          <span style={{ cursor: 'pointer' }}>Все права защищены</span>
-          <span style={{ cursor: 'pointer' }}>Политика конфиденциальности</span>
-          <span style={{ cursor: 'pointer' }}>Возврат</span>
-        </div>
       </div>
+      <footer style={{ position:'fixed', left:56, right:0, bottom:0, zIndex:80, minHeight:64, padding:'16px 28px', textAlign:'center', fontSize:12, color:'#8B95A7', display:'flex', alignItems:'center', justifyContent:'center', gap:24, flexWrap:'wrap', background:'rgba(248,249,251,.96)', borderTop:'1px solid #E3E7EF', boxShadow:'0 -8px 28px rgba(31,42,68,.06)', backdropFilter:'blur(14px)' }}>
+        <span>© 2015–2026 УТЦ «ВОЕВОДА»</span>
+        <span>Все права защищены</span>
+        <button onClick={() => navigate('/privacy')} style={{ border:'none', background:'transparent', color:'inherit', cursor:'pointer', padding:0 }}>Политика конфиденциальности</button>
+        <button onClick={() => navigate('/terms')} style={{ border:'none', background:'transparent', color:'inherit', cursor:'pointer', padding:0 }}>Возврат и соглашение</button>
+      </footer>
     </div>
   );
 } 

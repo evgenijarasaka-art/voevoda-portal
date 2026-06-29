@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo, type ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { shareOrCopy } from '../utils/share';
+import { PortalBreadcrumb } from '../components/PortalBreadcrumb';
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 type Rarity    = 'common' | 'rare' | 'epic' | 'legend';
@@ -25,12 +27,15 @@ interface Particle     { x: number; y: number; vx: number; vy: number; life: num
 // ─── IMAGE MAP ────────────────────────────────────────────────────────────────
 const MEDAL_IMAGE_MAP: Record<SvgTemplate, string> = {
   'ribbon-medal':   '/медаль1.png',
-  'shoulder-board': '/медаль1.png',
-  'shield-chevron': '/медаль1.png',
+  'shoulder-board': '/медаль3.png',
+  'shield-chevron': '/medal.png',
   'cross-medal':    '/медаль2.png',
-  'star-order':     '/медаль2.png',
-  'grand-order':    '/медаль3.png',
+  'star-order':     '/медаль3.png',
+  'grand-order':    '/medal.png',
 };
+const MEDAL_IMAGE_VARIANTS = [
+  '/медаль1.png', '/медаль2.png', '/медаль3.png', '/medal.png',
+];
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 const RARITY_COLOR: Record<Rarity,string> = { common:'#6B7280', rare:'#10B981', epic:'#7C3AED', legend:'#F59E0B' };
@@ -178,8 +183,8 @@ const GLOBAL_CSS = `
 @keyframes ringAppear  { from{transform:scale(0) rotate(-90deg);opacity:0} to{transform:scale(1) rotate(0deg);opacity:1} }
 @keyframes tooltipIn   { from{opacity:0;transform:translateX(-50%) translateY(6px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
 
-.ach-card { transition: transform .22s cubic-bezier(.34,1.56,.64,1), box-shadow .22s ease; }
-.ach-card:hover { transform: translateY(-5px) scale(1.02); }
+.ach-card { transition: transform .22s cubic-bezier(.34,1.56,.64,1), box-shadow .22s ease, border-color .22s ease; }
+.ach-card:hover { transform: translateY(-5px) scale(1.02); border-color:var(--rarity-color)!important; box-shadow:0 0 0 1px var(--rarity-color),0 12px 32px var(--rarity-glow)!important; }
 .ach-card:active { transform: translateY(-2px) scale(1.01); }
 
 .slot-drop { transition: all .2s ease; }
@@ -192,8 +197,11 @@ const GLOBAL_CSS = `
 .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(55,93,251,.3); }
 .btn-primary:active { transform: translateY(0); }
 
-.tree-node { transition: transform .18s cubic-bezier(.34,1.56,.64,1), filter .18s ease; cursor: pointer; }
-.tree-node:hover { transform: scale(1.12); filter: brightness(1.05); }
+.tree-node { cursor:pointer; }
+.tree-node-card { transition:stroke-width .18s ease,filter .18s ease,fill .18s ease; }
+.tree-node:hover .tree-node-card { stroke-width:3px!important; filter:drop-shadow(0 6px 8px rgba(55,93,251,.24)) brightness(1.03)!important; }
+.tree-node-label { transition:font-size .18s ease,font-weight .18s ease; }
+.tree-node:hover .tree-node-label { font-size:9.5px; font-weight:800; }
 
 .board-medal { transition: transform .2s cubic-bezier(.34,1.56,.64,1), filter .2s ease; }
 .board-medal:hover { transform: scale(1.18) translateY(-4px); filter: drop-shadow(0 8px 16px rgba(0,0,0,.35)); }
@@ -212,6 +220,46 @@ const GLOBAL_CSS = `
 .progress-bar-fill {
   animation: slideRight .8s cubic-bezier(.4,0,.2,1) both;
   animation-delay: var(--delay, 0s);
+}
+
+/* ── Achievements responsive ── */
+.ach-page-shell { width: 100%; max-width: 1460px; margin: 0 auto; }
+.ach-showcase-layout { display:grid; grid-template-columns:minmax(0,1fr) 250px; gap:18px; padding:20px 24px 24px; }
+.ach-showcase-slots { display:grid; grid-template-columns:repeat(5,minmax(112px,1fr)); gap:12px; min-width:0; }
+.ach-showcase-slot { min-height:148px; border-radius:18px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; position:relative; cursor:pointer; transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease; }
+.ach-showcase-slot:hover { transform:translateY(-3px); border-color:var(--rarity-color,#375DFB)!important; box-shadow:0 0 0 1px var(--rarity-color,#375DFB),0 12px 30px var(--rarity-glow,rgba(55,93,251,.18))!important; }
+.ach-rarity-option { transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease; }
+.ach-rarity-option:hover { transform:translateY(-2px); border-color:var(--rarity-color)!important; box-shadow:0 0 0 1px var(--rarity-color),0 10px 28px var(--rarity-glow)!important; }
+.ach-showcase-summary { border-radius:18px; padding:18px; color:#fff; background:linear-gradient(145deg,#101a31,#243c73); position:relative; overflow:hidden; }
+.ach-progress-grid { display: grid; grid-template-columns: minmax(0,1.35fr) minmax(340px,.65fr); gap: 20px; padding: 24px; align-items:stretch; }
+.ach-stat-rings { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ach-hero-top { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 16px; position: relative; }
+.ach-hero-actions { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; padding: 16px 0 20px; }
+.ach-next-award { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; padding: 20px 28px; }
+.ach-filter-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(205px, 1fr)); gap: 12px; min-height: 200px; }
+
+@media (max-width: 1100px) {
+  .ach-progress-grid { grid-template-columns: 1fr; }
+  .ach-showcase-layout { grid-template-columns:1fr; }
+  .ach-showcase-summary { min-height:150px; }
+}
+@media (max-width: 900px) {
+  .ach-showcase-slots { grid-template-columns:repeat(3,minmax(112px,1fr)); }
+  .ach-next-award { gap: 16px; padding: 16px 20px; }
+  .ach-hero-top { flex-direction: column; }
+  .ach-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+}
+@media (max-width: 640px) {
+  .ach-stat-rings { grid-template-columns: 1fr; }
+  .ach-progress-grid { padding: 16px; gap: 16px; }
+  .ach-showcase-layout { padding:14px; }
+  .ach-showcase-slots { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+  .ach-showcase-slot { min-height:136px; }
+  .ach-next-award { flex-direction: column; align-items: flex-start; padding: 14px 16px; }
+  .ach-hero-actions { flex-direction: column; align-items: stretch; }
+  .ach-filter-row { flex-direction: column; align-items: stretch; }
+  .ach-grid { grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); gap: 10px; }
 }
 `;
 
@@ -282,8 +330,12 @@ function RingProgress({ pct, size = 72, stroke = 7, color = '#375DFB', bg = '#E5
 }
 
 // ─── RADAR CHART ─────────────────────────────────────────────────────────────
-function RadarChart({ data, size = 200 }: { data: { label: string; value: number; max: number }[]; size?: number }) {
-  const cx = size / 2, cy = size / 2, r = size * 0.36;
+function RadarChart({ data }: { data: { label: string; value: number; max: number }[] }) {
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const activeIndex = hoveredIndex ?? selectedIndex;
+  const activeItem = activeIndex !== null ? data[activeIndex] : null;
+  const width = 360, height = 286, cx = width / 2, cy = 139, r = 91;
   const n  = data.length;
   const angle = (i: number) => (2 * Math.PI * i / n) - Math.PI / 2;
   const pt = (i: number, val: number, maxVal: number) => {
@@ -297,36 +349,69 @@ function RadarChart({ data, size = 200 }: { data: { label: string; value: number
   }).join(' ');
   const valuePts = data.map((d, i) => { const p = pt(i, d.value, d.max); return `${p.x},${p.y}`; }).join(' ');
   return (
-    <svg width={size} height={size} style={{ overflow:'visible' }}>
-      {[1,2,3,4,5].map(lvl => <polygon key={lvl} points={gridPts(lvl)} fill="none" stroke="#E5E7EB" strokeWidth="1" />)}
+    <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Индекс Воеводы по направлениям"
+      style={{ width:'100%', height:'auto', display:'block', overflow:'visible' }}>
+      <defs>
+        <linearGradient id="radarFill" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#375DFB" stopOpacity=".34" />
+          <stop offset="100%" stopColor="#7C3AED" stopOpacity=".12" />
+        </linearGradient>
+        <filter id="radarGlow" x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur stdDeviation="4" result="blur" />
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      {[1,2,3,4,5].map(lvl => <polygon key={lvl} points={gridPts(lvl)} fill={lvl === 5 ? 'rgba(55,93,251,.025)' : 'none'} stroke={lvl === 5 ? '#CBD5E1' : '#E7ECF5'} strokeWidth={lvl === 5 ? 1.4 : 1} />)}
       {data.map((_, i) => {
         const a = angle(i);
-        return <line key={i} x1={cx} y1={cy} x2={cx + r * Math.cos(a)} y2={cy + r * Math.sin(a)} stroke="#E5E7EB" strokeWidth="1" />;
+        const active = activeIndex === i;
+        return <line key={i} x1={cx} y1={cy} x2={cx + r * Math.cos(a)} y2={cy + r * Math.sin(a)}
+          stroke={active ? '#375DFB' : '#E5E7EB'} strokeWidth={active ? 2 : 1}
+          style={{ transition:'stroke .18s ease,stroke-width .18s ease' }} />;
       })}
-      <polygon points={valuePts} fill="rgba(55,93,251,.18)" stroke="#375DFB" strokeWidth="2" strokeLinejoin="round"
-        style={{ animation: 'fadeIn .8s ease .4s both' }} />
+      <polygon points={valuePts} fill="url(#radarFill)" stroke="#375DFB" strokeWidth="2.5" strokeLinejoin="round"
+        filter="url(#radarGlow)" style={{ animation: 'fadeIn .8s ease .4s both' }} />
       {data.map((d, i) => {
         const p = pt(i, d.value, d.max);
-        return <circle key={i} cx={p.x} cy={p.y} r={4} fill="#375DFB" stroke="#fff" strokeWidth="2"
-          style={{ animation: `scaleIn .3s ease ${.4 + i*.07}s both` }} />;
+        const active = activeIndex === i;
+        return <g key={i} onMouseEnter={() => setHoveredIndex(i)} onMouseLeave={() => setHoveredIndex(null)}
+          onClick={() => setSelectedIndex(prev => prev === i ? null : i)} style={{ cursor:'pointer' }}>
+          <circle cx={p.x} cy={p.y} r={15} fill="transparent" />
+          {active && <circle cx={p.x} cy={p.y} r={10} fill="rgba(55,93,251,.14)" />}
+          <circle cx={p.x} cy={p.y} r={active ? 6.5 : 5} fill="#375DFB" stroke="#fff" strokeWidth="2.5"
+            style={{ animation: `scaleIn .3s ease ${.4 + i*.07}s both`, transition:'r .18s ease' }} />
+        </g>;
       })}
       {data.map((d, i) => {
-        const a = angle(i), lx = cx + (r + 22) * Math.cos(a), ly = cy + (r + 22) * Math.sin(a);
+        const a = angle(i), lx = cx + (r + 42) * Math.cos(a), ly = cy + (r + 35) * Math.sin(a);
+        const active = activeIndex === i;
         return (
-          <g key={i}>
-            <text x={lx} y={ly - 2} textAnchor="middle" fontSize="10" fill="#374151" fontWeight="700">{d.label}</text>
-            <text x={lx} y={ly + 11} textAnchor="middle" fontSize="11" fill="#375DFB" fontWeight="800">{d.value}</text>
+          <g key={i} onMouseEnter={() => setHoveredIndex(i)} onMouseLeave={() => setHoveredIndex(null)}
+            onClick={() => setSelectedIndex(prev => prev === i ? null : i)} style={{ cursor:'pointer' }}>
+            <rect x={lx - 39} y={ly - 15} width="78" height="34" rx="10"
+              fill={active ? '#EEF3FF' : '#fff'} stroke={active ? '#375DFB' : '#E2E8F0'} strokeWidth={active ? 1.8 : 1}
+              style={{ transition:'fill .18s ease,stroke .18s ease' }} />
+            <text x={lx} y={ly - 1} textAnchor="middle" fontSize="10" fill={active ? '#1D4ED8' : '#475569'} fontWeight="700">{d.label}</text>
+            <text x={lx} y={ly + 12} textAnchor="middle" fontSize="11" fill="#375DFB" fontWeight="900">{d.value.toFixed(1)}</text>
           </g>
         );
       })}
+      {activeItem && (
+        <g pointerEvents="none">
+          <rect x={cx - 47} y={cy - 24} width="94" height="48" rx="14" fill="#0F1729" opacity=".94" />
+          <text x={cx} y={cy - 4} textAnchor="middle" fontSize="10" fill="rgba(255,255,255,.65)" fontWeight="700">{activeItem.label}</text>
+          <text x={cx} y={cy + 13} textAnchor="middle" fontSize="16" fill="#fff" fontWeight="900">{activeItem.value.toFixed(1)} / {activeItem.max}</text>
+        </g>
+      )}
     </svg>
   );
 }
 
 // ─── MEDAL COMPONENT ──────────────────────────────────────────────────────────
-function Medal({ template, size, dimmed, style: s }: { template: SvgTemplate; size: number; dimmed?: boolean; style?: React.CSSProperties }) {
+function Medal({ template, size, achievementId, dimmed, style: s }: { template: SvgTemplate; size: number; achievementId?: number; dimmed?: boolean; style?: React.CSSProperties }) {
+  const image = achievementId ? MEDAL_IMAGE_VARIANTS[(achievementId - 1) % MEDAL_IMAGE_VARIANTS.length] : MEDAL_IMAGE_MAP[template];
   return (
-    <img src={MEDAL_IMAGE_MAP[template]} alt="medal" width={size} height={size}
+    <img src={image} alt="medal" width={size} height={size}
       style={{ width:size, height:size, objectFit:'contain', flexShrink:0,
         filter: dimmed ? 'grayscale(0.85) opacity(0.4)' : undefined, ...s }} />
   );
@@ -439,6 +524,7 @@ function ParticleCanvas({ active }: { active: boolean }) {
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 export function Achievements() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [earned,    setEarned]    = useState<Record<number,EarnedInfo>>(INIT_EARNED);
   const [progress]                 = useState<Record<number,ProgressInfo>>(INIT_PROGRESS);
   const [showcase,  setShowcase]  = useState<(number|null)[]>([1,2,3,4,5]);
@@ -461,6 +547,19 @@ export function Achievements() {
   const [mounted,   setMounted]   = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
+
+  const requestedAchievement = searchParams.get('achievement');
+  const requestedView = searchParams.get('view');
+  useEffect(() => {
+    const id = Number(requestedAchievement);
+    if (Number.isInteger(id) && ACHIEVEMENTS.some(achievement => achievement.id === id)) {
+      setModalId(id);
+    }
+  }, [requestedAchievement]);
+
+  useEffect(() => {
+    if (requestedView === 'board') setViewMode('board');
+  }, [requestedView]);
 
   const earnedIds   = Object.keys(earned).map(Number);
   const earnedCount = earnedIds.length;
@@ -537,11 +636,8 @@ export function Achievements() {
 
   const handleShare = useCallback(async (ach: Achievement) => {
     const text = `Я получил награду «${ach.name}» на Портале Воевода!`;
-    if (navigator.share) {
-      try { await navigator.share({ title: ach.name, text }); return; } catch {}
-    }
-    await navigator.clipboard.writeText(text);
-    showToast('Скопировано в буфер обмена');
+    const result = await shareOrCopy({ title: ach.name, text, url: `${window.location.origin}/achievements?achievement=${ach.id}` });
+    if (result !== 'cancelled') showToast(result === 'shared' ? 'Награда отправлена' : 'Ссылка скопирована в буфер обмена');
   }, [showToast]);
 
   const onSlotDrop  = (idx: number) => {
@@ -572,7 +668,7 @@ export function Achievements() {
   ];
 
   return (
-    <div style={{ paddingTop:60, marginLeft:56, minHeight:'100vh', background:'#EEF3FF' }}>
+    <div style={{ paddingTop:60, marginLeft:56, minHeight:'100vh', background:'#EEF3FF', overflowX:'hidden' }}>
       <style>{GLOBAL_CSS}</style>
 
       {/* TOAST */}
@@ -584,7 +680,7 @@ export function Achievements() {
         </div>
       )}
 
-      <div style={{ padding:'20px 24px 60px' }}>
+      <div className="ach-page-shell" style={{ padding:'20px 24px 60px' }}>
 
         {/* ═══ HERO HEADER ═══════════════════════════════════════════════════ */}
         <SectionCard delay={0}>
@@ -595,18 +691,12 @@ export function Achievements() {
               <div key={i} style={{ position:'absolute', width:2, height:2, borderRadius:'50%', background:'rgba(255,255,255,.15)',
                 top:`${Math.random()*100}%`, left:`${Math.random()*100}%` }} />
             ))}
-            <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', flexWrap:'wrap', gap:16, position:'relative' }}>
+            <div className="ach-hero-top">
               <div>
                 <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
                   <span style={{ fontSize:11, color:'rgba(255,255,255,.5)', letterSpacing:2, textTransform:'uppercase', fontWeight:700 }}>УТЦ Воевода</span>
                   <span style={{ width:1, height:12, background:'rgba(255,255,255,.2)' }} />
-                  <div style={{ display:'flex', alignItems:'center', gap:5, fontSize:11, color:'rgba(255,255,255,.45)' }}>
-                    <span onClick={() => navigate('/')} style={{ cursor:'pointer', transition:'color .15s' }}
-                      onMouseEnter={e => (e.currentTarget.style.color='rgba(255,255,255,.8)')}
-                      onMouseLeave={e => (e.currentTarget.style.color='rgba(255,255,255,.45)')}>Главная</span>
-                    <span>›</span>
-                    <span style={{ color:'rgba(255,255,255,.8)' }}>Знаки отличия</span>
-                  </div>
+                  <PortalBreadcrumb tone="inverse" className="compact-breadcrumb" items={[{ label:'Главная', to:'/' }, { label:'Знаки отличия' }]} />
                 </div>
                 <h1 style={{ fontSize:28, fontWeight:900, color:'#fff', margin:'0 0 6px', letterSpacing:-.5 }}>
                   Знаки отличия
@@ -631,7 +721,7 @@ export function Achievements() {
               </div>
             </div>
             {/* view toggle + demo btn */}
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:10, padding:'16px 0 20px' }}>
+            <div className="ach-hero-actions">
               <div style={{ display:'flex', gap:4 }}>
                 {([['grid','Сетка'], ['board','Наградная доска']] as [ViewMode,string][]).map(([m, label]) => (
                   <button key={m} onClick={() => setViewMode(m)}
@@ -673,47 +763,63 @@ export function Achievements() {
             title="Китель — мои награды"
             sub="Перетащи медаль из сетки"
           />
-          <div style={{ padding:'20px 24px', display:'flex', gap:16, flexWrap:'wrap', alignItems:'center' }}>
-            {showcase.map((slotId, idx) => {
-              const sa = slotId !== null ? ACHIEVEMENTS.find(a => a.id === slotId) : null;
-              return (
-                <div key={idx} className="slot-drop"
-                  onClick={() => setSlotModal(idx)}
-                  onDragOver={e => { e.preventDefault(); setOverSlot(idx); }}
-                  onDragLeave={() => setOverSlot(null)}
-                  onDrop={() => onSlotDrop(idx)}
-                  style={{ width:80, height:80, borderRadius:'50%', position:'relative',
-                    border:`2.5px ${sa ? 'solid #375DFB' : 'dashed #D1D5DB'}`,
-                    background: overSlot===idx ? '#EBF1FF' : sa ? '#fff' : '#F8FAFF',
-                    display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer',
-                    boxShadow: sa ? '0 4px 16px rgba(55,93,251,.2)' : 'none', transition:'all .22s ease' }}>
-                  {sa ? (
-                    <>
-                      <Medal template={sa.svgTemplate} size={56} />
-                      <button onClick={e => removeSlot(idx, e)} style={{ position:'absolute', top:-5, right:-5,
-                        width:22, height:22, background:'#EF4444', border:'2.5px solid #fff', borderRadius:'50%',
-                        color:'#fff', fontSize:10, fontWeight:900, cursor:'pointer',
-                        display:'flex', alignItems:'center', justifyContent:'center', transition:'transform .15s' }}
-                        onMouseEnter={e => (e.currentTarget.style.transform='scale(1.15)')}
-                        onMouseLeave={e => (e.currentTarget.style.transform='scale(1)')}>✕</button>
-                      <div style={{ position:'absolute', bottom:-22, fontSize:10, color:'#6B7280', whiteSpace:'nowrap',
-                        textAlign:'center', width:90, fontWeight:600 }}>
-                        {sa.name.length > 12 ? sa.name.slice(0,11)+'…' : sa.name}
-                      </div>
-                    </>
-                  ) : (
-                    <span style={{ width:34, height:34, borderRadius:'50%', background:'#EBF1FF',
-                      color:'#375DFB', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
-                        <path d="M12 5v14M5 12h14"/>
-                      </svg>
+          <div className="ach-showcase-layout">
+            <div className="ach-showcase-slots">
+              {showcase.map((slotId, idx) => {
+                const sa = slotId !== null ? ACHIEVEMENTS.find(a => a.id === slotId) : null;
+                const accent = sa ? RARITY_COLOR[sa.rarity] : '#94A3B8';
+                return (
+                  <div key={idx} className="ach-showcase-slot slot-drop"
+                    onClick={() => setSlotModal(idx)}
+                    onDragOver={e => { e.preventDefault(); setOverSlot(idx); }}
+                    onDragLeave={() => setOverSlot(null)}
+                    onDrop={() => onSlotDrop(idx)}
+                    style={{
+                      '--rarity-color':accent,
+                      '--rarity-glow':sa ? RARITY_GLOW[sa.rarity] : 'rgba(55,93,251,.18)',
+                      border:`2px ${sa ? 'solid' : 'dashed'} ${overSlot===idx ? '#375DFB' : sa ? `${accent}AA` : '#CBD5E1'}`,
+                      background:overSlot===idx ? '#EEF3FF' : sa ? `linear-gradient(155deg,#fff,${RARITY_BG[sa.rarity]})` : '#F8FAFC',
+                      boxShadow:sa ? `inset 0 3px 0 ${accent},0 0 0 1px ${accent}22,0 8px 22px ${RARITY_GLOW[sa.rarity]}` : 'none'
+                    } as React.CSSProperties}>
+                    <span style={{ position:'absolute', top:10, left:12, fontSize:9, fontWeight:800, letterSpacing:1.2, color:sa ? accent : '#94A3B8' }}>
+                      {String(idx + 1).padStart(2,'0')}
                     </span>
-                  )}
+                    {sa ? (
+                      <>
+                        <Medal template={sa.svgTemplate} achievementId={sa.id} size={82} />
+                        <div style={{ width:'calc(100% - 20px)', fontSize:11, color:'#1E293B', fontWeight:800, textAlign:'center', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{sa.name}</div>
+                        <div style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:9, color:accent, fontWeight:900,
+                          textTransform:'uppercase', letterSpacing:.7, border:`1px solid ${accent}55`, background:RARITY_BG[sa.rarity], borderRadius:999, padding:'4px 8px' }}>
+                          <span style={{ width:6, height:6, borderRadius:'50%', background:accent, boxShadow:`0 0 8px ${accent}` }} />
+                          {sa.rarityLabel}
+                        </div>
+                        <button aria-label="Убрать награду" onClick={e => removeSlot(idx, e)} style={{ position:'absolute', top:8, right:8,
+                          width:22, height:22, background:'#fff', border:'1px solid #E2E8F0', borderRadius:'50%',
+                          color:'#94A3B8', fontSize:10, fontWeight:900, cursor:'pointer', boxShadow:'0 3px 8px rgba(15,23,42,.08)',
+                          display:'flex', alignItems:'center', justifyContent:'center' }}>✕</button>
+                      </>
+                    ) : (
+                      <>
+                        <span style={{ width:44, height:44, borderRadius:14, background:'#E8EEFF', color:'#375DFB', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                        </span>
+                        <span style={{ fontSize:11, color:'#64748B', fontWeight:700 }}>Добавить награду</span>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            <div className="ach-showcase-summary">
+              <div style={{ position:'absolute', width:180, height:180, borderRadius:'50%', background:'rgba(55,93,251,.22)', right:-70, bottom:-90, filter:'blur(2px)' }} />
+              <div style={{ position:'relative' }}>
+                <div style={{ fontSize:10, fontWeight:800, letterSpacing:1.5, color:'rgba(255,255,255,.5)', textTransform:'uppercase', marginBottom:12 }}>Парадный комплект</div>
+                <div style={{ fontSize:32, fontWeight:900, lineHeight:1, marginBottom:5 }}>{showcase.filter(Boolean).length}<span style={{ fontSize:14, color:'rgba(255,255,255,.45)' }}> / {showcase.length}</span></div>
+                <div style={{ fontSize:12, color:'rgba(255,255,255,.62)', lineHeight:1.55, marginBottom:18 }}>Эти знаки видны в личном деле. Нажмите на слот, чтобы заменить награду.</div>
+                <div style={{ height:7, borderRadius:8, background:'rgba(255,255,255,.12)', overflow:'hidden' }}>
+                  <div style={{ height:'100%', width:`${showcase.filter(Boolean).length / showcase.length * 100}%`, borderRadius:8, background:'linear-gradient(90deg,#6E8BFF,#B7C6FF)' }} />
                 </div>
-              );
-            })}
-            <div style={{ marginLeft:8, fontSize:12, color:'#9CA3AF', maxWidth:160, lineHeight:1.6 }}>
-              Полученные медали отображаются в профиле. Слоты доступны для перетаскивания.
+              </div>
             </div>
           </div>
         </SectionCard>
@@ -727,12 +833,12 @@ export function Achievements() {
             title="Мой прогресс"
             sub="Статистика по всем направлениям"
           />
-          <div style={{ padding:'24px', display:'grid', gridTemplateColumns:'1fr 1fr', gap:24 }}>
+          <div className="ach-progress-grid">
 
             {/* LEFT — stats + bars */}
             <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
               {/* 4 stat rings */}
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+              <div className="ach-stat-rings">
                 {[
                   { val:earnedCount,  label:'Получено',     color:'#375DFB', total:totalCount  },
                   { val:rareCount,    label:'Редких+',      color:'#10B981', total:earnedCount  },
@@ -796,17 +902,34 @@ export function Achievements() {
             </div>
 
             {/* RIGHT — radar chart */}
-            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
-              background:'#F8FAFF', borderRadius:16, border:'1px solid #E9ECF2', padding:'20px 10px', gap:12 }}>
-              <div style={{ fontSize:13, fontWeight:800, color:'#0F1729', textAlign:'center' }}>Индекс Воеводы</div>
-              <RadarChart data={VOEVODA_INDEX} size={210} />
-              <div style={{ background:'linear-gradient(135deg,#375DFB,#7C9FFF)', borderRadius:10, padding:'10px 20px',
-                textAlign:'center', width:'100%' }}>
-                <div style={{ fontSize:11, color:'rgba(255,255,255,.7)', fontWeight:600, marginBottom:2 }}>Средний балл</div>
-                <div style={{ fontSize:24, fontWeight:900, color:'#fff' }}>
-                  {(VOEVODA_INDEX.reduce((a,d) => a + d.value, 0) / VOEVODA_INDEX.length).toFixed(1)}
-                  <span style={{ fontSize:13, color:'rgba(255,255,255,.6)' }}>/5.0</span>
+            <div style={{ display:'flex', flexDirection:'column',
+              background:'linear-gradient(180deg,#F9FBFF,#F4F7FF)', borderRadius:18, border:'1px solid #DDE5F3', padding:'18px', gap:10,
+              boxShadow:'inset 0 1px 0 #fff,0 10px 30px rgba(55,93,251,.07)' }}>
+              <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12 }}>
+                <div>
+                  <div style={{ fontSize:15, fontWeight:900, color:'#0F1729' }}>Индекс Воеводы</div>
+                  <div style={{ fontSize:10, color:'#94A3B8', marginTop:3 }}>Баланс ключевых направлений подготовки</div>
                 </div>
+                <div style={{ minWidth:70, borderRadius:13, padding:'8px 11px', textAlign:'center', background:'linear-gradient(135deg,#375DFB,#6E8BFF)', color:'#fff', boxShadow:'0 7px 18px rgba(55,93,251,.25)' }}>
+                  <div style={{ fontSize:22, fontWeight:900, lineHeight:1 }}>
+                    {(VOEVODA_INDEX.reduce((a,d) => a + d.value, 0) / VOEVODA_INDEX.length).toFixed(1)}
+                  </div>
+                  <div style={{ fontSize:9, color:'rgba(255,255,255,.68)', marginTop:3, fontWeight:700 }}>/ 5.0</div>
+                </div>
+              </div>
+              <div style={{ width:'100%', maxWidth:430, margin:'0 auto' }}>
+                <RadarChart data={VOEVODA_INDEX} />
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+                {[...VOEVODA_INDEX].sort((a,b) => b.value - a.value).slice(0,2).map((item, i) => (
+                  <div key={item.label} style={{ padding:'10px 12px', background:'#fff', border:'1px solid #E2E8F0', borderRadius:12 }}>
+                    <div style={{ fontSize:9, color:i === 0 ? '#059669' : '#375DFB', fontWeight:900, textTransform:'uppercase', letterSpacing:.7 }}>{i === 0 ? 'Сильная сторона' : 'Следующий резерв'}</div>
+                    <div style={{ display:'flex', justifyContent:'space-between', gap:8, marginTop:5 }}>
+                      <span style={{ fontSize:11, color:'#475569', fontWeight:700 }}>{item.label}</span>
+                      <span style={{ fontSize:12, color:'#0F1729', fontWeight:900 }}>{item.value.toFixed(1)}</span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -818,10 +941,9 @@ export function Achievements() {
           <div style={{ background:'linear-gradient(135deg,#fff 0%,#EBF1FF 100%)', borderRadius:20,
             border:'2px solid #C7D2FE', marginBottom:14, position:'relative', overflow:'hidden',
             animation:'fadeUp .4s ease .15s both', boxShadow:'0 4px 24px rgba(55,93,251,.12)' }}>
-            <div style={{ position:'absolute', left:0, top:0, bottom:0, width:4, background:'linear-gradient(180deg,#375DFB,#7C9FFF)', borderRadius:'20px 0 0 20px' }} />
-            <div style={{ padding:'20px 28px', display:'flex', alignItems:'center', gap:24, flexWrap:'wrap' }}>
+            <div className="ach-next-award">
               <div style={{ position:'relative' }}>
-                <Medal template={nextAward.svgTemplate} size={88} dimmed style={{ filter:'grayscale(0.2) opacity(0.8)' }} />
+                <Medal template={nextAward.svgTemplate} achievementId={nextAward.id} size={88} dimmed style={{ filter:'grayscale(0.2) opacity(0.8)' }} />
                 <div style={{ position:'absolute', top:-4, right:-4, width:22, height:22, background:'#375DFB',
                   borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center',
                   animation:'pulse 2s ease infinite' }}>
@@ -849,7 +971,7 @@ export function Achievements() {
                   <div style={{ fontSize:12, color:'#9CA3AF' }}>Начните выполнение для отслеживания прогресса</div>
                 )}
               </div>
-              <div style={{ display:'flex', flexDirection:'column', gap:8, flexShrink:0 }}>
+              <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
                 <button className="btn-primary" onClick={() => setModalId(nextAward.id)}
                   style={{ padding:'10px 20px', background:'#375DFB', color:'#fff', border:'none', borderRadius:10,
                     fontSize:13, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
@@ -921,7 +1043,7 @@ export function Achievements() {
                 </button>
               ))}
             </div>
-            <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+            <div className="ach-filter-row">
               {[
                 { label:'Редкость', val:rarityF, set:setRarityF as (v: string) => void,
                   opts:[['all','Все'],['common','Обычная'],['rare','Редкая'],['epic','Эпическая'],['legend','Легендарная']] },
@@ -969,7 +1091,7 @@ export function Achievements() {
 
         {/* ═══ GRID ═══════════════════════════════════════════════════════════ */}
         {viewMode === 'grid' && (
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(205px,1fr))', gap:12 }}>
+          <div className="ach-grid">
             {filtered.length === 0
               ? <div style={{ gridColumn:'1/-1', textAlign:'center', padding:'60px 0', color:'#9CA3AF',
                   fontSize:14, background:'#fff', borderRadius:20, border:'1px solid #E9ECF2',
@@ -991,7 +1113,7 @@ export function Achievements() {
 
         {/* ═══ BOARD VIEW ═════════════════════════════════════════════════════ */}
         {viewMode === 'board' && (
-          <div className="avc" style={{ borderRadius:20, overflow:'hidden', marginBottom:12 }}>
+          <div id="honor-board" className="avc" style={{ borderRadius:20, overflow:'hidden', marginBottom:12 }}>
             <div style={{ background:'linear-gradient(135deg,#0F1729 0%,#162040 100%)', padding:'32px 28px 40px',
               position:'relative', overflow:'hidden' }}>
               {/* texture */}
@@ -1018,7 +1140,7 @@ export function Achievements() {
                         position:'relative', cursor: isE ? 'pointer' : 'default',
                         animation: `fadeIn .3s ease ${(i*.02).toFixed(2)}s both` }}>
                       {isE ? (
-                        <Medal template={ach.svgTemplate} size={56}
+                        <Medal template={ach.svgTemplate} achievementId={ach.id} size={56}
                           style={{ filter:'drop-shadow(0 4px 12px rgba(0,0,0,.5))' }} />
                       ) : (
                         <div style={{ width:52, height:52, borderRadius:'50%',
@@ -1070,7 +1192,14 @@ export function Achievements() {
         <AchModal ach={modalAch} earned={earned} progress={progress}
           profileShow={profileShow}
           onProfileToggle={id => setProfileShow(p => ({ ...p, [id]: !p[id] }))}
-          onClose={() => setModalId(null)}
+          onClose={() => {
+            setModalId(null);
+            if (searchParams.has('achievement')) {
+              const next = new URLSearchParams(searchParams);
+              next.delete('achievement');
+              setSearchParams(next, { replace: true });
+            }
+          }}
           onShare={handleShare}
           onNavigate={navigate}
         />
@@ -1135,22 +1264,23 @@ function ShowcasePicker({ slotIndex, earnedIds, showcase, onChoose, onClose }: {
                 const placed = showcase.includes(ach.id);
                 const selected = currentId === ach.id;
                 return (
-                  <button key={ach.id} onClick={() => onChoose(ach.id)}
-                    style={{ border:'1.5px solid', borderColor:selected ? '#375DFB' : '#E5E7EB',
-                      background:selected ? '#EBF1FF' : '#fff', borderRadius:16, padding:'14px 12px',
+                  <button key={ach.id} className="ach-rarity-option" onClick={() => onChoose(ach.id)}
+                    style={{ '--rarity-color':RARITY_COLOR[ach.rarity], '--rarity-glow':RARITY_GLOW[ach.rarity],
+                      border:'2px solid', borderColor:selected ? RARITY_COLOR[ach.rarity] : `${RARITY_COLOR[ach.rarity]}77`,
+                      background:selected ? `linear-gradient(145deg,${RARITY_BG[ach.rarity]},#fff)` : '#fff', borderRadius:16, padding:'14px 12px',
                       cursor:'pointer', textAlign:'center', transition:'all .18s ease',
-                      boxShadow:selected ? '0 8px 24px rgba(55,93,251,.16)' : '0 1px 6px rgba(15,23,42,.04)' }}
-                    onMouseEnter={e => { e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.borderColor='#375DFB'; }}
-                    onMouseLeave={e => { e.currentTarget.style.transform='none'; e.currentTarget.style.borderColor=selected ? '#375DFB' : '#E5E7EB'; }}>
+                      boxShadow:selected ? `0 0 0 1px ${RARITY_COLOR[ach.rarity]},0 8px 24px ${RARITY_GLOW[ach.rarity]}` : `0 4px 14px ${RARITY_GLOW[ach.rarity]}` } as React.CSSProperties}>
                     <div style={{ display:'flex', justifyContent:'center', marginBottom:10 }}>
-                      <Medal template={ach.svgTemplate} size={58} />
+                      <Medal template={ach.svgTemplate} achievementId={ach.id} size={58} />
                     </div>
                     <div style={{ fontSize:12, fontWeight:800, color:'#0F1729', lineHeight:1.25, minHeight:32 }}>{ach.name}</div>
-                    <div style={{ display:'inline-flex', alignItems:'center', gap:5, marginTop:8,
-                      fontSize:10, fontWeight:800, color:placed ? '#059669' : '#64748B',
-                      background:placed ? '#ECFDF5' : '#F1F5F9', borderRadius:999, padding:'4px 8px' }}>
-                      <CategoryIcon cat={ach.category} size={12} color={placed ? '#059669' : '#64748B'} />
-                      {placed ? 'В кителе' : ach.categoryLabel}
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, marginTop:8, flexWrap:'wrap' }}>
+                      <span style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:9, fontWeight:900,
+                        color:RARITY_COLOR[ach.rarity], background:RARITY_BG[ach.rarity], border:`1px solid ${RARITY_COLOR[ach.rarity]}55`, borderRadius:999, padding:'4px 8px' }}>
+                        <span style={{ width:6, height:6, borderRadius:'50%', background:RARITY_COLOR[ach.rarity], boxShadow:`0 0 7px ${RARITY_COLOR[ach.rarity]}` }} />
+                        {ach.rarityLabel}
+                      </span>
+                      {placed && <span style={{ fontSize:9, fontWeight:800, color:'#059669', background:'#ECFDF5', borderRadius:999, padding:'4px 8px' }}>В кителе</span>}
                     </div>
                   </button>
                 );
@@ -1230,11 +1360,12 @@ function AwardTree({ earned, progress, onOpen }: {
                 return (
                   <g key={node.id} className="tree-node" onClick={() => onOpen(node.id)}>
                     <rect x={x} y={y} width={nW} height={nH} rx={10}
+                      className="tree-node-card"
                       fill={bg} stroke={bdr} strokeWidth={isE || isP ? 2 : 1.5}
                       style={{ filter: isE ? `drop-shadow(0 2px 8px ${color}44)` : 'none', transition:'filter .2s' }} />
                     {/* status dot */}
                     <circle cx={x+nW/2} cy={y+15} r={5} fill={isE ? '#10B981' : isP ? '#375DFB' : '#CBD5E1'} />
-                    <text x={x+nW/2} y={y+32} textAnchor="middle" fontSize="9" fill={tc} fontWeight="700">
+                    <text className="tree-node-label" x={x+nW/2} y={y+32} textAnchor="middle" fontSize="9" fill={tc} fontWeight="700">
                       {node.name.length > 17 ? node.name.slice(0,16)+'…' : node.name}
                     </text>
                     {isP && prog && (
@@ -1294,10 +1425,11 @@ function AchCard({ ach, earned, progress, idx, onOpen, onDragStart }: {
         ? `linear-gradient(145deg,${RARITY_BG[ach.rarity]},#fff)`
         : isLocked || isHidden ? '#F9FAFB' : '#fff',
         borderRadius:18, padding:'16px 16px 14px',
-        border: `1.5px solid ${isEarned ? RARITY_COLOR[ach.rarity]+'44' : isInProg ? '#93C5FD' : '#E9ECF2'}`,
+        '--rarity-color':RARITY_COLOR[ach.rarity], '--rarity-glow':RARITY_GLOW[ach.rarity],
+        border: `2px solid ${isHidden ? `${RARITY_COLOR[ach.rarity]}44` : isLocked ? `${RARITY_COLOR[ach.rarity]}66` : `${RARITY_COLOR[ach.rarity]}AA`}`,
         cursor:'pointer', position:'relative', overflow:'hidden',
-        boxShadow: isEarned ? `0 4px 20px ${RARITY_GLOW[ach.rarity]}` : '0 1px 6px rgba(0,0,0,.04)',
-        animation: `fadeUp .35s ease ${Math.min(idx*.03,.5)}s both` }}>
+        boxShadow: isEarned ? `0 0 0 1px ${RARITY_COLOR[ach.rarity]}22,0 6px 22px ${RARITY_GLOW[ach.rarity]}` : `0 3px 12px ${RARITY_GLOW[ach.rarity]}`,
+        animation: `fadeUp .35s ease ${Math.min(idx*.03,.5)}s both` } as React.CSSProperties}>
 
       {/* elite shimmer */}
       {ach.elite && isEarned && (
@@ -1322,7 +1454,7 @@ function AchCard({ ach, earned, progress, idx, onOpen, onDragStart }: {
 
       {/* medal */}
       <div style={{ display:'flex', justifyContent:'center', marginBottom:14, position:'relative' }}>
-        {isHidden ? <HiddenMedal size={76} /> : <Medal template={ach.svgTemplate} size={76} dimmed={!isEarned} />}
+        {isHidden ? <HiddenMedal size={76} /> : <Medal template={ach.svgTemplate} achievementId={ach.id} size={76} dimmed={!isEarned} />}
         {isInProg && prog && (
           <svg width={76} height={76} style={{ position:'absolute', top:0, left:'50%', transform:'translateX(-50%)' }}>
             <circle cx={38} cy={38} r={35} fill="none" stroke="#E5E7EB" strokeWidth={3} />
@@ -1444,7 +1576,7 @@ function AchModal({ ach, earned, progress, profileShow, onProfileToggle, onClose
                 background:`radial-gradient(circle,${RARITY_GLOW[ach.rarity]},transparent 70%)`,
                 top:'50%', left:'50%', transform:'translate(-50%,-50%)', pointerEvents:'none' }} />
             )}
-            {isHidden ? <HiddenMedal size={140} /> : <Medal template={ach.svgTemplate} size={140} dimmed={!isEarned} />}
+            {isHidden ? <HiddenMedal size={140} /> : <Medal template={ach.svgTemplate} achievementId={ach.id} size={140} dimmed={!isEarned} />}
           </div>
         </div>
 
@@ -1666,7 +1798,7 @@ function UnlockOverlay({ ach, phase, onClaim, onClose }: {
         <div style={{ position:'absolute', inset:-16, borderRadius:'50%', background:`radial-gradient(circle,${c1}33,transparent 70%)`,
           animation: phase !== 'flash' ? `glowPulse 1.5s ease-in-out infinite` : 'none',
           '--glow': `${c1}55` } as React.CSSProperties} />
-        <Medal template={ach.svgTemplate} size={160}
+        <Medal template={ach.svgTemplate} achievementId={ach.id} size={160}
           style={{ filter:`drop-shadow(0 0 40px ${c1}88) drop-shadow(0 16px 32px rgba(0,0,0,.6))`, position:'relative', zIndex:1 }} />
         {/* sparkles */}
         {phase === 'done' && [0,1,2,3,4,5].map(i => (

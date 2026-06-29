@@ -1,23 +1,56 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useFavoritesStore, FavItem, FavArticle, FavCourse, FavMarket, FavKaptorka } from '../store/useFavoritesStore';
+import { SELLERS, useKaptorkaStore } from '../store/useKaptorkaStore';
 import { useCartStore } from '../store/useCartStore';
 
 const FAV_CSS = `
+  :root { --fav-blue:#375DFB; --fav-blue-dark:#2448D8; --fav-ink:#172033; --fav-muted:#697386; --fav-line:#DDE3EC; --fav-green:#0EAD78; }
   @keyframes cardEnter { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
   @keyframes slideInRight { from{opacity:0;transform:translateX(20px)} to{opacity:1;transform:translateX(0)} }
   @keyframes slideOutRight { from{opacity:1;transform:translateX(0)} to{opacity:0;transform:translateX(20px)} }
   @keyframes fadeIn { from{opacity:0} to{opacity:1} }
   .fav-card-enter { animation:cardEnter 0.25s ease both; }
-  .fav-card { transition:box-shadow .2s,transform .2s,opacity .3s; }
-  .fav-card:hover { box-shadow:0 8px 24px rgba(0,0,0,.14); transform:translateY(-2px); }
+  .fav-grid { grid-template-columns:repeat(4,minmax(0,1fr))!important;grid-auto-rows:1fr;align-items:stretch!important; }
+  .fav-card { min-width:0;height:100%;background:#fff!important;border:1px solid var(--fav-line)!important;border-radius:16px!important;box-shadow:0 2px 5px rgba(23,32,51,.04);transition:box-shadow .28s ease,transform .28s ease,border-color .28s ease,opacity .3s;isolation:isolate; }
+  .fav-card > div:first-child { height:168px!important; }
+  .fav-card > div:first-child img { transition:transform .5s cubic-bezier(.2,.75,.25,1),filter .3s ease; }
+  .fav-card:hover > div:first-child img { transform:scale(1.035); }
+  .fav-card-body { display:flex;flex:1;flex-direction:column;gap:6px;padding:14px 16px 16px!important; }
+  .fav-card-title { min-height:42px;display:block;overflow:visible;overflow-wrap:anywhere;word-break:normal;color:var(--fav-ink)!important;line-height:1.38!important;transition:color .2s ease; }
+  .fav-course-details { min-height:38px;display:flex;flex-wrap:wrap;align-content:flex-start;gap:4px 7px;color:#6B7280;font-size:12px;line-height:1.4; }
+  .fav-course-details span:not(:last-child)::after { content:'•';margin-left:7px;color:#C1C7D0; }
+  .fav-card:hover .fav-card-title { color:var(--fav-blue)!important; }
+  .fav-card-footer { display:flex;flex-direction:column;gap:7px;margin-top:auto;padding-top:5px; }
+  .fav-card-primary { display:flex!important;align-items:center!important;justify-content:center!important;width:100%!important;height:44px!important;min-height:44px!important;box-sizing:border-box!important;padding:0 14px!important;border-radius:8px!important;line-height:1.15!important;font-size:14px!important;font-weight:600!important;letter-spacing:0;white-space:nowrap;box-shadow:none;transition:transform .2s ease,box-shadow .2s ease,background-color .2s ease,color .2s ease,border-color .2s ease; }
+  .fav-card-primary--blue { background:#375DFB!important;color:#fff!important;border:none!important; }
+  .fav-card-primary--blue:hover { background:#1E3F9F!important;transform:translateY(-2px);box-shadow:0 8px 18px rgba(23,32,51,.18); }
+  .fav-card-primary--green:hover { background:#087E59!important;transform:translateY(-2px);box-shadow:0 8px 18px rgba(23,32,51,.16); }
+  .fav-card-primary--outline:hover { background:#375DFB!important;color:#fff!important;border-color:#375DFB!important;transform:translateY(-2px);box-shadow:0 8px 18px rgba(23,32,51,.14); }
+  .fav-card-primary:active { transform:translateY(0)!important;box-shadow:none!important; }
+  .fav-card-primary:focus-visible,.fav-card-remove:focus-visible,.fav-action-btn:focus-visible,.fav-view-btn:focus-visible,.fav-tab-btn:focus-visible { outline:3px solid rgba(55,93,251,.24);outline-offset:2px; }
+  .fav-card:hover { border-color:#fff!important;box-shadow:0 0 0 4px #fff,0 14px 32px rgba(255,255,255,.92)!important;transform:translateY(-4px); }
   .fav-card.removing { opacity:0; pointer-events:none; }
   .fav-card:hover .fav-card-actions { opacity:1; transform:translateY(0); }
-  .fav-card-actions { opacity:0; transform:translateY(8px); transition:all .2s ease; }
-  .fav-list-row { transition:background .15s; }
-  .fav-list-row:hover { background:#F9FAFB !important; }
-  .fav-action-btn { position:relative; display:flex;align-items:center;justify-content:center; width:32px;height:32px; background:rgba(255,255,255,.15);border:none;border-radius:8px;cursor:pointer;color:#fff;transition:background .15s; }
-  .fav-action-btn:hover { background:rgba(255,255,255,.28); }
+  .fav-card-actions { opacity:0; transform:translateY(8px); transition:opacity .22s ease,transform .22s ease; }
+  .fav-list-row { position:relative;z-index:1;transition:background .18s ease,transform .18s ease,box-shadow .18s ease; }
+  .fav-list-row:hover { z-index:2;background:#fff !important;transform:translateY(-2px);box-shadow:0 8px 22px rgba(23,32,51,.07); }
+  .fav-list-row--menu-open { z-index:200!important; }
+  .fav-list-row--course { display:grid!important;grid-template-columns:80px minmax(220px,1fr) 120px 90px 176px 180px 34px;align-items:center!important;gap:16px!important;min-height:88px;padding:12px 8px!important; }
+  .fav-course-cell { min-width:0; }
+  .fav-course-cell--price { width:100%; }
+  .fav-course-cell--date { text-align:center;white-space:nowrap; }
+  .fav-course-cell--action { width:176px;height:42px;padding:0 16px!important;border:none;border-radius:8px!important;color:#fff;font-size:13px!important;font-weight:600!important;cursor:pointer;white-space:nowrap;transition:background-color .2s ease,transform .2s ease,box-shadow .2s ease!important; }
+  .fav-course-cell--action:hover { transform:translateY(-2px);box-shadow:0 8px 18px rgba(23,32,51,.16)!important; }
+  .fav-course-cell--action.is-blue:hover { background:#1E3F9F!important; }
+  .fav-course-cell--action.is-green:hover { background:#087E59!important; }
+  .fav-course-cell--saved { overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+  .fav-dots-menu { position:relative;z-index:1;justify-self:end; }
+  .fav-dots-menu.is-open { z-index:201; }
+  .fav-dots-panel { animation:favMenuIn .16s ease both; }
+  @keyframes favMenuIn { from{opacity:0;transform:translateY(-4px) scale(.98)} to{opacity:1;transform:translateY(0) scale(1)} }
+  .fav-action-btn { position:relative;display:flex;align-items:center;justify-content:center;width:36px;height:36px;background:rgba(255,255,255,.94);border:1px solid rgba(221,227,236,.95);border-radius:9px;cursor:pointer;color:#375DFB;box-shadow:0 5px 14px rgba(23,32,51,.12);transition:background .18s ease,color .18s ease,transform .18s ease,box-shadow .18s ease; }
+  .fav-action-btn:hover { background:#375DFB;color:#fff;transform:translateY(-3px) scale(1.04);box-shadow:0 8px 18px rgba(23,32,51,.18); }
   .fav-action-btn .fav-tooltip { position:absolute;bottom:calc(100%+6px);left:50%;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;font-size:11px;padding:3px 8px;border-radius:4px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .15s; }
   .fav-action-btn:hover .fav-tooltip { opacity:1; }
   .fav-progress-fill { transition:width .6s ease; }
@@ -26,13 +59,35 @@ const FAV_CSS = `
   .fav-sort-native { position:absolute;opacity:0;top:0;left:0;width:100%;height:100%;cursor:pointer; }
   .fav-view-btn { transition:all .15s; }
   .fav-view-btn.active { background:#fff;color:#375DFB;box-shadow:0 1px 3px rgba(0,0,0,.08); }
-  .fav-card-remove { transition:transform .15s,background .15s; }
-  .fav-card-remove:hover { transform:scale(1.15); }
+  .fav-card-remove { transition:transform .18s ease,background .18s ease,box-shadow .18s ease; }
+  .fav-card-remove:hover { transform:scale(1.1) rotate(-5deg);background:#fff!important;box-shadow:0 6px 14px rgba(23,32,51,.16)!important; }
+  .fav-card-badge { transition:transform .2s ease,box-shadow .2s ease; }
+  .fav-card:hover .fav-card-badge { transform:translateY(2px);box-shadow:0 4px 10px rgba(23,32,51,.12); }
+  .fav-tab-btn,.fav-view-btn { transition:transform .18s ease,background .18s ease,color .18s ease,box-shadow .18s ease!important; }
+  .fav-tab-btn:hover,.fav-view-btn:hover { transform:translateY(-1px);color:#375DFB!important; }
+  .fav-list-row > button { transition:transform .18s ease,background-color .18s ease,box-shadow .18s ease!important; }
+  .fav-list-row > button:hover { transform:translateY(-2px);box-shadow:0 6px 14px rgba(23,32,51,.13); }
   .fav-dots-item:hover { background:#F3F4F6; }
-  .fav-sort-row:hover { border-color:#D1D5DB !important; }
+  .fav-sort-row { transition:border-color .18s ease,box-shadow .18s ease,transform .18s ease; }
+  .fav-sort-row:hover { border-color:#D1D5DB !important;box-shadow:0 5px 14px rgba(23,32,51,.07);transform:translateY(-1px); }
+  @media (max-width:1180px) { .fav-grid { grid-template-columns:repeat(3,minmax(0,1fr))!important; } }
+  @media (max-width:1020px) { .fav-grid { grid-template-columns:repeat(2,minmax(0,1fr))!important; } }
+  @media (max-width:1180px) {
+    .fav-list-row--course { grid-template-columns:72px minmax(190px,1fr) 100px 82px 150px 34px; }
+    .fav-list-row--course .fav-course-cell--saved { display:none; }
+    .fav-course-cell--action { width:150px; }
+  }
+  @media (max-width:680px) {
+    .fav-grid { grid-template-columns:1fr!important; }
+    .fav-card > div:first-child { height:158px!important; }
+  }
 `;
 function injectFavCss() {
-  if (document.getElementById('fav-page-css')) return;
+  const existing = document.getElementById('fav-page-css');
+  if (existing) {
+    existing.textContent = FAV_CSS;
+    return;
+  }
   const s = document.createElement('style'); s.id = 'fav-page-css'; s.textContent = FAV_CSS;
   document.head.appendChild(s);
 }
@@ -125,6 +180,18 @@ function CardImage({ src, height, grayscale, small }: { src: string; height: num
   );
 }
 
+function openArticle(navigate: ReturnType<typeof useNavigate>, item: FavArticle) {
+  if (item.available === false) {
+    navigate('/journal');
+    return;
+  }
+  if (item.link) {
+    navigate(item.link);
+    return;
+  }
+  navigate(`/journal/${item.id}`, { state: { returnTo: '/favorites' } });
+}
+
 /* ─── TOAST ── */
 type ToastData = { msg: string; action?: string; onAction?: () => void; id: number };
 let toastIdSeq = 0;
@@ -157,13 +224,18 @@ function DotsMenu({ items }: { items: { label: string; danger?: boolean; onClick
     document.addEventListener('mousedown', fn);
     return () => document.removeEventListener('mousedown', fn);
   }, []);
+  useEffect(() => {
+    const row = ref.current?.closest('.fav-list-row');
+    row?.classList.toggle('fav-list-row--menu-open', open);
+    return () => row?.classList.remove('fav-list-row--menu-open');
+  }, [open]);
   return (
-    <div ref={ref} style={{ position: 'relative', flexShrink: 0 }}>
+    <div ref={ref} className={`fav-dots-menu${open ? ' is-open' : ''}`} style={{ position: 'relative', flexShrink: 0 }}>
       <button onClick={e => { e.stopPropagation(); setOpen(o => !o); }} style={{ width: 30, height: 30, border: 'none', background: 'transparent', color: '#9CA3AF', cursor: 'pointer', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background .15s' }} onMouseEnter={e => e.currentTarget.style.background = '#F3F4F6'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
         <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><circle cx="8" cy="3" r="1.5" /><circle cx="8" cy="8" r="1.5" /><circle cx="8" cy="13" r="1.5" /></svg>
       </button>
       {open && (
-        <div style={{ position: 'absolute', top: 'calc(100% + 4px)', right: 0, background: '#fff', border: '1px solid #E5E7EB', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,.1)', minWidth: 160, zIndex: 50, overflow: 'hidden' }}>
+        <div className="fav-dots-panel" style={{ position: 'absolute', top: 'calc(100% + 4px)', right: 0, background: '#fff', border: '1px solid #E5E7EB', borderRadius: 10, boxShadow: '0 12px 30px rgba(23,32,51,.16)', minWidth: 160, zIndex: 202, overflow: 'hidden' }}>
           {items.map((it, i) => (
             <div key={i} className="fav-dots-item" onClick={e => { e.stopPropagation(); it.onClick(); setOpen(false); }} style={{ padding: '9px 14px', fontSize: 13, color: it.danger ? '#EF4444' : '#374151', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>{it.label}</div>
           ))}
@@ -176,7 +248,7 @@ function DotsMenu({ items }: { items: { label: string; danger?: boolean; onClick
 /* ─── HOVER OVERLAY ACTIONS ── */
 function CardActions({ actions }: { actions: { icon: React.ReactNode; label: string; onClick: (e: React.MouseEvent) => void }[] }) {
   return (
-    <div className="fav-card-actions" style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(transparent,rgba(55,93,251,.88))', padding: '28px 8px 10px', display: 'flex', gap: 6, justifyContent: 'center' }}>
+    <div className="fav-card-actions" style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(180deg,rgba(255,255,255,0) 0%,rgba(255,255,255,.78) 52%,rgba(255,255,255,.98) 100%)', padding: '34px 8px 10px', display: 'flex', gap: 8, justifyContent: 'center' }}>
       {actions.map((a, i) => (
         <button key={i} className="fav-action-btn" onClick={e => { e.stopPropagation(); a.onClick(e); }}>
           {a.icon}
@@ -198,7 +270,7 @@ function RemoveHeart({ unavailable, onClick }: { unavailable: boolean; onClick: 
 
 /* ─── BADGE ── */
 function CardBadge({ label, color, bg, right }: { label: string; color: string; bg: string; right?: boolean }) {
-  return <span style={{ position: 'absolute', zIndex: 2, top: 10, [right ? 'right' : 'left']: right ? 40 : 10, background: bg, color, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 6, letterSpacing: '0.3px', textTransform: 'uppercase' as const }}>{label}</span>;
+  return <span className="fav-card-badge" style={{ position: 'absolute', zIndex: 2, top: 10, [right ? 'right' : 'left']: right ? 40 : 10, background: bg, color, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 6, letterSpacing: '0.3px', textTransform: 'uppercase' as const }}>{label}</span>;
 }
 
 /* ─── ICONS ── */
@@ -213,7 +285,6 @@ const IcoHeart    = () => <svg width="12" height="12" fill="none" stroke="curren
 const IcoGrid     = () => <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><rect x="1" y="1" width="6" height="6" rx="1" /><rect x="9" y="1" width="6" height="6" rx="1" /><rect x="1" y="9" width="6" height="6" rx="1" /><rect x="9" y="9" width="6" height="6" rx="1" /></svg>;
 const IcoList     = () => <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" /></svg>;
 const IcoChevDown = () => <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6" /></svg>;
-const IcoHeartLg  = () => <svg width="22" height="22" fill="none" stroke="#374151" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>;
 
 /* ────────────────────────────────────────────────────────────────────────────
    ARTICLE CARDS
@@ -222,7 +293,7 @@ function ArticleCard({ item, onRemove, onShare, idx }: { item: FavArticle; onRem
   const unavail = item.available === false;
   const navigate = useNavigate();
   return (
-    <div className="fav-card fav-card-enter" onClick={() => navigate(unavail ? '/journal' : `/journal/${item.id}`)} style={{ background: '#fff', borderRadius: 12, border: '1px solid #E5E7EB', overflow: 'hidden', cursor: 'pointer', display: 'flex', flexDirection: 'column', position: 'relative', animationDelay: `${idx * 40}ms` }}>
+    <div className="fav-card fav-card-enter" onClick={() => openArticle(navigate, item)} style={{ background: '#fff', borderRadius: 12, border: '1px solid #E5E7EB', overflow: 'hidden', cursor: 'pointer', display: 'flex', flexDirection: 'column', position: 'relative', animationDelay: `${idx * 40}ms` }}>
       <div style={{ position: 'relative', height: 160, background: '#F3F4F6', flexShrink: 0, overflow: 'hidden' }}>
         <CardImage src={item.image} height={160} grayscale={unavail} />
         {item.category && <CardBadge label={item.category} bg="#375DFB" color="#fff" />}
@@ -236,8 +307,8 @@ function ArticleCard({ item, onRemove, onShare, idx }: { item: FavArticle; onRem
           ]} />
         )}
       </div>
-      <div style={{ padding: '14px', display: 'flex', flexDirection: 'column', flex: 1, gap: 6 }}>
-        <div style={{ fontSize: 15, fontWeight: 600, color: unavail ? '#9CA3AF' : '#111', lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' } as React.CSSProperties}>{item.title}</div>
+      <div className="fav-card-body">
+        <div className="fav-card-title" style={{ fontSize: 15, fontWeight: 600, color: unavail ? '#9CA3AF' : '#111', lineHeight: 1.4 }}>{item.title}</div>
         {unavail
           ? <div style={{ fontSize: 13, color: '#9CA3AF', fontStyle: 'italic' }}>Статья больше не доступна</div>
           : <div style={{ fontSize: 13, color: '#9CA3AF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>Материал по теме {(item.category ?? 'военное дело').toLowerCase()}</div>}
@@ -252,8 +323,12 @@ function ArticleCard({ item, onRemove, onShare, idx }: { item: FavArticle; onRem
           <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><IcoComment /> {item.stats.comments ?? 0}</span>
           <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><IcoHeart /> {item.stats.hearts}</span>
         </div>
-        {unavail && <button onClick={e => { e.stopPropagation(); navigate('/journal'); }} style={{ marginTop: 4, padding: '9px 12px', border: '1px solid #375DFB', borderRadius: 8, background: 'transparent', color: '#375DFB', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Найти похожее →</button>}
-        {item.savedDaysAgo && <div style={{ fontSize: 11, color: '#9CA3AF', fontStyle: 'italic', marginTop: 'auto' }}>{savedText(item.savedDaysAgo)}</div>}
+        <div className="fav-card-footer">
+          {item.savedDaysAgo && <div style={{ fontSize: 11, color: '#9CA3AF', fontStyle: 'italic' }}>{savedText(item.savedDaysAgo)}</div>}
+          {unavail
+            ? <button className="fav-card-primary fav-card-primary--outline" onClick={e => { e.stopPropagation(); navigate('/journal'); }} style={{ border: '1px solid #375DFB', background: 'transparent', color: '#375DFB', cursor: 'pointer' }}>Найти похожее →</button>
+            : <button className="fav-card-primary fav-card-primary--blue" onClick={e => { e.stopPropagation(); openArticle(navigate, item); }} style={{ border: 'none', background: '#375DFB', color: '#fff', cursor: 'pointer' }}>Открыть статью →</button>}
+        </div>
       </div>
     </div>
   );
@@ -263,7 +338,7 @@ function ArticleRow({ item, onRemove, onShare, idx }: { item: FavArticle; onRemo
   const unavail = item.available === false;
   const navigate = useNavigate();
   return (
-    <div className="fav-list-row fav-card-enter" onClick={() => navigate(unavail ? '/journal' : `/journal/${item.id}`)} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 0', borderBottom: '1px solid #E5E7EB', cursor: 'pointer', animationDelay: `${idx * 40}ms` }}>
+    <div className="fav-list-row fav-card-enter" onClick={() => openArticle(navigate, item)} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 0', borderBottom: '1px solid #E5E7EB', cursor: 'pointer', animationDelay: `${idx * 40}ms` }}>
       <CardImage src={item.image} height={60} grayscale={unavail} small />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 14, fontWeight: 600, color: unavail ? '#9CA3AF' : '#111', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' } as React.CSSProperties}>{item.title}</div>
@@ -294,14 +369,20 @@ function CourseCard({ item, onRemove, onShare, onCart, navigate, idx }: { item: 
           <CardImage src={item.image} height={160} />
           <CardBadge label="Куплено" bg="#10B981" color="#fff" />
           <RemoveHeart unavailable={false} onClick={e => { e.stopPropagation(); onRemove(); }} />
+          <CardActions actions={[
+            { icon: <IcoShare />, label: 'Поделиться', onClick: e => { e.stopPropagation(); onShare(); } },
+            { icon: <IcoTrash />, label: 'Удалить', onClick: e => { e.stopPropagation(); onRemove(); } },
+          ]} />
         </div>
-        <div style={{ padding: '14px', display: 'flex', flexDirection: 'column', flex: 1, gap: 8 }}>
-          <div style={{ fontSize: 15, fontWeight: 600, color: '#111', lineHeight: 1.4 }}>{item.title}</div>
+      <div className="fav-card-body" style={{ gap: 7 }}>
+          <div className="fav-card-title" style={{ fontSize: 15, fontWeight: 600, color: '#111', lineHeight: 1.4 }}>{item.title}</div>
+          <div className="fav-course-details"><span>{item.city}</span><span>{item.duration}</span><span>{item.format}</span></div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#6B7280' }}><span>Прогресс обучения</span><span style={{ fontWeight: 600, color: '#10B981' }}>40%</span></div>
           <div style={{ height: 6, background: '#F3F4F6', borderRadius: 3, overflow: 'hidden' }}><div className="fav-progress-fill" style={{ height: '100%', background: '#10B981', borderRadius: 3, width: '40%' }} /></div>
-          <div style={{ fontSize: 12, color: '#9CA3AF' }}>Пройдено уроков: 8 из 20</div>
-          <div style={{ fontSize: 12, color: '#6B7280' }}>Следующее занятие: 12 апреля</div>
-          <button onClick={e => { e.stopPropagation(); navigate(courseOpenPath(item)); }} style={{ marginTop: 'auto', padding: '9px 12px', border: 'none', borderRadius: 8, background: '#10B981', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Продолжить обучение →</button>
+          <div style={{ fontSize: 12, color: '#6B7280' }}>8 из 20 уроков · занятие 12 апреля</div>
+          <div className="fav-card-footer">
+            <button className="fav-card-primary fav-card-primary--green" onClick={e => { e.stopPropagation(); navigate(courseOpenPath(item)); }} style={{ padding: '9px 12px', border: 'none', borderRadius: 8, background: '#10B981', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Продолжить обучение →</button>
+          </div>
         </div>
       </div>
     );
@@ -311,7 +392,7 @@ function CourseCard({ item, onRemove, onShare, onCart, navigate, idx }: { item: 
       <div style={{ position: 'relative', height: 160, background: '#F3F4F6', flexShrink: 0, overflow: 'hidden' }}>
         <CardImage src={item.image} height={160} grayscale={unavail} />
         <CardBadge label={item.city} bg="rgba(55,93,251,.85)" color="#fff" />
-        <CardBadge label={item.duration} bg="rgba(16,185,129,.9)" color="#374151" right />
+        <CardBadge label={item.duration} bg="rgba(16,185,129,.94)" color="#FFFFFF" right />
         <RemoveHeart unavailable={unavail} onClick={e => { e.stopPropagation(); onRemove(); }} />
         {!unavail && (
           <CardActions actions={[
@@ -321,13 +402,16 @@ function CourseCard({ item, onRemove, onShare, onCart, navigate, idx }: { item: 
           ]} />
         )}
       </div>
-      <div style={{ padding: '14px', display: 'flex', flexDirection: 'column', flex: 1, gap: 6 }}>
-        <div style={{ fontSize: 15, fontWeight: 600, color: '#111', lineHeight: 1.4 }}>{item.title}</div>
+      <div className="fav-card-body">
+        <div className="fav-card-title" style={{ fontSize: 15, fontWeight: 600, color: '#111', lineHeight: 1.4 }}>{item.title}</div>
+        <div className="fav-course-details"><span>{item.city}</span><span>{item.duration}</span><span>{item.format}</span></div>
         <div style={{ fontSize: 18, fontWeight: 700, color: '#10B981' }}>{item.price.toLocaleString('ru')} ₽</div>
         {item.startDate && <div style={{ fontSize: 13, color: '#6B7280' }}>Старт: {item.startDate}</div>}
         {item.spotsLeft !== undefined && <div style={{ fontSize: 13, color: item.spotsLeft < 5 ? '#EF4444' : '#6B7280', fontWeight: item.spotsLeft < 5 ? 500 : 400 }}>Осталось мест: {item.spotsLeft}</div>}
-        <button onClick={e => { e.stopPropagation(); onCart(); }} style={{ marginTop: 'auto', padding: '9px 12px', border: 'none', borderRadius: 8, background: '#375DFB', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Записаться и оплатить →</button>
-        {item.savedDaysAgo && <div style={{ fontSize: 11, color: '#9CA3AF', fontStyle: 'italic' }}>{savedText(item.savedDaysAgo)}</div>}
+        <div className="fav-card-footer">
+          {item.savedDaysAgo && <div style={{ fontSize: 11, color: '#9CA3AF', fontStyle: 'italic' }}>{savedText(item.savedDaysAgo)}</div>}
+          <button className="fav-card-primary fav-card-primary--blue" onClick={e => { e.stopPropagation(); onCart(); }} style={{ padding: '9px 12px', border: 'none', borderRadius: 8, background: '#375DFB', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Записаться и оплатить →</button>
+        </div>
       </div>
     </div>
   );
@@ -336,21 +420,21 @@ function CourseCard({ item, onRemove, onShare, onCart, navigate, idx }: { item: 
 function CourseRow({ item, onRemove, onShare, onCart, idx }: { item: FavCourse; onRemove: () => void; onShare: () => void; onCart: () => void; idx: number }) {
   const navigate = useNavigate();
   return (
-    <div className="fav-list-row fav-card-enter" onClick={() => navigate(courseOpenPath(item))} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 0', borderBottom: '1px solid #E5E7EB', cursor: 'pointer', animationDelay: `${idx * 40}ms` }}>
+    <div className="fav-list-row fav-list-row--course fav-card-enter" onClick={() => navigate(courseOpenPath(item))} style={{ borderBottom: '1px solid #E5E7EB', cursor: 'pointer', animationDelay: `${idx * 40}ms` }}>
       <CardImage src={item.image} height={60} small />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 600, color: '#111' }}>{item.title}</div>
+      <div className="fav-course-cell" style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</div>
         <div style={{ fontSize: 12, color: '#6B7280', display: 'flex', gap: 6, marginTop: 3 }}><span>{item.city}</span><span>•</span><span>{item.duration}</span></div>
       </div>
       {item.purchased
-        ? <div style={{ minWidth: 120, flexShrink: 0 }}>
+        ? <div className="fav-course-cell fav-course-cell--price" style={{ minWidth: 0 }}>
             <div style={{ fontSize: 11, color: '#6B7280', marginBottom: 3 }}>40%</div>
             <div style={{ height: 5, background: '#F3F4F6', borderRadius: 3, overflow: 'hidden' }}><div style={{ height: '100%', background: '#10B981', borderRadius: 3, width: '40%' }} /></div>
           </div>
-        : <div style={{ fontSize: 16, fontWeight: 700, color: '#111', minWidth: 90, flexShrink: 0 }}>{item.price.toLocaleString('ru')} ₽</div>}
-      {item.startDate && <div style={{ fontSize: 12, color: '#6B7280', whiteSpace: 'nowrap' as const, flexShrink: 0 }}>{item.startDate}</div>}
-      <button onClick={e => { e.stopPropagation(); item.purchased ? navigate(courseOpenPath(item)) : onCart(); }} style={{ padding: '6px 14px', border: 'none', background: item.purchased ? '#10B981' : '#375DFB', color: '#fff', fontSize: 12, fontWeight: 600, borderRadius: 8, cursor: 'pointer', whiteSpace: 'nowrap' as const, flexShrink: 0 }}>{item.purchased ? 'Продолжить' : 'Записаться →'}</button>
-      <div style={{ fontSize: 11, color: '#9CA3AF', fontStyle: 'italic', whiteSpace: 'nowrap' as const, flexShrink: 0 }}>{savedText(item.savedDaysAgo)}</div>
+        : <div className="fav-course-cell fav-course-cell--price" style={{ fontSize: 16, fontWeight: 700, color: '#111' }}>{item.price.toLocaleString('ru')} ₽</div>}
+      <div className="fav-course-cell fav-course-cell--date" style={{ fontSize: 12, color: '#6B7280' }}>{item.startDate || '—'}</div>
+      <button className={`fav-course-cell--action ${item.purchased ? 'is-green' : 'is-blue'}`} onClick={e => { e.stopPropagation(); if (item.purchased) navigate(courseOpenPath(item)); else onCart(); }} style={{ background: item.purchased ? '#10B981' : '#375DFB' }}>{item.purchased ? 'Продолжить' : 'Записаться →'}</button>
+      <div className="fav-course-cell fav-course-cell--saved" style={{ fontSize: 11, color: '#9CA3AF', fontStyle: 'italic' }}>{savedText(item.savedDaysAgo)}</div>
       <DotsMenu items={[
         { label: 'Поделиться', onClick: onShare },
         { label: 'В корзину', onClick: onCart },
@@ -383,13 +467,17 @@ function MarketCard({ item, onRemove, onShare, onCart, onFindSimilar, idx }: { i
           ]} />
         )}
       </div>
-      <div style={{ padding: '14px', display: 'flex', flexDirection: 'column', flex: 1, gap: 6 }}>
-        <div style={{ fontSize: 15, fontWeight: 600, color: unavail ? '#9CA3AF' : '#111', lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' } as React.CSSProperties}>{item.title}</div>
-        <div style={{ fontSize: 13, color: '#9CA3AF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{item.brand}{item.size ? ` · Размер ${item.size}` : ''}</div>
+      <div className="fav-card-body">
+        <div className="fav-card-title" style={{ fontSize: 15, fontWeight: 600, color: unavail ? '#9CA3AF' : '#111', lineHeight: 1.4 }}>{item.title}</div>
+        <div style={{ fontSize: 13, color: '#9CA3AF', overflowWrap:'anywhere', lineHeight:1.4 }}>{item.brand}{item.size ? ` · Размер ${item.size}` : ''}</div>
         {unavail
           ? <>
+              <div style={{ fontSize: 15, fontWeight: 700, color: '#9CA3AF' }}>Последняя цена: {item.price.toLocaleString('ru')} ₽</div>
+              <div style={{ fontSize: 12, color: '#9CA3AF' }}>Нет в наличии</div>
               <div style={{ fontSize: 13, color: '#9CA3AF', fontStyle: 'italic' }}>Товар больше не продаётся</div>
-              <button onClick={e => { e.stopPropagation(); onFindSimilar(); }} style={{ padding: '9px 12px', border: '1px solid #375DFB', borderRadius: 8, background: 'transparent', color: '#375DFB', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Найти похожее →</button>
+              <div className="fav-card-footer">
+                <button className="fav-card-primary fav-card-primary--outline" onClick={e => { e.stopPropagation(); onFindSimilar(); }} style={{ padding: '9px 12px', border: '1px solid #375DFB', borderRadius: 8, background: 'transparent', color: '#375DFB', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Найти похожее →</button>
+              </div>
             </>
           : <>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
@@ -397,8 +485,10 @@ function MarketCard({ item, onRemove, onShare, onCart, onFindSimilar, idx }: { i
                 {hasDiscount && <span style={{ fontSize: 12, color: '#9CA3AF', textDecoration: 'line-through' }}>{item.oldPrice!.toLocaleString('ru')} ₽</span>}
               </div>
               <div style={{ fontSize: 12, fontWeight: 500, color: item.inStock !== false ? '#10B981' : '#EF4444' }}>{item.inStock !== false ? 'В наличии' : 'Нет в наличии'}</div>
-              <button onClick={e => { e.stopPropagation(); onCart(); }} style={{ marginTop: 'auto', padding: '9px 12px', border: 'none', borderRadius: 8, background: '#375DFB', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>В корзину</button>
-              {item.savedDaysAgo && <div style={{ fontSize: 11, color: '#9CA3AF', fontStyle: 'italic' }}>{savedText(item.savedDaysAgo)}</div>}
+              <div className="fav-card-footer">
+                {item.savedDaysAgo && <div style={{ fontSize: 11, color: '#9CA3AF', fontStyle: 'italic' }}>{savedText(item.savedDaysAgo)}</div>}
+                <button className="fav-card-primary fav-card-primary--blue" onClick={e => { e.stopPropagation(); onCart(); }} style={{ padding: '9px 12px', border: 'none', borderRadius: 8, background: '#375DFB', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>В корзину</button>
+              </div>
             </>}
       </div>
     </div>
@@ -442,8 +532,9 @@ function MarketRow({ item, onRemove, onShare, onCart, onFindSimilar, idx }: { it
 function KaptorkaCard({ item, onRemove, onShare, onChat, onFindSimilar, idx }: { item: FavKaptorka; onRemove: () => void; onShare: () => void; onChat: () => void; onFindSimilar: () => void; idx: number }) {
   const unavail = item.available === false;
   const navigate = useNavigate();
+  const seller = SELLERS[item.seller];
   return (
-    <div className="fav-card fav-card-enter" onClick={() => navigate('/kaptorka')} style={{ background: '#fff', borderRadius: 12, border: '1px solid #E5E7EB', overflow: 'hidden', cursor: 'pointer', display: 'flex', flexDirection: 'column', position: 'relative', animationDelay: `${idx * 40}ms` }}>
+    <div className="fav-card fav-card-enter" onClick={() => navigate(`/kaptorka/${item.id}`)} style={{ background: '#fff', borderRadius: 12, border: '1px solid #E5E7EB', overflow: 'hidden', cursor: 'pointer', display: 'flex', flexDirection: 'column', position: 'relative', animationDelay: `${idx * 40}ms` }}>
       <div style={{ position: 'relative', height: 160, background: '#F3F4F6', flexShrink: 0, overflow: 'hidden' }}>
         <CardImage src={item.image} height={160} grayscale={unavail} />
         {unavail
@@ -451,8 +542,8 @@ function KaptorkaCard({ item, onRemove, onShare, onChat, onFindSimilar, idx }: {
           : <CardBadge label={item.condition} bg="rgba(255,255,255,.9)" color="#375DFB" />}
         <RemoveHeart unavailable={unavail} onClick={e => { e.stopPropagation(); onRemove(); }} />
         {!unavail && (
-          <div style={{ position: 'absolute', bottom: 8, left: 8, zIndex: 2, width: 30, height: 30, borderRadius: '50%', background: '#375DFB', border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#375DFB', boxShadow: '0 1px 4px rgba(0,0,0,.2)' }}>
-            {item.seller.charAt(0).toUpperCase()}
+          <div style={{ position: 'absolute', bottom: 8, left: 8, zIndex: 2, width: 34, height: 34, borderRadius: '50%', overflow: 'hidden', background: '#375DFB', border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff', boxShadow: '0 2px 7px rgba(0,0,0,.22)' }}>
+            {seller?.avatar ? <img src={seller.avatar} alt={item.seller} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : item.seller.charAt(0).toUpperCase()}
           </div>
         )}
         {!unavail && (
@@ -463,19 +554,25 @@ function KaptorkaCard({ item, onRemove, onShare, onChat, onFindSimilar, idx }: {
           ]} />
         )}
       </div>
-      <div style={{ padding: '14px', display: 'flex', flexDirection: 'column', flex: 1, gap: 6 }}>
-        <div style={{ fontSize: 15, fontWeight: 600, color: unavail ? '#9CA3AF' : '#375DFB', lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' } as React.CSSProperties}>{item.title}</div>
+      <div className="fav-card-body">
+        <div className="fav-card-title" style={{ fontSize: 15, fontWeight: 600, color: unavail ? '#9CA3AF' : '#375DFB', lineHeight: 1.4 }}>{item.title}</div>
         {unavail
           ? <>
+              <div style={{ fontSize: 17, fontWeight: 700, color: '#9CA3AF' }}>{item.price.toLocaleString('ru')} ₽</div>
+              <div style={{ fontSize: 12, color: '#9CA3AF' }}>{item.seller} · {item.city}</div>
               <div style={{ fontSize: 13, color: '#9CA3AF', fontStyle: 'italic' }}>Объявление больше не активно</div>
-              <button onClick={e => { e.stopPropagation(); onFindSimilar(); }} style={{ padding: '9px 12px', border: '1px solid #375DFB', borderRadius: 8, background: 'transparent', color: '#375DFB', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Найти похожее →</button>
+              <div className="fav-card-footer">
+                <button className="fav-card-primary fav-card-primary--outline" onClick={e => { e.stopPropagation(); onFindSimilar(); }} style={{ padding: '9px 12px', border: '1px solid #375DFB', borderRadius: 8, background: 'transparent', color: '#375DFB', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Найти похожее →</button>
+              </div>
             </>
           : <>
               <div style={{ fontSize: 18, fontWeight: 700, color: '#10B981' }}>{item.price.toLocaleString('ru')} ₽</div>
               <div style={{ fontSize: 12, color: '#6B7280' }}>{item.seller}</div>
               <div style={{ fontSize: 12, color: '#6B7280' }}>{item.city}{item.listedHoursAgo ? ` • ${item.listedHoursAgo} ч. назад` : ''}</div>
-              <button onClick={e => { e.stopPropagation(); onChat(); }} style={{ marginTop: 'auto', padding: '9px 12px', border: 'none', borderRadius: 8, background: '#375DFB', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Написать продавцу</button>
-              {item.savedDaysAgo && <div style={{ fontSize: 11, color: '#9CA3AF', fontStyle: 'italic' }}>{savedText(item.savedDaysAgo)}</div>}
+              <div className="fav-card-footer">
+                {item.savedDaysAgo && <div style={{ fontSize: 11, color: '#9CA3AF', fontStyle: 'italic' }}>{savedText(item.savedDaysAgo)}</div>}
+                <button className="fav-card-primary fav-card-primary--blue" onClick={e => { e.stopPropagation(); onChat(); }} style={{ padding: '9px 12px', border: 'none', borderRadius: 8, background: '#375DFB', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Написать продавцу</button>
+              </div>
             </>}
       </div>
     </div>
@@ -485,9 +582,13 @@ function KaptorkaCard({ item, onRemove, onShare, onChat, onFindSimilar, idx }: {
 function KaptorkaRow({ item, onRemove, onShare, onChat, idx }: { item: FavKaptorka; onRemove: () => void; onShare: () => void; onChat: () => void; idx: number }) {
   const unavail = item.available === false;
   const navigate = useNavigate();
+  const seller = SELLERS[item.seller];
   return (
-    <div className="fav-list-row fav-card-enter" onClick={() => navigate('/kaptorka')} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 0', borderBottom: '1px solid #E5E7EB', cursor: 'pointer', animationDelay: `${idx * 40}ms` }}>
+    <div className="fav-list-row fav-card-enter" onClick={() => navigate(`/kaptorka/${item.id}`)} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 0', borderBottom: '1px solid #E5E7EB', cursor: 'pointer', animationDelay: `${idx * 40}ms` }}>
       <CardImage src={item.image} height={64} grayscale={unavail} small />
+      <div style={{ width: 34, height: 34, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: '#EBF1FF', display: 'grid', placeItems: 'center', color: '#375DFB', fontWeight: 700 }}>
+        {seller?.avatar ? <img src={seller.avatar} alt={item.seller} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : item.seller.charAt(0).toUpperCase()}
+      </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 14, fontWeight: 600, color: unavail ? '#9CA3AF' : '#375DFB' }}>{item.title}</div>
         <div style={{ fontSize: 12, color: '#6B7280', marginTop: 3, display: 'flex', gap: 6 }}><span>{item.seller}</span><span>•</span><span>{item.city}</span></div>
@@ -532,22 +633,11 @@ function EmptyState({ tab, onNav }: { tab: TabKey; onNav: () => void }) {
   );
 }
 
-function UnavailBanner({ count, onClear }: { count: number; onClear: () => void }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#fff8ed', border: '1px solid #375DFB', borderRadius: 8, marginBottom: 16, gap: 12 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#374151' }}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#EA580C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 9v4" /><path d="M12 17h.01" /><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" /></svg>
-        В вашем избранном есть недоступные товары ({count})
-      </div>
-      <button onClick={onClear} style={{ border: 'none', background: 'transparent', color: '#375DFB', fontSize: 12, fontWeight: 600, cursor: 'pointer', textDecoration: 'underline', whiteSpace: 'nowrap' as const }}>Очистить недоступные</button>
-    </div>
-  );
-}
-
 /* ─── MAIN PAGE ── */
 export function Favorites() {
   const navigate = useNavigate();
   const { items, remove, toggle } = useFavoritesStore();
+  const kaptorkaAds = useKaptorkaStore(s => s.ads);
   const { addCourse, addProduct } = useCartStore();
   const [activeTab, setActiveTab] = useState<TabKey>('articles');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
@@ -613,50 +703,45 @@ export function Favorites() {
 
   const getTabItems = (tab: TabKey) => {
     const kindMap: Record<TabKey, FavItem['kind']> = { articles: 'article', courses: 'course', market: 'market', kaptorka: 'kaptorka' };
-    return items.filter(i => i.kind === kindMap[tab]);
+    const matching = items.filter(i => i.kind === kindMap[tab]);
+    if (tab !== 'kaptorka') return matching;
+
+    return matching.flatMap(item => {
+      if (item.kind !== 'kaptorka') return [];
+      const ad = kaptorkaAds.find(candidate => candidate.id === item.id);
+      if (!ad) return [];
+      return [{
+        ...item,
+        title: ad.title,
+        condition: ad.condition,
+        price: ad.price,
+        seller: ad.seller,
+        city: ad.city,
+        image: ad.image,
+        available: ad.active !== false,
+      } satisfies FavKaptorka];
+    });
   };
 
   const tabItems = getTabItems(activeTab);
-  const unavailItems = tabItems.filter(i => i.available === false);
   const sorted = sortItems(tabItems, sortBy);
   const sortOpts = SORT_OPTIONS[activeTab];
   const currentSortLabel = (sortOpts.find(o => o.value === sortBy) ?? sortOpts[0]).label;
-
-  const clearUnavailable = () => {
-    unavailItems.slice().forEach(i => remove(i.id, i.kind));
-    showToast(`Удалено ${unavailItems.length} недоступных`);
-  };
 
   return (
     <div style={{ paddingTop: 60, marginLeft: 56, minHeight: '100vh', background: '#F8F9FB' }}>
       <div style={{ padding: '24px 28px 48px' }}>
 
-        {/* ── БЕЛЫЙ БЛОК ХЕДЕРА ── */}
-        <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #E5E7EB', padding: '20px 24px', marginBottom: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#9CA3AF', marginBottom: 14 }}>
-            <span onClick={() => navigate('/')} style={{ cursor: 'pointer', color: '#6B7280' }} onMouseEnter={e => e.currentTarget.style.color = '#375DFB'} onMouseLeave={e => e.currentTarget.style.color = '#6B7280'}>Главная</span>
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="1.5"><polyline points="9 18 15 12 9 6" /></svg>
-            <span style={{ color: '#6B7280', cursor: 'pointer' }}>Личный кабинет</span>
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="1.5"><polyline points="9 18 15 12 9 6" /></svg>
-            <span style={{ color: '#374151', fontWeight: 500 }}>Избранное</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' as const, gap: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <IcoHeartLg />
-              <h1 style={{ fontSize: 22, fontWeight: 700, color: '#111', margin: 0 }}>Избранное</h1>
-            </div>
-            <div style={{ display: 'flex', gap: 5, background: '#F3F4F6', borderRadius: 12, padding: 4 }}>
-              {(['articles', 'courses', 'market', 'kaptorka'] as TabKey[]).map(tab => {
-                const cnt = getTabItems(tab).length;
-                return (
-                  <button key={tab} onClick={() => switchTab(tab)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 15px', border: 'none', background: activeTab === tab ? '#fff' : 'transparent', color: activeTab === tab ? '#111' : '#6B7280', fontFamily: 'inherit', fontSize: 13, fontWeight: 500, cursor: 'pointer', borderRadius: 8, boxShadow: activeTab === tab ? '0 1px 4px rgba(0,0,0,.08)' : 'none', transition: 'all .15s', whiteSpace: 'nowrap' as const }}>
-                    {TAB_LABELS[tab]}
-                    {cnt > 0 && <span style={{ background: activeTab === tab ? '#375DFB' : '#D1D5DB', color: '#fff', fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 10, lineHeight: 1.4 }}>{cnt}</span>}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+        <div style={{ display: 'flex', gap: 5, width: 'fit-content', maxWidth: '100%', overflowX: 'auto', background: '#F3F4F6', borderRadius: 12, padding: 4, marginBottom: 16 }}>
+          {(['articles', 'courses', 'market', 'kaptorka'] as TabKey[]).map(tab => {
+            const cnt = getTabItems(tab).length;
+            return (
+              <button className="fav-tab-btn" key={tab} onClick={() => switchTab(tab)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 15px', border: 'none', background: activeTab === tab ? '#fff' : 'transparent', color: activeTab === tab ? '#111' : '#6B7280', fontFamily: 'inherit', fontSize: 13, fontWeight: 500, cursor: 'pointer', borderRadius: 8, boxShadow: activeTab === tab ? '0 1px 4px rgba(0,0,0,.08)' : 'none', transition: 'all .15s', whiteSpace: 'nowrap' as const }}>
+                {TAB_LABELS[tab]}
+                {cnt > 0 && <span style={{ background: activeTab === tab ? '#375DFB' : '#D1D5DB', color: '#fff', fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 10, lineHeight: 1.4 }}>{cnt}</span>}
+              </button>
+            );
+          })}
         </div>
 
         {/* ── CONTROLS ── */}
@@ -669,19 +754,18 @@ export function Favorites() {
           </div>
           <div style={{ display: 'flex', border: '1px solid #E5E7EB', borderRadius: 6, overflow: 'hidden' }}>
             {(['grid', 'list'] as ViewMode[]).map((v, i) => (
-              <button key={v} onClick={() => setViewMode(v)} title={v === 'grid' ? 'Сетка' : 'Список'} style={{ padding: '8px 14px', border: 'none', borderRight: i === 0 ? '1px solid #E5E7EB' : 'none', background: viewMode === v ? '#F3F4F6' : '#fff', color: viewMode === v ? '#111' : '#6B7280', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .15s' }}>
+              <button className="fav-view-btn" key={v} onClick={() => setViewMode(v)} title={v === 'grid' ? 'Сетка' : 'Список'} style={{ padding: '8px 14px', border: 'none', borderRight: i === 0 ? '1px solid #E5E7EB' : 'none', background: viewMode === v ? '#F3F4F6' : '#fff', color: viewMode === v ? '#111' : '#6B7280', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .15s' }}>
                 {v === 'grid' ? <IcoGrid /> : <IcoList />}
               </button>
             ))}
           </div>
         </div>
 
-        {unavailItems.length > 0 && <UnavailBanner count={unavailItems.length} onClear={clearUnavailable} />}
         <div style={{ opacity: fadingTab ? 0 : 1, transition: 'opacity .15s' }}>
           {sorted.length === 0
             ? <div style={{ display: 'grid' }}><EmptyState tab={activeTab} onNav={() => navigate(ROUTE_MAP[activeTab])} /></div>
             : viewMode === 'grid'
-              ? <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, alignItems: 'start' }}>
+              ? <div className="fav-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 16, alignItems: 'stretch' }}>
                   {sorted.map((item, idx) => {
                     if (item.kind === 'article')  return <ArticleCard  key={item.id} item={item} idx={idx} onRemove={() => handleRemove(item)} onShare={handleShare} />;
                     if (item.kind === 'course')   return <CourseCard   key={item.id} item={item} idx={idx} onRemove={() => handleRemove(item)} onShare={handleShare} onCart={() => handleCart(item)} navigate={navigate} />;

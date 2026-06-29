@@ -83,6 +83,7 @@ export function TeachersSection() {
             Преподаватели и командиры
           </h2>
           <button
+            className="voevoda-view-all voevoda-view-all--inverse"
             onClick={() => window.alert("Список преподавателей открыт в демо-режиме")}
             style={{
               background: "#F9FAFB",

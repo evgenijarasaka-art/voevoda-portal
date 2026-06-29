@@ -1,0 +1,165 @@
+.portal-app-main {
+  min-height: 100vh;
+  margin-left: 56px;
+  padding-top: 60px;
+  background: #f8f9fb;
+}
+
+.portal-app-main > .global-route-header {
+  position: relative;
+  z-index: 1200;
+}
+
+.portal-app-main > .global-route-header .portal-page-top__path {
+  display: none;
+}
+
+.portal-app-main > .global-route-header--city .portal-page-top__path {
+  display: flex;
+}
+
+.portal-app-main > .global-route-header--path .portal-page-top__path {
+  display: flex;
+}
+
+.global-social-nav {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(118px, 1fr));
+  align-items: center;
+  gap: 4px;
+  width: min(560px, 100%);
+  min-height: 44px;
+  padding: 4px;
+  border: 1px solid #e4e8f0;
+  border-radius: 12px;
+  background: #f7f8fb;
+}
+
+.global-social-nav a {
+  width: 100%;
+  min-width: 0;
+  min-height: 34px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: #667085;
+  font-size: 12px;
+  font-weight: 750;
+  text-decoration: none;
+  transition: color .18s ease, background-color .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+
+.global-social-nav a:hover {
+  color: #375dfb;
+  background: #fff;
+}
+
+.global-social-nav a.active {
+  color: #fff;
+  background: #375dfb;
+  box-shadow: 0 5px 14px rgba(55,93,251,.22);
+}
+
+.global-route-header--social .portal-page-top__path {
+  display: none;
+}
+
+.portal-route-body {
+  min-width: 0;
+  min-height: 0;
+}
+
+.portal-route-body > * {
+  margin-left: 0 !important;
+  padding-top: 0 !important;
+}
+
+.portal-route-body > .notifications-page {
+  padding-top: 30px !important;
+}
+
+.portal-route-body[data-route="/competitions"] > .cmp-page {
+  padding-top: 32px !important;
+}
+
+/* Dialogs are a full-height workspace: only the global site header remains. */
+.portal-app-main:has(.portal-route-body[data-route="/dialogs"]) {
+  height: 100vh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.portal-app-main:has(.portal-route-body[data-route="/dialogs"]) > .global-route-header {
+  display: none;
+}
+
+.portal-route-body[data-route="/dialogs"] {
+  height: calc(100vh - 60px);
+  overflow: hidden;
+}
+
+.portal-route-body[data-route="/dialogs"] > .msg-root {
+  height: calc(100vh - 60px) !important;
+  min-height: 0 !important;
+  overflow: hidden;
+}
+
+.portal-route-body .portal-page-top,
+.portal-route-body .portal-breadcrumbs {
+  display: none !important;
+}
+
+.portal-route-body .blog-topbar {
+  display: none !important;
+}
+
+/* Структурные заголовки этих страниц уже отрисованы единым GlobalRouteHeader. */
+.portal-route-body[data-route="/notifications"] .portal-title,
+.portal-route-body[data-route="/settings"] .s-fade:first-child,
+.portal-route-body[data-route="/profile"] .profile-page-heading,
+.portal-route-body[data-route="/billing"] h1,
+.portal-route-body[data-route="/wallet"] h1,
+.portal-route-body[data-route="/achievements"] h1,
+.portal-route-body[data-route="/faq"] h1,
+.portal-route-body[data-route="/qa"] h1,
+.portal-route-body[data-route="/referral"] h1,
+.portal-route-body[data-route="/profile/edit"] h1,
+.portal-route-body[data-route="/edit-profile"] h1,
+.portal-route-body[data-route="/competitions"] h1,
+.portal-route-body[data-route="/my-journal"] h1,
+.portal-route-body[data-route="/my-path"] h1,
+.portal-route-body[data-route="/payments"] h1,
+.portal-route-body[data-route="/professional"] > div h1,
+.portal-route-body[data-route="/support"] h1,
+.portal-route-body[data-route="/teachers"] h1 {
+  display: none !important;
+}
+
+.portal-route-body .route-controls-toolbar {
+  position: static !important;
+  top: auto !important;
+  justify-content: flex-end !important;
+  min-height: 58px;
+}
+
+.portal-route-body .route-controls-toolbar > :first-child {
+  display: none !important;
+}
+
+@media (max-width: 760px) {
+  .portal-app-main {
+    margin-left: 56px;
+  }
+
+  .global-social-nav {
+    width: 100%;
+    grid-template-columns: repeat(4, minmax(108px, 1fr));
+    overflow-x: auto;
+  }
+
+  .global-social-nav a {
+    flex: 0 0 auto;
+  }
+}

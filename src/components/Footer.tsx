@@ -1,52 +1,193 @@
 import { useNavigate } from 'react-router-dom';
 import { useMediaQuery } from '../useMediaQuery';
 
+const PhoneIcon = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" fill="currentColor"/>
+  </svg>
+);
+
+const EmailIcon = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4-8 5-8-5V6l8 5 8-5v2z" fill="currentColor"/>
+  </svg>
+);
+
+const VKIcon = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M19.915 13.028c-.388-.49-.277-.708 0-1.146.005-.005 3.84-5.354 4.235-7.168l.002-.001c.194-.65 0-1.127-.945-1.127h-3.123c-.796 0-1.162.418-1.356.879 0 0-1.588 3.826-3.834 6.309-.727.718-1.058.947-1.455.947-.198 0-.487-.229-.487-.879V4.714c0-.789-.231-1.128-.893-1.128H8.506c-.5 0-.798.366-.798.714 0 .747 1.13.92 1.246 3.021v4.566c0 1.002-.183 1.184-.58 1.184-.727 0-2.497-3.837-3.547-8.229C4.604 3.367 4.3 3 3.498 3H.376C-.52 3 -.7 3.418-.7 3.879c0 .826 1.33 4.918 4.765 10.33C6.315 17.38 9.017 19 11.47 19c1.452 0 1.632-.324 1.632-1.081v-2.771c0-.882.19-1.058.81-1.058.46 0 1.25.228 3.091 1.985C19.005 18.07 19.357 19 20.418 19h3.122c.896 0 1.35-.324 1.09-1.234-.285-.906-1.568-2.22-2.715-3.738z" fill="currentColor"/>
+  </svg>
+);
+
+
 const COURSES_LINKS = [
-  { label: 'Огневая подготовка',       path: '/courses' },
-  { label: 'Общевойсковой снайпер',    path: '/courses' },
+  { label: 'Огневая подготовка', path: '/courses' },
+  { label: 'Общевойсковой снайпер', path: '/courses' },
   { label: 'Артиллерийская подготовка', path: '/courses' },
-  { label: 'Общевойсковой медицины',   path: '/courses' },
-  { label: 'Тыловое обеспечение',      path: '/courses' },
+  { label: 'Общевойсковой медицины', path: '/courses' },
+  { label: 'Тыловое обеспечение', path: '/courses' },
 ];
 
 const MARKET_LINKS = [
-  { label: 'Экипировка',   path: '/shop' },
-  { label: 'Техника',      path: '/shop' },
-  { label: 'Бронезащита',  path: '/shop' },
-  { label: 'Медицина',     path: '/shop' },
+  { label: 'Экипировка', path: '/shop' },
+  { label: 'Техника', path: '/shop' },
+  { label: 'Бронезащита', path: '/shop' },
+  { label: 'Медицина', path: '/shop' },
 ];
 
 const SECTION_LINKS = [
-  { label: 'Микроблоги',  path: '/microblog' },
-  { label: 'Барахолка',   path: '/kaptorka' },
-  { label: 'О компании',  path: '/company' },
-  { label: 'Документы',   path: '/documents' },
+  { label: 'Микроблоги', path: '/microblog' },
+  { label: 'Барахолка', path: '/kaptorka' },
+  { label: 'О компании', path: '/company' },
+  { label: 'Документы', path: '/documents' },
 ];
 
 const COLS = [
-  { title: 'Курсы',        items: COURSES_LINKS },
+  { title: 'Курсы', items: COURSES_LINKS },
   { title: 'Маркетплейс', items: MARKET_LINKS },
-  { title: 'Разделы',     items: SECTION_LINKS },
+  { title: 'Разделы', items: SECTION_LINKS },
+];
+
+const SOCIALS = [
+  { title: 'Телефон', icon: <PhoneIcon />, img: null, action: () => { window.location.href = 'tel:+74951234567'; } },
+  { title: 'Email', icon: <EmailIcon />, img: null, action: () => { window.location.href = 'mailto:info@voevoda.ru'; } },
+  { title: 'ВК', icon: <VKIcon />, img: null, action: () => window.open('https://vk.com/voevoda', '_blank', 'noopener,noreferrer') },
+  { title: 'Макс', icon: null, img: '/макс.png', action: () => window.open('https://max.ru/voevoda', '_blank', 'noopener,noreferrer') },
 ];
 
 const CSS = `
-.ft-link { transition: color .15s; cursor: pointer; }
-.ft-link:hover { color: #374151 !important; }
-.ft-social { transition: background .15s, border-color .15s, color .15s, transform .15s; }
-.ft-social:hover { background: #F3F4F6 !important; border-color: #D1D5DB !important; color: #111827 !important; transform: translateY(-1px); }
+.voevoda-footer, .voevoda-footer * { box-sizing: border-box; }
+
+.voevoda-footer-link {
+  cursor: pointer;
+  position: relative;
+  overflow: visible;
+  transition: color .25s ease, transform .3s cubic-bezier(.34,1.56,.64,1);
+}
+
+/* Вертикальная планка слева, вырастает по высоте */
+.voevoda-footer-link::before {
+  content: '';
+  position: absolute;
+  left: -10px;
+  top: 10%;
+  bottom: 10%;
+  width: 3px;
+  background: linear-gradient(180deg, #375DFB 0%, #7B9FFF 100%);
+  border-radius: 2px;
+  transform: scaleY(0);
+  transform-origin: center;
+  transition: transform .28s cubic-bezier(.34,1.56,.64,1);
+}
+
+.voevoda-footer-link:hover {
+  color: #375DFB !important;
+  transform: translateX(7px);
+}
+
+.voevoda-footer-link:hover::before {
+  transform: scaleY(1);
+}
+
+.voevoda-footer-link:active {
+  transform: translateX(4px);
+  transition-duration: .08s;
+}
+
+.voevoda-footer-link:focus-visible {
+  outline: 3px solid rgba(55,93,251,.22);
+  outline-offset: 2px;
+}
+
+/* Социальные кнопки — отскок + лёгкий наклон */
+.voevoda-footer-social {
+  transition: transform .38s cubic-bezier(.34,1.56,.64,1), box-shadow .3s ease, background .3s ease, border-color .3s ease, color .3s ease;
+}
+
+.voevoda-footer-social:hover {
+  transform: scale(1.22);
+  background: linear-gradient(135deg, #E8EDFF, #EEF2FF) !important;
+  box-shadow: 0 8px 24px rgba(55,93,251,.22), 0 0 0 2px rgba(55,93,251,.15) !important;
+  border-color: transparent !important;
+  color: #375DFB !important;
+}
+
+.voevoda-footer-social:active {
+  transform: scale(1.08);
+  transition-duration: .1s;
+}
+
+.voevoda-footer-social img {
+  display: block;
+  transition: filter .3s ease;
+}
+
+.voevoda-footer-social:hover img {
+  filter: brightness(0) saturate(100%) invert(31%) sepia(90%) saturate(600%) hue-rotate(210deg) brightness(100%) contrast(98%);
+}
 `;
 
 function injectCss() {
   if (typeof document === 'undefined') return;
-  if (document.getElementById('footer-css2')) return;
-  const s = document.createElement('style'); s.id = 'footer-css2'; s.textContent = CSS;
-  document.head.appendChild(s);
+
+  let style = document.getElementById('voevoda-footer-same-width-css') as HTMLStyleElement | null;
+
+  if (!style) {
+    style = document.createElement('style');
+    style.id = 'voevoda-footer-same-width-css';
+    document.head.appendChild(style);
+  }
+
+  style.textContent = CSS;
 }
 
-export function Footer() {
+export function VoevodaSocialLinks({ size = 56, gap = 17 }: { size?: number; gap?: number }) {
+  injectCss();
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap }}>
+      {SOCIALS.map(btn => (
+        <button
+          key={btn.title}
+          type="button"
+          className="voevoda-footer-social"
+          title={btn.title}
+          aria-label={btn.title}
+          onClick={btn.action}
+          style={{
+            width: size,
+            height: size,
+            borderRadius: Math.max(9, Math.round(size * .22)),
+            border: '1px solid #E5E7EB',
+            background: '#F3F4F6',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 0,
+            color: '#374151',
+            flexShrink: 0,
+          }}
+        >
+          {btn.img
+            ? <img src={btn.img} alt="" style={{ width: Math.round(size * .5), height: Math.round(size * .5), objectFit: 'contain', display: 'block' }} />
+            : btn.icon}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function Footer({
+  noOuterPadding = false,
+}: {
+  noOuterPadding?: boolean;
+}) {
   const navigate = useNavigate();
   const isMobile = useMediaQuery('(max-width: 768px)');
   injectCss();
+
+  const outerPadding = noOuterPadding ? 0 : isMobile ? '16px 16px 20px' : '24px 24px 28px';
 
   const go = (path: string) => {
     navigate(path);
@@ -54,80 +195,184 @@ export function Footer() {
   };
 
   return (
-    <footer style={{ padding: isMobile ? '16px 16px 20px' : '24px 24px 28px' }}>
-      <div style={{
-        background: '#fff',
-        borderRadius: 20,
-        border: '1px solid #E5E7EB',
-        overflow: 'hidden',
-      }}>
-        {/* Main area */}
-        <div style={{
-          padding: isMobile ? '28px 22px' : '36px 36px 32px',
-          display: 'grid',
-          gridTemplateColumns: isMobile ? '1fr' : '240px 1fr',
-          gap: isMobile ? 28 : 48,
-        }}>
-          {/* Left: logo + desc + socials */}
-          <div>
-            <div style={{ width: 72, height: 72, borderRadius: '50%', overflow: 'hidden', border: '1px solid #E5E7EB', background: '#F9FAFB', marginBottom: 14 }}>
-              <img src="/footer-logo.png" alt="УТЦ Воевода"
-                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+    <footer
+      className="voevoda-footer"
+      style={{
+        width: '100%',
+        display: 'flex',
+        justifyContent: 'center',
+        padding: outerPadding,
+        background: '#F7F8FA',
+      }}
+    >
+      <div
+        style={{
+          width: '100%',
+          maxWidth: 'none',
+          height: 'auto',
+          minHeight: isMobile ? 'auto' : 391,
+          background: '#FFFFFF',
+          borderRadius: isMobile ? 20 : 24,
+          boxShadow: '0 4px 16px rgba(15, 23, 42, 0.08)',
+          overflow: 'hidden',
+        }}
+      >
+        <div
+          style={{
+            width: '100%',
+            maxWidth: 'none',
+            height: isMobile ? 'auto' : '100%',
+            margin: '0 auto',
+            padding: isMobile ? '28px 24px 24px' : '45px 36px 24px',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: isMobile ? 'flex-start' : 'space-between',
+            gap: isMobile ? 32 : 0,
+          }}
+        >
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: isMobile ? '1fr' : 'minmax(405px, 0.92fr) minmax(0, 1.55fr)',
+              columnGap: isMobile ? 0 : 56,
+              rowGap: 34,
+            }}
+          >
+            <div>
+              <div
+                style={{
+                  display: isMobile ? 'block' : 'flex',
+                  alignItems: 'flex-start',
+                  gap: 30,
+                }}
+              >
+                <div
+                  style={{
+                    width: isMobile ? 96 : 110,
+                    height: isMobile ? 96 : 110,
+                    flex: '0 0 auto',
+                  }}
+                >
+                  <img
+                    src="/footer-logo.png"
+                    alt="УТЦ Воевода"
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'contain',
+                      display: 'block',
+                    }}
+                    onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  />
+                </div>
+
+                <p
+                  style={{
+                    maxWidth: 270,
+                    margin: isMobile ? '16px 0 0' : '8px 0 0',
+                    color: '#4B5563',
+                    fontSize: 16,
+                    lineHeight: '24px',
+                    fontWeight: 400,
+                  }}
+                >
+                  Сообщество патриотов России на базе всероссийской сети центров военной и служебно-прикладной подготовки
+                </p>
+              </div>
+
+              <div style={{ marginTop: isMobile ? 28 : 39 }}>
+                <VoevodaSocialLinks size={isMobile ? 52 : 56} gap={isMobile ? 14 : 17} />
+              </div>
             </div>
-            <p style={{ fontSize: 13, color: '#6B7280', lineHeight: 1.6, margin: '0 0 20px', maxWidth: 220 }}>
-              Сообщество патриотов России на базе всероссийской сети центров военной и служебно-прикладной подготовки
-            </p>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {[
-                { title: 'Телефон',  icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.91.32 1.79.6 2.63a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.45-1.17a2 2 0 0 1 2.11-.45c.84.28 1.72.48 2.63.6A2 2 0 0 1 22 16.92Z"/></svg>, action: () => { window.location.href = 'tel:+74951234567'; } },
-                { title: 'Email',    icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/><path d="m22 6-10 7L2 6"/></svg>, action: () => { window.location.href = 'mailto:info@voevoda.ru'; } },
-                { title: 'ВК',       icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8c.5 5 2.8 8 7.7 8h.3v-3c1.8.2 3.1 1.4 3.6 3H21c-.7-2.1-2.4-3.3-3.4-3.8 1-.7 2.4-2 2.8-4.2h-3.1c-.5 1.7-1.8 3.1-3.3 3.2V8h-3v5.6C9.4 13.2 8.1 11.4 8 8H6Z"/></svg>, action: () => window.open('https://vk.com/voevoda', '_blank', 'noopener,noreferrer') },
-                { title: 'Telegram', icon: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21.5 2.5L2.5 9.5l7 2.5m12-9.5-5 17-5-7m10-10-12 9.5"/></svg>, action: () => window.open('https://t.me/voevoda', '_blank', 'noopener,noreferrer') },
-              ].map(btn => (
-                <button key={btn.title} className="ft-social" title={btn.title} onClick={btn.action}
-                  style={{ width: 40, height: 40, borderRadius: 10, border: '1px solid #E5E7EB', background: '#fff', color: '#6B7280', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
-                  {btn.icon}
-                </button>
+
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: isMobile ? '1fr' : 'minmax(260px, max-content) minmax(170px, max-content) minmax(160px, max-content)',
+                justifyContent: isMobile ? 'start' : 'space-between',
+                columnGap: isMobile ? 0 : 48,
+                rowGap: 28,
+              }}
+            >
+              {COLS.map(col => (
+                <div key={col.title}>
+                  <div
+                    style={{
+                      fontSize: 20,
+                      lineHeight: '24px',
+                      fontWeight: 700,
+                      color: '#111827',
+                      marginBottom: 18,
+                    }}
+                  >
+                    {col.title}
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 19 }}>
+                    {col.items.map(item => (
+                      <button
+                        key={item.label}
+                        className="voevoda-footer-link"
+                        onClick={() => go(item.path)}
+                        style={{
+                          width: 'fit-content',
+                          background: 'none',
+                          border: 'none',
+                          color: '#4B5563',
+                          fontSize: 16,
+                          lineHeight: '20px',
+                          fontWeight: 400,
+                          textAlign: 'left',
+                          padding: 0,
+                        }}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
           </div>
 
-          {/* Right: 3 columns */}
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: isMobile ? 22 : 28 }}>
-            {COLS.map(col => (
-              <div key={col.title}>
-                <div style={{ fontSize: 15, fontWeight: 700, color: '#111827', marginBottom: 14 }}>{col.title}</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {col.items.map(item => (
-                    <button key={item.label} className="ft-link"
-                      onClick={() => go(item.path)}
-                      style={{ background: 'none', border: 'none', color: '#9CA3AF', fontSize: 14, textAlign: 'left', padding: 0 }}>
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: isMobile ? '1fr' : '1fr auto',
+              alignItems: 'center',
+              columnGap: isMobile ? 0 : 56,
+              rowGap: 10,
+              color: '#4B5563',
+              fontSize: 14,
+              lineHeight: '20px',
+              fontWeight: 400,
+            }}
+          >
+            <span>© 2015- 2024 УТЦ «ВОЕВОДА»</span>
+            <div style={{ display: 'flex', gap: isMobile ? 6 : 12, alignItems: 'center', flexWrap: 'wrap', justifyContent: isMobile ? 'flex-start' : 'flex-end' }}>
+              {[
+                ['Политика конфиденциальности', '/privacy'],
+                ['Пользовательское соглашение', '/terms'],
+                ['Политика cookie', '/cookies'],
+              ].map(([label, path]) => (
+                <button
+                  key={path}
+                  className="voevoda-footer-link"
+                  onClick={() => go(path)}
+                  style={{ width: 'fit-content', background: 'none', border: 'none', color: '#4B5563', fontSize: 14, lineHeight: '20px', fontWeight: 400, textAlign: 'left', padding: '6px 10px' }}
+                >
+                  {label}
+                </button>
+              ))}
+              <button
+                className="voevoda-footer-link"
+                onClick={() => window.dispatchEvent(new Event('voevoda:cookie-settings'))}
+                style={{ width: 'fit-content', background: 'none', border: 'none', color: '#4B5563', fontSize: 14, lineHeight: '20px', fontWeight: 400, textAlign: 'left', padding: '6px 10px' }}
+              >
+                Настроить cookie
+              </button>
+            </div>
           </div>
-        </div>
-
-        {/* Bottom bar */}
-        <div style={{
-          borderTop: '1px solid #E5E7EB',
-          padding: isMobile ? '14px 22px' : '14px 36px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 14,
-          flexWrap: 'wrap',
-        }}>
-          <span style={{ fontSize: 13, color: '#9CA3AF' }}>© 2015–2024 УТЦ «ВОЕВОДА»</span>
-          <span style={{ fontSize: 13, color: '#9CA3AF' }}>Все права защищены</span>
-          <button className="ft-link" onClick={() => go('/privacy')}
-            style={{ background: 'none', border: 'none', fontSize: 13, color: '#9CA3AF', padding: 0 }}>
-            Политика конфиденциальности
-          </button>
         </div>
       </div>
     </footer>

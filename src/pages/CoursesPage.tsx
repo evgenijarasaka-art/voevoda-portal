@@ -3,7 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { useMediaQuery } from '../useMediaQuery';
 import { useFavoritesStore } from '../store/useFavoritesStore';
 import { useCartStore } from '../store/useCartStore';
-import { PeopleSection } from '../components/PeopleSection';
+import { useNotifStore } from '../store/useNotifStore';
+import { PeopleSection, IVDisplay } from '../components/PeopleSection';
+import { COURSE_CARD_MOTION_CSS } from '../components/courseCardMotion';
+import { TEST_USERS, userProfilePath } from '../api/testApi';
+import { PortalBreadcrumb } from '../components/PortalBreadcrumb';
+import { MILITARY_COURSES, toDedicated } from '../data/courses';
 
 const ANIMATIONS_CSS = `
   @keyframes fadeSlideUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
@@ -16,37 +21,35 @@ const ANIMATIONS_CSS = `
   @keyframes vElita      { 0%,100%{box-shadow:0 2px 8px rgba(245,136,58,.28)} 50%{box-shadow:0 4px 18px rgba(245,136,58,.55)} }
   @keyframes vBadgeIn    { from{opacity:0;transform:scale(.8)} to{opacity:1;transform:scale(1)} }
   @keyframes vBioIn      { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
-  @keyframes cartBounce  { 0%{transform:scale(1)} 30%{transform:scale(.72)} 65%{transform:scale(1.18)} 85%{transform:scale(.95)} 100%{transform:scale(1)} }
+  @keyframes cartBounce  { 0%{transform:scale(1)} 20%{transform:scale(.65)} 55%{transform:scale(1.22)} 75%{transform:scale(.9)} 90%{transform:scale(1.06)} 100%{transform:scale(1)} }
   @keyframes checkPop    { from{opacity:0;transform:scale(.4) rotate(-25deg)} to{opacity:1;transform:scale(1) rotate(0deg)} }
+  @keyframes lockWiggle  { 0%{transform:rotate(0) scale(1)} 10%{transform:rotate(-20deg) scale(1.35)} 26%{transform:rotate(20deg) scale(1.4)} 42%{transform:rotate(-13deg) scale(1.28)} 58%{transform:rotate(13deg) scale(1.25)} 74%{transform:rotate(-6deg) scale(1.1)} 88%{transform:rotate(6deg) scale(1.05)} 100%{transform:rotate(0) scale(1)} }
+  @keyframes lockGlow    { 0%{box-shadow:0 0 0 0 rgba(255,255,255,.55)} 55%{box-shadow:0 0 0 14px rgba(255,255,255,0)} 100%{box-shadow:0 0 0 0 rgba(255,255,255,0)} }
+  @keyframes veilFade    { from{opacity:0} to{opacity:1} }
   .anim-section { opacity:0; transform:translateY(22px); transition:opacity .5s cubic-bezier(.4,0,.2,1), transform .5s cubic-bezier(.4,0,.2,1); }
   .anim-section.visible  { opacity:1; transform:translateY(0); }
-  .course-card-shell {
-    transform:translateZ(0);
-    transform-origin:center bottom;
-    transition:transform .5s cubic-bezier(.22,1,.36,1), filter .4s ease;
-    will-change:transform;
-    position:relative;
-    z-index:1;
-  }
-  .course-card-shell:hover { transform:translateY(-10px) scale(1.022); z-index:30; }
-  .course-card, .course-card-surface {
-    transition:border-color .3s ease, box-shadow .5s cubic-bezier(.22,1,.36,1), background .3s ease !important;
-    will-change:box-shadow;
-  }
-  .course-card-shell:hover .course-card,
-  .course-card-shell:hover .course-card-surface {
-    border-color:#A5B4FC !important;
-    box-shadow:0 28px 60px rgba(17,24,39,.16), 0 12px 30px rgba(55,93,251,.2), 0 0 0 1px rgba(165,180,252,.3) !important;
+  .course-card-shell { position:relative; z-index:1; }
+  .course-card-surface {
+    transition:border-color .3s ease, box-shadow .5s cubic-bezier(.22,1,.36,1) !important;
   }
   .c-img { overflow:hidden; }
   .c-img img { transition:transform .65s cubic-bezier(.4,0,.2,1); transform-origin:center; }
   .course-card-shell:hover .c-img img { transform:scale(1.08); }
-  .c-enroll-btn { transition:transform .18s ease, box-shadow .18s ease, background .15s ease !important; }
+  .c-card-overlay { position:absolute;inset:0;pointer-events:none;background:linear-gradient(to top,rgba(17,24,39,.55) 0%,transparent 55%);opacity:0;transition:opacity .5s ease; }
+  .course-card-shell:hover .c-card-overlay { opacity:1; }
+  .c-series-wrap { overflow:hidden; max-width:0; transition:max-width .52s cubic-bezier(.4,0,.2,1); border-radius:0 8px 8px 0; }
+  .course-card-shell:hover .c-series-wrap { max-width:180px; }
+  .c-series-text { white-space:nowrap; display:flex; align-items:center; opacity:0; transform:translateX(-10px); transition:opacity .38s .12s ease, transform .52s .08s cubic-bezier(.22,1,.36,1); }
+  .course-card-shell:hover .c-series-text { opacity:1; transform:translateX(0); }
+  .course-card-shell:hover .c-lock-icon { animation:lockWiggle .7s .3s cubic-bezier(.36,.07,.19,.97) both, lockGlow .7s .3s ease both; }
+  .c-enroll-btn { transition:transform .18s ease, box-shadow .18s ease !important; }
   .c-enroll-btn:hover { transform:translateY(-2px) !important; box-shadow:0 8px 20px rgba(55,93,251,.35) !important; }
   .p-card { transition:box-shadow .4s ease, transform .45s cubic-bezier(.22,1,.36,1), border-color .25s ease; }
   .p-card-photo { transition:transform .7s cubic-bezier(.4,0,.2,1); }
-  .offer-card { transition:box-shadow .25s ease,transform .25s ease; }
-  .offer-card:hover { box-shadow:0 12px 36px rgba(0,0,0,.12); transform:translateY(-3px); }
+  .offer-card { transition:box-shadow .25s ease; }
+  .offer-card img { transition:transform .6s cubic-bezier(.22,1,.36,1); }
+  .offer-card:hover { box-shadow:0 12px 36px rgba(0,0,0,.12); }
+  .offer-card:hover img { transform:scale(1.045); }
   .city-img { transition:transform .4s cubic-bezier(.4,0,.2,1); }
   .city-card:hover .city-img { transform:scale(1.06); }
   .city-card { transition:opacity .2s; } .city-card:hover { opacity:.92; }
@@ -55,8 +58,24 @@ const ANIMATIONS_CSS = `
   .comp-row { transition:background .15s; } .comp-row:hover { background:#FAFBFF; }
   .fighter-row { transition:background .15s; } .fighter-row:hover { background:#F9FAFB; }
   .review-card { transition:box-shadow .2s ease; } .review-card:hover { box-shadow:0 4px 20px rgba(0,0,0,.06); }
+  .series-course-rail{scrollbar-width:none;scroll-snap-type:x mandatory;overscroll-behavior-inline:contain}
+  .series-course-rail::-webkit-scrollbar{display:none}
+  .series-course-rail>*{scroll-snap-align:start}
+  .c-mil-shell--series:hover .c-expand-wrap{box-shadow:0 22px 42px rgba(17,24,39,.18)}
+  .series-nav{transition:transform .18s ease,box-shadow .18s ease,background .18s ease}
+  .series-nav:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 8px 20px rgba(55,93,251,.22);background:#375DFB!important;color:#fff!important}
+  .review-card{position:relative;overflow:hidden;transition:transform .24s cubic-bezier(.2,.8,.2,1),box-shadow .24s ease,border-color .24s ease!important}
+  .review-card:hover{box-shadow:0 16px 38px rgba(25,48,105,.11)!important;border-color:#C9D7FF!important}
   .letter-thumb { transition:transform .25s cubic-bezier(.4,0,.2,1),box-shadow .25s ease; cursor:pointer; }
   .letter-thumb:hover { transform:scale(1.03); box-shadow:0 10px 32px rgba(0,0,0,.16); }
+  .courses-page-static .anim-section:hover,
+  .courses-page-static .offer-card:hover,
+  .courses-page-static .city-card:hover,
+  .courses-page-static .review-card:hover,
+  .courses-page-static .letter-thumb:hover,
+  .courses-page-static .p-card:hover,
+  .courses-page-static .comp-row:hover,
+  .courses-page-static .fighter-row:hover { transform:none!important; }
   .tab-btn { transition:background .15s,border-color .15s,color .15s; }
   .apply-btn { transition:background .15s,border-color .15s,transform .12s; }
   .apply-btn:hover { background:#375DFB!important; color:#fff!important; border-color:#375DFB!important; transform:translateY(-1px); }
@@ -69,6 +88,10 @@ const ANIMATIONS_CSS = `
   .p-btn-primary:hover { transform:translateY(-2px) !important; box-shadow:0 8px 26px rgba(55,93,251,.46) !important; }
   .p-btn-secondary { transition:all .22s ease; }
   .p-btn-secondary:hover { border-color:#C7D2FE !important; color:#375DFB !important; background:#EEF3FF !important; }
+  @media (prefers-reduced-motion:reduce) {
+    .course-card-shell, .c-img img, .c-series-wrap, .c-series-text, .c-card-overlay { transition:none !important; }
+  }
+  ${COURSE_CARD_MOTION_CSS}
 `;
 
 function injectCss(css: string) {
@@ -107,14 +130,8 @@ const FILTER_VENUES = ['Оффлайн','Онлайн','Комбинирован
 const FILTER_COSTS  = ['Платные','Бесплатные'];
 const FILTER_TYPES  = ['Серия курсов','Курс','Тренинг','Интенсив','Марафон'];
 
-const COURSES: CourseData[] = [
-  { id:1, title:'Курс молодого бойца V5', city:'Москва', duration:'4 месяца', price:35000, oldPrice:null, img:'/kyrs1.png', desc:'Курс молодого бойца (КМБ) является первым и обязательным этапом обучения в Системе комплексной военной подготовки.', seriesNum:1, seriesId:1, locked:false },
-  { id:2, title:'Общевойсковой Снайпер', city:'Москва', duration:'3 месяца', price:29000, oldPrice:null, img:'/kyrs2.png', desc:'Профессиональная подготовка снайперов для современных боевых условий и задач на поле боя.', locked:false },
-  { id:3, title:'Разведывательно-штурмовая подготовка', city:'Москва', duration:'3 месяца', price:29000, oldPrice:40000, img:'/kyrs3.png', desc:'Углублённый курс подготовки бойцов по программе системы комплексной военной подготовки.', seriesNum:3, seriesId:1, seriesName:'Система комплексной военной подготовки', locked:true, prerequisite:'Курс молодого бойца V5' },
-  { id:4, title:'Курс молодого бойца V5', city:'Москва', duration:'4 месяца', price:35000, oldPrice:null, img:'/voen2.png', desc:'Базовый курс военной подготовки для всех желающих освоить военное дело.', seriesNum:1, seriesId:2, locked:false },
-  { id:5, title:'Разведывательно-штурмовая подготовка', city:'Москва', duration:'4 месяца', price:35000, oldPrice:40000, img:'/voen3.png', desc:'Углублённая подготовка бойцов по программе 2-го уровня системы.', seriesNum:2, seriesId:2, seriesName:'Система комплексной военной подготовки', locked:true, prerequisite:'Общевойсковой снайпер' },
-  { id:6, title:'Разведывательно-штурмовая подготовка', city:'Москва', duration:'3 месяца', price:29000, oldPrice:null, img:'/voen1.png', desc:'Финальный уровень подготовки бойцов разведывательных и штурмовых подразделений.', seriesNum:3, seriesId:2, locked:true, prerequisite:'Курс молодого бойца V5' },
-];
+// Курсы берём из единого источника — список совпадает с главной страницей
+const COURSES: CourseData[] = MILITARY_COURSES.map(toDedicated);
 
 const OFFERS = [
   { id:1, bg:'#EDE9FF', img:'/specpred1.png', title:'Подарки за полную оплату', desc:'Произведи полную оплату за курс «Общевойскового Снайпера» и получи в подарок курс «Тактическая Медицина»' },
@@ -159,6 +176,12 @@ const COMPETITIONS = [
   { id:3, title:'Линия обороны', date:'16 мая, 2024', bg:'#7C3AED' }, { id:4, title:'Стрельба из АК-74', date:'16 мая, 2024', bg:'#F97316' },
   { id:5, title:'Военный триатлон', date:'16 мая, 2024', bg:'#06B6D4' },
 ];
+const PAST_COMPETITIONS = [
+  { id:2, title:'Зимний марш-бросок 10 км', date:'18 февраля, 2024', bg:'#64748B' },
+  { id:4, title:'Кубок по стрельбе из АК', date:'4 февраля, 2024', bg:'#0EA5E9' },
+  { id:3, title:'Турнир по тактике малых групп', date:'21 января, 2024', bg:'#7C3AED' },
+  { id:1, title:'Осенний забег патриотов', date:'12 ноября, 2023', bg:'#10B981' },
+];
 const COMP_ICONS: Record<number, React.ReactNode> = {
   1:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/></svg>,
   2:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg>,
@@ -166,14 +189,20 @@ const COMP_ICONS: Record<number, React.ReactNode> = {
   4:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
   5:<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round"><path d="M2 12c2-4 4-6 6-6s4 4 6 4 4-6 6-6"/><path d="M2 18c2-4 4-6 6-6s4 4 6 4 4-6 6-6"/></svg>,
 };
-const FIGHTERS = [
-  { id:1, name:'Бек', rank:'Майор', city:'Москва', img:'/teacher1-main.jpg' }, { id:2, name:'Тор', rank:'Майор', city:'Москва', img:'/teacher2-main.jpg' },
-  { id:3, name:'Коба', rank:'Майор', city:'Луганск', img:'/teacher3-main.jpg' }, { id:4, name:'Виталий', rank:'Майор', city:'Ростов-на-Дону', img:'/teacher2-main.jpg' },
-  { id:5, name:'Стрелок', rank:'Майор', city:'Ростов-на-Дону', img:'/teacher1-main.jpg' }, { id:6, name:'Короб', rank:'Майор', city:'Москва', img:'/teacher3-main.jpg' },
-];
+const FIGHTERS = TEST_USERS.map(user => ({
+  id: user.id,
+  name: user.callsign,
+  rank: user.rank,
+  city: user.city,
+  img: user.avatar,
+  index: user.index,
+  rating: user.rating,
+}));
 const REVIEWS = [
-  { id:1, name:'Коба', rank:'Капитан', rating:5, img:'/teacher2-main.jpg', title:'Я получил все необходимые знания и навыки!', text:'Курс "Общевойсковой Снайпер" — это отличная возможность получить все необходимые знания и навыки для выполнения задач на поле боя. Я рекомендую его всем, кто хочет стать высококвалифицированным снайпером. Нам известно много случаев подписания курсантами контракта с ВС РФ после КМБ и их командировку в зону боевых действий.' },
-  { id:2, name:'Бек', rank:'Майор', rating:5, img:'/teacher1-main.jpg', title:'Я получил все необходимые знания и навыки!', text:'Курс "Общевойсковой Снайпер" — это отличная возможность получить все необходимые знания и навыки для выполнения задач на поле боя. Я рекомендую его всем, кто хочет стать высококвалифицированным снайпером.' },
+  { id:1, name:'Коба', rank:'Капитан', rating:5, img:'/teacher2-main.jpg', title:'Полевые занятия — сильнейшая часть курса', text:'Инструкторы не дают спрятаться за теорией: каждый приём закрепляется на практике. После курса спокойнее оцениваю обстановку и увереннее работаю в группе.', date:'18 июня 2026' },
+  { id:2, name:'Бек', rank:'Майор', rating:5, img:'/teacher1-main.jpg', title:'Системная подготовка без лишней воды', text:'Материал собран последовательно — от базы до сложных сценариев. Особенно ценны разборы после упражнений и честная обратная связь от преподавателей.', date:'11 июня 2026' },
+  { id:3, name:'Стрелок', rank:'Старший лейтенант', rating:4.9, img:'/sold1.png', title:'Стало понятно, над чем работать дальше', text:'Получил не только новые навыки, но и понятный план самостоятельной подготовки. Хорошая нагрузка, сильная команда и отличная организация занятий.', date:'2 июня 2026' },
+  { id:4, name:'Нексус', rank:'Лейтенант', rating:5, img:'/teacher2-main.jpg', title:'Курс, который собирает команду', text:'Здесь быстро учишься слышать напарника и отвечать за общий результат. На занятия хочется возвращаться — редкое сочетание дисциплины и живой атмосферы.', date:'27 мая 2026' },
 ];
 const LETTERS = ['/blag1.png','/blag2.png','/blag1.png','/blag2.png','/blag1.png','/blag2.png'];
 
@@ -258,7 +287,7 @@ function PeriodSelector({ periodMode, calViewDate, selectedDay, onChangePeriod, 
   const label = periodMode === 'current' ? MONTH_NAMES[calViewDate.getMonth()] : periodMode === '3months' ? '3 месяца' : periodMode === '6months' ? '6 месяцев' : periodMode === 'year' ? `${calViewDate.getFullYear()} год` : periodMode === 'all' ? 'Всё время' : selectedDay ? `${MONTH_NAMES[calViewDate.getMonth()].slice(0,3)} ${selectedDay}` : 'Дата';
   return (
     <div ref={ref} style={{ position:'relative' }}>
-      <div style={{ display:'flex', alignItems:'center', border:'1px solid #E5E7EB', borderRadius:10, background:'#fff', overflow:'hidden' }}>
+      <div style={{ display:'flex', alignItems:'center', border:'1px solid #E5E7EB', borderRadius:8, background:'#fff', overflow:'hidden' }}>
         <button onClick={() => navMonth(-1)} style={{ padding:'8px 10px', border:'none', background:'none', cursor:'pointer', color:'#6B7280', display:'flex', alignItems:'center' }} onMouseEnter={e=>e.currentTarget.style.color='#375DFB'} onMouseLeave={e=>e.currentTarget.style.color='#6B7280'}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg></button>
         <button onClick={() => { if(showCal) setShowCal(false); else setOpen(!open); }} style={{ display:'flex', alignItems:'center', gap:5, padding:'0 4px', border:'none', background:'none', cursor:'pointer', minWidth:80, justifyContent:'center' }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="1.5" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
@@ -325,30 +354,71 @@ function FiltersModal({ filters, onApply, onClose }: { filters: FilterState; onA
 }
 
 // ─── CourseCard ───────────────────────────────────────────────────────────────
-function CourseCard({ c, delay }: { c: CourseData; delay: number }) {
+function CourseCard({ c, delay, expandInFlow = false }: { c: CourseData; delay: number; expandInFlow?: boolean }) {
   const navigate = useNavigate();
-  const [hov, setHov] = useState(false);
   const [imgErr, setImgErr] = useState(false);
   const { toggle, has } = useFavoritesStore();
   const { addCourse, has: inCart } = useCartStore();
+  const addNotification = useNotifStore(s => s.add);
   const [justAdded, setJustAdded] = useState(false);
   const alreadyInCart = inCart(c.id, 'course');
   const faved = has(c.id + 2000, 'course');
   const sc = c.seriesId ? SERIES_COLORS[c.seriesId] : null;
   const goToDetail = () => { if (!c.locked) navigate(`/courses/${encodeURIComponent(c.title)}`); };
 
+  const goCheckout = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const veil = document.createElement('div');
+    veil.style.cssText = 'position:fixed;inset:0;background:#fff;z-index:9999;opacity:0;pointer-events:all;transition:opacity .24s ease';
+    document.body.appendChild(veil);
+    requestAnimationFrame(() => requestAnimationFrame(() => { veil.style.opacity = '1'; }));
+    setTimeout(() => {
+      navigate('/checkout', { state: { directItem: { id:c.id, kind:'course', title:c.title, city:c.city, duration:c.duration, price:c.price, oldPrice:c.oldPrice ?? undefined, format:'Оффлайн', image:c.img, stream:'', isFav:false, isSelected:true } } });
+      veil.style.opacity = '0';
+      setTimeout(() => veil.remove(), 280);
+    }, 260);
+  };
+
   const blueBtnBase: React.CSSProperties = {
     background: 'linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0) 100%), #375DFB',
     boxShadow: '0 0 0 1px #375DFB, 0 1px 2px 0 rgba(37,62,167,0.48)',
-    border: 'none', borderRadius: 12, color: '#fff', cursor: 'pointer',
+    border: 'none', borderRadius: 8, color: '#fff', cursor: 'pointer',
   };
 
-  const heartBtnStyle: React.CSSProperties = {
-    marginLeft: 'auto', background: 'none', border: 'none', outline: 'none',
-    padding: 0, lineHeight: 1, cursor: 'pointer', display: 'flex',
-    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-    transition: 'transform .15s',
-  };
+  const BadgePill = () => c.seriesNum ? (
+    <div style={{ position:'absolute', top:10, left:10, display:'flex', alignItems:'stretch', zIndex:5, boxShadow:'0 2px 10px rgba(0,0,0,.22)', borderRadius:8 }}>
+      <div style={{ background:sc?.num||'#374151', color:'#fff', fontSize:12, fontWeight:700, padding:'5px 9px', lineHeight:1.4, display:'flex', alignItems:'center', letterSpacing:.3, borderRadius: c.seriesName ? '8px 0 0 8px' : 8 }}>
+        {String(c.seriesNum).padStart(2,'0')}
+      </div>
+      {c.seriesName && (
+        <div className="c-mil-text-wrap">
+          <div className="c-mil-series-text" style={{ background:'rgba(255,255,255,.92)', color:'#374151', fontSize:11, fontWeight:600, padding:'5px 9px', lineHeight:1.4, borderRadius:'0 8px 8px 0' }}>
+            {c.seriesName}
+          </div>
+        </div>
+      )}
+    </div>
+  ) : null;
+
+  const CardImg = () => (
+    <div className="c-card-img" style={{ height:190, overflow:'hidden', background:'#F3F4F6', borderRadius:'16px 16px 0 0', position:'relative' }}>
+      {!imgErr
+        ? <img src={c.img} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center top' }} onError={() => setImgErr(true)} />
+        : <div style={{ width:'100%', height:'100%', background:'linear-gradient(135deg,#EBF1FF,#DFE8FF)' }} />}
+      <div className="c-card-overlay" />
+      <BadgePill />
+      {c.oldPrice && !c.locked && !c.seriesNum && (
+        <div style={{ position:'absolute', top:10, left:10, background:'#EF4444', color:'#fff', fontSize:11, fontWeight:700, padding:'4px 9px', borderRadius:8 }}>СКИДКА</div>
+      )}
+      {c.locked && (
+        <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.32)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:4, borderRadius:'16px 16px 0 0' }}>
+          <div className="c-lock-icon" style={{ width:56, height:56, borderRadius:'50%', background:'rgba(255,255,255,.18)', backdropFilter:'blur(6px)', display:'flex', alignItems:'center', justifyContent:'center', border:'2px solid rgba(255,255,255,.45)' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 
   const HeartSvg = () => (
     <svg width="18" height="17" viewBox="0 0 18 17" fill="none">
@@ -357,147 +427,137 @@ function CourseCard({ c, delay }: { c: CourseData; delay: number }) {
     </svg>
   );
 
-  const CardImg = ({ zoom }: { zoom: boolean }) => (
-    <div className="c-img" style={{ height:200, overflow:'hidden', background:'#F3F4F6', borderRadius:'16px 16px 0 0', position:'relative' }}>
-      {!imgErr
-        ? <img src={c.img} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', transition:'transform .4s cubic-bezier(.4,0,.2,1)', transform: zoom ? 'scale(1.05)' : 'scale(1)' }} onError={() => setImgErr(true)} />
-        : <div style={{ width:'100%', height:'100%', background:'linear-gradient(135deg,#EBF1FF,#DFE8FF)' }} />}
-      {c.seriesNum && (
-        <div style={{ position:'absolute', top:10, left:10, display:'flex', alignItems:'stretch', borderRadius:8, overflow:'hidden', zIndex:5, boxShadow:'0 2px 8px rgba(0,0,0,.2)' }}>
-          <div style={{ background:sc?.num||'#374151', color:'#fff', fontSize:12, fontWeight:700, padding:'4px 8px', lineHeight:1.4, display:'flex', alignItems:'center' }}>{String(c.seriesNum).padStart(2,'0')}</div>
-          {c.seriesName && <div style={{ background:'rgba(255,255,255,.88)', color:'#374151', fontSize:11, fontWeight:500, padding:'4px 8px', lineHeight:1.4, display:'flex', alignItems:'center', maxWidth:150, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' as const }}>{c.seriesName}</div>}
-        </div>
-      )}
-      {c.oldPrice && !c.locked && !c.seriesNum && (
-        <div style={{ position:'absolute', top:10, left:10, background:'#EF4444', color:'#fff', fontSize:11, fontWeight:700, padding:'3px 8px', borderRadius:6 }}>СКИДКА</div>
-      )}
-      {c.locked && (
-        <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.32)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:4, borderRadius:'16px 16px 0 0' }}>
-          <div style={{ width:52, height:52, borderRadius:'50%', background:'rgba(255,255,255,.2)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', border:'2px solid rgba(255,255,255,.4)' }}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-
   const PriceRow = () => (
     <div style={{ display:'flex', alignItems:'center', gap:8 }}>
       <span style={{ fontSize:18, fontWeight:800, color:c.locked?'#9CA3AF':'#10B981' }}>{c.price.toLocaleString('ru')} <span style={{ fontSize:13 }}>₽</span></span>
       {c.oldPrice && <span style={{ fontSize:13, color:'#9CA3AF', textDecoration:'line-through' }}>{(c.oldPrice as number).toLocaleString('ru')} ₽</span>}
       {!c.locked && (
-        <button
-          onClick={e => { e.stopPropagation(); toggle({ id:c.id+2000, kind:'course', title:c.title, city:c.city, duration:c.duration, price:c.price, format:'Оффлайн', image:c.img }); }}
-          style={heartBtnStyle}
+        <button onClick={e => {
+          e.stopPropagation();
+          toggle({ id:c.id+2000, kind:'course', title:c.title, city:c.city, duration:c.duration, price:c.price, format:'Оффлайн', image:c.img });
+          if (!faved) addNotification({ kind:'like', title:'Курс добавлен в избранное', body:c.title, link:'/favorites' });
+        }}
+          style={{ marginLeft:'auto', background:'none', border:'none', outline:'none', padding:0, lineHeight:1, cursor:'pointer', display:'flex', alignItems:'center', flexShrink:0, transition:'transform .15s' }}
           onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.22)'; }}
-          onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
-        >
+          onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}>
           <HeartSvg />
         </button>
       )}
     </div>
   );
 
-  const LockNotice = () => c.locked && c.prerequisite && sc ? (
-    <div style={{ marginBottom:10, background:sc.pillBg, border:`1px solid ${sc.pillText}33`, borderRadius:10, padding:'8px 12px', display:'flex', alignItems:'flex-start', gap:8 }}>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={sc.pillText} strokeWidth="2" strokeLinecap="round" style={{ flexShrink:0, marginTop:1 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-      <div style={{ fontSize:12, color:'#374151', lineHeight:1.5 }}>Будет открыт после прохождения{' '}<span onClick={e => e.stopPropagation()} style={{ color:sc.pillText, fontWeight:600, cursor:'pointer', textDecoration:'underline' }}>{c.prerequisite}</span></div>
-    </div>
-  ) : null;
-
   return (
-    <div
-      className="course-card-shell"
-      style={{ position:'relative', zIndex: hov ? 30 : 1 }}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      onClick={goToDetail}
-    >
-      {/* Base card */}
-      <div
-        className="course-card"
-        style={{
-          background:'#fff', borderRadius:16, border:'1px solid #E5E7EB',
-          cursor: c.locked ? 'default' : 'pointer',
-          animation:`fadeSlideUp 0.45s cubic-bezier(.4,0,.2,1) ${delay}ms both`,
-          opacity: hov ? 0 : 1,
-          transition: 'opacity .28s ease',
-        }}
-      >
-        <CardImg zoom={false} />
-        <div style={{ padding:'14px 16px 16px' }}>
-          <div style={{ display:'flex', justifyContent:'space-between', fontSize:13, color:'#9CA3AF', marginBottom:7 }}><span>{c.city}</span><span>{c.duration}</span></div>
-          <div style={{ fontSize:15, fontWeight:700, color:c.locked?'#6B7280':'#111', lineHeight:1.35, marginBottom:10 }}>{c.title}</div>
-          <PriceRow />
-        </div>
-      </div>
-
-      {/* Hover overlay — всегда в DOM, управляется opacity */}
-      <div className="course-card-surface" style={{
-        position:'absolute', top:0, left:0, right:0,
-        background:'#fff', borderRadius:16,
-        border:`1px solid ${c.locked ? '#E5E7EB' : '#375DFB'}`,
-        boxShadow: c.locked ? '0 8px 32px rgba(0,0,0,.10)' : '0 8px 32px rgba(55,93,251,.18)',
-        overflow:'hidden', zIndex:5,
-        cursor: c.locked ? 'default' : 'pointer',
-        opacity: hov ? 1 : 0,
-        pointerEvents: hov ? 'auto' : 'none',
-        transition: 'opacity .28s ease',
-      }}>
-        <CardImg zoom={false} />
+    <div className={`c-mil-shell${expandInFlow ? ' c-mil-shell--series' : ''}`} style={{ cursor: c.locked ? 'default' : 'pointer' }} onClick={goToDetail}>
+      <div className="c-card-wrap" data-locked={c.locked ? '' : undefined}
+           style={{ animation:`vCardIn 0.5s ${delay}ms ease backwards` }}>
+        <CardImg />
         <div style={{ padding:'14px 16px 16px' }}>
           <div style={{ display:'flex', justifyContent:'space-between', fontSize:13, color:'#9CA3AF', marginBottom:7 }}><span>{c.city}</span><span>{c.duration}</span></div>
           <div style={{ fontSize:15, fontWeight:700, color:c.locked?'#6B7280':'#111', lineHeight:1.35, marginBottom:8 }}>{c.title}</div>
-          <p style={{ fontSize:13, color:'#6B7280', lineHeight:1.55, margin:'0 0 10px', display:'-webkit-box', WebkitLineClamp:3, WebkitBoxOrient:'vertical', overflow:'hidden' } as React.CSSProperties}>{c.desc}</p>
-          <LockNotice />
           <PriceRow />
-          {!c.locked && (
-            <div style={{ display:'flex', gap:8, marginTop:12 }}>
-              <button
-                onClick={e => {
-                  e.stopPropagation();
-                  if (!alreadyInCart) {
-                    addCourse({ id: c.id, kind: 'course', title: c.title, city: c.city, duration: c.duration, price: c.price, format: 'Оффлайн', image: c.img, stream: '' });
-                    setJustAdded(true);
-                    setTimeout(() => setJustAdded(false), 700);
-                  }
-                }}
-                title={alreadyInCart ? 'В корзине' : 'В корзину'}
-                className="c-enroll-btn"
-                style={{ ...blueBtnBase, width:46, height:46, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center',
-                  background: alreadyInCart ? 'linear-gradient(180deg,rgba(255,255,255,.12) 0%,rgba(255,255,255,0) 100%),#059669' : blueBtnBase.background as string,
-                  boxShadow: alreadyInCart ? '0 0 0 1px #059669,0 1px 2px 0 rgba(4,120,87,.48)' : blueBtnBase.boxShadow as string,
-                  transition: 'background .3s ease, box-shadow .3s ease',
-                  animation: justAdded ? 'cartBounce .42s cubic-bezier(.36,.07,.19,.97)' : 'none',
-                }}
-              >
-                {alreadyInCart
-                  ? <svg style={{ animation: 'checkPop .32s cubic-bezier(.34,1.56,.64,1)' }} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-                  : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
-                }
-              </button>
-              <button onClick={e => { e.stopPropagation(); navigate(`/checkout`); }} className="c-enroll-btn" style={{ ...blueBtnBase, flex:1, height:46, fontSize:14, fontWeight:600 }}>
-                Записаться и оплатить
-              </button>
-            </div>
-          )}
+        </div>
+      </div>
+      <div className="c-expand-wrap">
+        <div className="c-expand-inner">
+          <div style={{ padding:'0 16px 16px' }}>
+              <p className="c-oi c-oi-1" style={{ fontSize:13, color:'#6B7280', lineHeight:1.55, margin:'0 0 8px',
+                display:'-webkit-box', WebkitLineClamp:3, WebkitBoxOrient:'vertical', overflow:'hidden',
+              } as React.CSSProperties}>{c.desc}</p>
+
+              {c.locked && c.prerequisite && sc && (
+                <div className="c-oi c-oi-2" style={{ marginBottom:10, background:sc.pillBg, border:`1px solid ${sc.pillText}33`, borderRadius:10, padding:'8px 12px', display:'flex', alignItems:'flex-start', gap:8 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={sc.pillText} strokeWidth="2" strokeLinecap="round" style={{ flexShrink:0, marginTop:1 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  <div style={{ fontSize:12, color:'#374151', lineHeight:1.5, minWidth:0 }}>Будет открыт после прохождения{' '}<span onClick={e => e.stopPropagation()} style={{ color:sc.pillText, fontWeight:600, cursor:'pointer', textDecoration:'underline' }}>{c.prerequisite}</span></div>
+                </div>
+              )}
+
+              {!c.locked && (
+                <div className="c-oi c-oi-2" style={{ display:'flex', gap:8 }}>
+                  <button
+                    onClick={e => {
+                      e.stopPropagation();
+                      if (!alreadyInCart) {
+                        addCourse({ id:c.id, kind:'course', title:c.title, city:c.city, duration:c.duration, price:c.price, format:'Оффлайн', image:c.img, stream:'' });
+                        setJustAdded(true);
+                        setTimeout(() => setJustAdded(false), 800);
+                      }
+                    }}
+                    title={alreadyInCart ? 'В корзине' : 'В корзину'}
+                    className="c-enroll-btn"
+                    style={{ ...blueBtnBase, width:46, height:46, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center',
+                      background: alreadyInCart ? 'linear-gradient(180deg,rgba(255,255,255,.12) 0%,rgba(255,255,255,0) 100%),#059669' : blueBtnBase.background as string,
+                      boxShadow: alreadyInCart ? '0 0 0 1px #059669,0 1px 2px 0 rgba(4,120,87,.48)' : blueBtnBase.boxShadow as string,
+                      transition:'background .3s ease, box-shadow .3s ease, transform .18s ease',
+                      animation: justAdded ? 'cartBounce .52s cubic-bezier(.36,.07,.19,.97)' : 'none',
+                    }}
+                  >
+                    {alreadyInCart
+                      ? <svg style={{ animation:'checkPop .35s cubic-bezier(.34,1.56,.64,1)' }} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+                    }
+                  </button>
+                  <button onClick={goCheckout} className="c-enroll-btn" style={{ ...blueBtnBase, flex:1, height:46, fontSize:14, fontWeight:600 }}>
+                    Записаться и оплатить
+                  </button>
+                </div>
+              )}
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
+function SeriesCourseRail({ name, color, courses, index }: { name: string | null; color: string; courses: CourseData[]; index: number }) {
+  const railRef = useRef<HTMLDivElement>(null);
+  const [activeCard, setActiveCard] = useState(0);
+  const [edge, setEdge] = useState({ start: true, end: courses.length <= 3 });
+  const updateEdges = () => {
+    const el = railRef.current;
+    if (!el) return;
+    setEdge({ start: el.scrollLeft <= 4, end: el.scrollLeft + el.clientWidth >= el.scrollWidth - 4 });
+  };
+  const move = (direction: -1 | 1) => {
+    const el = railRef.current;
+    if (!el) return;
+    const next = Math.max(0, Math.min(courses.length - 3, activeCard + direction));
+    setActiveCard(next);
+    (el.children[next] as HTMLElement | undefined)?.scrollIntoView({ behavior:'smooth', block:'nearest', inline:'start' });
+  };
+  useEffect(() => { updateEdges(); window.addEventListener('resize', updateEdges); return () => window.removeEventListener('resize', updateEdges); }, [courses.length]);
+  return (
+    <section style={{ marginBottom:32 }}>
+      <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16, padding:'13px 16px 13px 18px', background:'#fff', borderRadius:16, border:'1px solid #DCE3F4', boxShadow:'0 7px 24px rgba(28,54,112,.06)' }}>
+        <div style={{ width:11, height:30, borderRadius:99, background:color, flexShrink:0 }} />
+        <div>
+          <div style={{ fontSize:11, fontWeight:850, color:'#8290AD', textTransform:'uppercase', letterSpacing:'.09em' }}>Серия курсов {String(index + 1).padStart(2,'0')}</div>
+          <div style={{ fontSize:16, fontWeight:800, color:'#18223A', marginTop:2 }}>{name || 'Военная подготовка'}</div>
+        </div>
+        <span style={{ marginLeft:'auto', fontSize:12, color:'#8A96AE', whiteSpace:'nowrap' }}>{courses.length} {courseEnding(courses.length)}</span>
+        {courses.length > 3 && (
+          <div style={{ display:'flex', gap:8, marginLeft:4 }}>
+            <button aria-label="Предыдущие курсы" className="series-nav" disabled={edge.start} onClick={() => move(-1)} style={{ width:38,height:38,borderRadius:11,border:'1px solid #C9D7FF',background:'#F5F8FF',color:'#375DFB',cursor:edge.start?'default':'pointer',opacity:edge.start ? .38 : 1,display:'grid',placeItems:'center' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><polyline points="15 18 9 12 15 6"/></svg></button>
+            <button aria-label="Следующие курсы" className="series-nav" disabled={edge.end} onClick={() => move(1)} style={{ width:38,height:38,borderRadius:11,border:'1px solid #C9D7FF',background:'#F5F8FF',color:'#375DFB',cursor:edge.end?'default':'pointer',opacity:edge.end ? .38 : 1,display:'grid',placeItems:'center' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><polyline points="9 18 15 12 9 6"/></svg></button>
+          </div>
+        )}
+      </div>
+      <div ref={railRef} className="series-course-rail" onScroll={updateEdges} style={{ display:'grid',gridAutoFlow:'column',gridAutoColumns:'calc((100% - 40px)/3)',alignItems:'start',gap:20,overflowX:'auto',overflowY:'hidden',scrollBehavior:'smooth',padding:'2px 2px 18px' }}>
+        {courses.map((course, courseIndex) => <CourseCard key={course.id} c={course} delay={courseIndex * 60} expandInFlow />)}
+      </div>
+    </section>
+  );
+}
+
 /* ─── PAGE ─── */
 export function CoursesPage() {
   const navigate = useNavigate();
+  const addNotification = useNotifStore(s => s.add);
   const isMobile = useMediaQuery('(max-width: 900px)');
   const [viewMode, setViewMode] = useState<'all'|'series'>('all');
-  const [periodMode, setPeriodMode] = useState<PeriodMode>('current');
-  const [calViewDate, setCalViewDate] = useState(new Date(2024, 9));
-  const [selectedDay, setSelectedDay] = useState<number|null>(21);
   const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState<FilterState>({ cities:['Москва'], venues:['Оффлайн'], costs:['Платные'], types:['Серия курсов'] });
+  const [filters, setFilters] = useState<FilterState>({ cities:[], venues:[], costs:[], types:[] });
   const [compTab, setCompTab] = useState<'will'|'past'>('will');
+  const [citySort, setCitySort] = useState<'desc'|'asc'>('desc');
   const [imgErrs, setImgErrs] = useState<Record<string,boolean>>({});
   const [letterIdx, setLetterIdx] = useState<number|null>(null);
   const setE = (k: string) => setImgErrs(p => ({ ...p, [k]:true }));
@@ -513,20 +573,37 @@ export function CoursesPage() {
     window.addEventListener('keydown', fn); return () => window.removeEventListener('keydown', fn);
   }, [letterIdx]);
 
+  const courseMatchesFilters = (c: CourseData) => {
+    if (filters.cities.length && !filters.cities.includes(c.city)) return false;
+    if (filters.types.length) {
+      const type = c.seriesNum ? 'Серия курсов' : 'Курс';
+      if (!filters.types.includes(type)) return false;
+    }
+    // Все курсы платные — «Бесплатные» в одиночку даёт пустой результат
+    if (filters.costs.length === 1 && filters.costs[0] === 'Бесплатные') return false;
+    return true;
+  };
+  const displayedCourses = COURSES.filter(courseMatchesFilters);
+
   const seriesGroups = viewMode === 'series'
-    ? Object.values(COURSES.reduce((acc, c) => {
-        const key = c.seriesId != null ? `s${c.seriesId}` : `u${c.id}`;
+    ? Object.values(displayedCourses.filter(c => c.seriesId != null).reduce((acc, c) => {
+        const key = `s${c.seriesId}`;
         if (!acc[key]) acc[key] = { name: c.seriesName || null, color: c.seriesId ? (SERIES_COLORS[c.seriesId]?.num || '#374151') : '#374151', courses: [] as CourseData[] };
+        if (!acc[key].name && c.seriesName) acc[key].name = c.seriesName;
         acc[key].courses.push(c); return acc;
       }, {} as Record<string, { name: string|null; color: string; courses: CourseData[] }>))
     : null;
 
-  const navigateCal = (dir: -1|1) => setCalViewDate(prev => new Date(prev.getFullYear(), prev.getMonth() + dir, 1));
+  const sortedCities = [...CITIES].sort((a, b) => citySort === 'desc' ? b.count - a.count : a.count - b.count);
+  const competitions = compTab === 'will' ? COMPETITIONS : PAST_COMPETITIONS;
+  const rankedFighters = [...FIGHTERS].sort((a, b) => b.index - a.index);
+  const RANK_COLORS = ['#F59E0B', '#94A3B8', '#B45309'];
+
   const activeFilters = filters.cities.length + filters.venues.length + filters.costs.length + filters.types.length;
 
   return (
-    <div style={{ paddingTop:60, marginLeft:56, minHeight:'100vh', background:'#F8F9FB' }}>
-      <div style={{ background:'#fff', borderBottom:'1px solid #E5E7EB', padding:'14px 28px', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap' as const, gap:10, position:'sticky' as const, top:60, zIndex:40 }}>
+    <div className="courses-page-static" style={{ paddingTop:60, marginLeft:56, minHeight:'100vh', background:'#F8F9FB' }}>
+      <div className="route-controls-toolbar" style={{ background:'#fff', borderBottom:'1px solid #E5E7EB', padding:'14px 28px', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap' as const, gap:10, position:'sticky' as const, top:60, zIndex:40 }}>
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="1.5" strokeLinecap="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
           <h1 style={{ fontSize:20, fontWeight:700, color:'#111', margin:0 }}>Военная подготовка</h1>
@@ -539,47 +616,28 @@ export function CoursesPage() {
               </button>
             ))}
           </div>
-          <PeriodSelector periodMode={periodMode} calViewDate={calViewDate} selectedDay={selectedDay} onChangePeriod={setPeriodMode} onNavigateCal={navigateCal} onSelectDay={setSelectedDay} />
-          <button className="btn-outline" onClick={() => setShowFilters(true)} style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 16px', border:'1px solid #E5E7EB', borderRadius:10, background:'#fff', fontSize:13, fontWeight:500, color:'#374151', cursor:'pointer', position:'relative' as const }}>
+          <button className="btn-outline" onClick={() => setShowFilters(true)} style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 16px', border:'1px solid #E5E7EB', borderRadius:8, background:'#fff', fontSize:13, fontWeight:500, color:'#374151', cursor:'pointer', position:'relative' as const }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
             Фильтры
             {activeFilters > 0 && <span style={{ background:'#375DFB', color:'#fff', fontSize:11, fontWeight:700, borderRadius:'50%', width:18, height:18, display:'flex', alignItems:'center', justifyContent:'center', marginLeft:2 }}>{activeFilters}</span>}
           </button>
-          {viewMode === 'series' && (
-            <button className="btn-outline" onClick={() => navigate('/courses')} style={{ display:'flex', alignItems:'center', gap:5, padding:'8px 14px', border:'1px solid #E5E7EB', borderRadius:10, background:'#fff', fontSize:13, color:'#374151', cursor:'pointer' }}>
-              Все <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
-            </button>
-          )}
         </div>
       </div>
 
       <div style={{ padding:'20px 28px 48px' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:13, color:'#9CA3AF', marginBottom:24, animation:'fadeIn 0.4s ease' }}>
-          <span onClick={() => navigate('/')} style={{ cursor:'pointer', transition:'color 0.15s' }} onMouseEnter={e=>e.currentTarget.style.color='#375DFB'} onMouseLeave={e=>e.currentTarget.style.color='#9CA3AF'}>Главная</span>
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="1.5"><polyline points="9 18 15 12 9 6"/></svg>
-          <span style={{ color:'#374151', fontWeight:500 }}>Военная подготовка</span>
-        </div>
+        <PortalBreadcrumb items={[{ label:'Главная', to:'/' }, { label:'Военная подготовка' }]} />
 
         {viewMode === 'all' ? (
-          <div style={{ display:'grid', gridTemplateColumns:isMobile?'1fr':'repeat(3,1fr)', gap:20, marginBottom:24, overflow:'visible' }}>
-            {COURSES.map((c,i) => <CourseCard key={c.id} c={c} delay={i*60} />)}
-          </div>
+          displayedCourses.length ? (
+            <div style={{ display:'grid',gridTemplateColumns:isMobile?'1fr':'repeat(3,minmax(0,1fr))',gap:20,marginBottom:24,overflow:'visible' }}>
+              {displayedCourses.map((c,i)=><CourseCard key={c.id} c={c} delay={i*60}/>)}
+            </div>
+          ) : (
+            <div style={{ textAlign:'center', padding:'56px 24px', color:'#9CA3AF', fontSize:15, marginBottom:24, background:'#fff', borderRadius:20, border:'1px solid #E5E7EB' }}>По выбранным фильтрам курсов не найдено</div>
+          )
         ) : (
           <div style={{ marginBottom:24 }}>
-            {seriesGroups?.map((group, gi) => (
-              <div key={gi} style={{ marginBottom:32 }}>
-                {group.name && (
-                  <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16, padding:'12px 18px', background:'#fff', borderRadius:14, border:'1px solid #E5E7EB', boxShadow:'0 2px 8px rgba(0,0,0,.04)' }}>
-                    <div style={{ width:10, height:10, borderRadius:'50%', background:group.color, flexShrink:0 }} />
-                    <span style={{ fontSize:15, fontWeight:600, color:'#374151' }}>{group.name}</span>
-                    <div style={{ marginLeft:'auto', fontSize:12, color:'#9CA3AF' }}>{group.courses.length} курс{group.courses.length===1?'':'а'}</div>
-                  </div>
-                )}
-                <div style={{ display:'grid', gridTemplateColumns:isMobile?'1fr':'repeat(3,1fr)', gap:20, overflow:'visible' }}>
-                  {group.courses.map((c,i) => <CourseCard key={c.id} c={c} delay={i*60} />)}
-                </div>
-              </div>
-            ))}
+            {seriesGroups?.map((group, gi) => <SeriesCourseRail key={gi} name={group.name} color={group.color} courses={group.courses} index={gi} />)}
           </div>
         )}
 
@@ -590,7 +648,7 @@ export function CoursesPage() {
               {OFFERS.map(o => {
                 const iconPos = OFFER_ICON_CONFIG[o.id];
                 return (
-                  <div key={o.id} className="offer-card" style={{ background:'#fff', borderRadius:20, border:'1px solid #E5E7EB', overflow:'hidden', cursor:'pointer' }}>
+                  <div key={o.id} className="offer-card" onClick={() => navigate('/referral')} style={{ background:'#fff', borderRadius:20, border:'1px solid #E5E7EB', overflow:'hidden', cursor:'pointer' }}>
                     <div style={{ position:'relative', height:260, background:o.bg, overflow:'hidden' }}>
                       {!imgErrs[`of${o.id}`] ? (
                         <div style={{ position:'absolute', bottom:0, left: o.id===1 ? 'auto' : '50%', right: o.id===1 ? 0 : 'auto', transform: o.id===1 ? 'none' : 'translateX(-50%)', height:'95%', display:'flex', alignItems:'flex-end' }}>
@@ -615,10 +673,10 @@ export function CoursesPage() {
         <AnimSection style={{ marginBottom:24 }}>
           <SectionWrap>
             <SecTitle icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>} title="Города" separator
-              action={<button className="btn-outline" onClick={() => setViewMode(viewMode === 'all' ? 'series' : 'all')} style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', border:'1px solid #E5E7EB', borderRadius:10, background:'#fff', fontSize:13, color:'#374151', cursor:'pointer' }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/></svg>По количеству курсов<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg></button>}
+              action={<button className="btn-outline" onClick={() => setCitySort(s => s === 'desc' ? 'asc' : 'desc')} style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', border:'1px solid #E5E7EB', borderRadius:8, background:'#fff', fontSize:13, color:'#374151', cursor:'pointer' }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/></svg>По количеству курсов<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: citySort === 'asc' ? 'rotate(180deg)' : 'none', transition:'transform .2s' }}><polyline points="6 9 12 15 18 9"/></svg></button>}
             />
             <div style={{ display:'grid', gridTemplateColumns:isMobile?'1fr 1fr':'repeat(3,1fr)', gap:20 }}>
-              {CITIES.map((city,i) => (
+              {sortedCities.map((city,i) => (
                 <div key={city.id} className="city-card" onClick={() => navigate(`/city/${encodeURIComponent(city.name.toLowerCase())}`)} style={{ cursor:'pointer', animation:`fadeSlideUp 0.4s cubic-bezier(.4,0,.2,1) ${i*60}ms both` }}>
                   <div style={{ borderRadius:14, overflow:'hidden', height:220, background:'#F3F4F6', marginBottom:12 }}>
                     {!imgErrs[`city${city.id}`] ? <img src={city.img} alt={city.name} className="city-img" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={() => setE(`city${city.id}`)} /> : <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, fontWeight:700, color:'#375DFB' }}>{city.name[0]}</div>}
@@ -638,55 +696,63 @@ export function CoursesPage() {
                 <div style={{ display:'flex', alignItems:'center', gap:10 }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg><span style={{ fontSize:18, fontWeight:700, color:'#111' }}>Соревнования</span></div>
                 <div style={{ display:'flex', gap:8 }}>
                   {(['will','past'] as const).map(t => <button key={t} className="tab-btn" onClick={() => setCompTab(t)} style={{ padding:'7px 16px', border:'1px solid', borderColor:compTab===t?'#375DFB':'#E5E7EB', borderRadius:6, background:compTab===t?'#EBF1FF':'#fff', color:compTab===t?'#375DFB':'#374151', fontSize:13, fontWeight:compTab===t?600:400, cursor:'pointer' }}>{t==='will'?'Будут':'Прошли'}</button>)}
-                  <button className="btn-outline" onClick={() => setCompTab(compTab === 'will' ? 'past' : 'will')} style={{ display:'flex', alignItems:'center', gap:5, padding:'7px 14px', border:'1px solid #E5E7EB', borderRadius:10, background:'#fff', fontSize:13, color:'#374151', cursor:'pointer' }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>Фильтры</button>
+                  <button className="btn-outline" onClick={() => setShowFilters(true)} style={{ display:'flex', alignItems:'center', gap:5, padding:'7px 14px', border:'1px solid #E5E7EB', borderRadius:8, background:'#fff', fontSize:13, color:'#374151', cursor:'pointer' }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>Фильтры</button>
                 </div>
               </div>
-              {COMPETITIONS.map((c,i) => (
-                <div key={c.id} className="comp-row" style={{ display:'flex', alignItems:'center', gap:16, padding:'16px 24px', borderBottom:i<COMPETITIONS.length-1?'1px solid #F5F5F7':'none' }}>
+              {competitions.map((c,i) => (
+                <div key={`${compTab}-${c.id}`} className="comp-row" style={{ display:'flex', alignItems:'center', gap:16, padding:'16px 24px', borderBottom:i<competitions.length-1?'1px solid #F5F5F7':'none' }}>
                   <div style={{ width:54, height:54, borderRadius:14, background:c.bg, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>{COMP_ICONS[c.id]}</div>
                   <div style={{ flex:1 }}><div style={{ fontSize:15, fontWeight:600, color:'#111', marginBottom:3 }}>{c.title}</div><div style={{ fontSize:13, color:'#9CA3AF' }}>{c.date}</div></div>
-                  <button className="apply-btn" onClick={() => navigate('/messages?chat=1')} style={{ padding:'8px 16px', border:'1px solid #C7D2FE', borderRadius:6, background:'#EBF1FF', color:'#375DFB', fontSize:13, fontWeight:500, cursor:'pointer', whiteSpace:'nowrap' as const }}>Подать заявку</button>
+                  {compTab === 'will'
+                    ? <button className="apply-btn" onClick={() => { addNotification({ kind:'system', title:'Заявка на соревнование принята', body:c.title, link:`/competitions?competition=${c.id}` }); navigate(`/competitions?competition=${c.id}`); }} style={{ padding:'8px 16px', border:'1px solid #C7D2FE', borderRadius:8, background:'#EBF1FF', color:'#375DFB', fontSize:13, fontWeight:500, cursor:'pointer', whiteSpace:'nowrap' as const }}>Подать заявку</button>
+                    : <button className="apply-btn" onClick={() => navigate(`/competitions?competition=${c.id}`)} style={{ padding:'8px 16px', border:'1px solid #E5E7EB', borderRadius:8, background:'#F9FAFB', color:'#374151', fontSize:13, fontWeight:500, cursor:'pointer', whiteSpace:'nowrap' as const }}>Итоги</button>}
                 </div>
               ))}
             </div>
             <div style={{ background:'#fff', borderRadius:20, border:'1px solid #E5E7EB', overflow:'hidden' }}>
-              <div style={{ padding:'18px 24px', borderBottom:'1px solid #F0F0F0', display:'flex', alignItems:'center', gap:10 }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg><span style={{ fontSize:18, fontWeight:700, color:'#111' }}>Лучшие бойцы</span></div>
-              {FIGHTERS.map((f,i) => (
-                <div key={f.id} className="fighter-row" style={{ display:'flex', alignItems:'center', gap:14, padding:'13px 20px', borderBottom:i<FIGHTERS.length-1?'1px solid #F5F5F7':'none', cursor:'pointer' }} onClick={() => navigate('/profile')}>
-                  <div style={{ width:46, height:46, borderRadius:'50%', overflow:'hidden', border:'2px solid #E5E7EB', flexShrink:0, background:'#F3F4F6' }}>{!imgErrs[`fi${f.id}`] ? <img src={f.img} alt={f.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={() => setE(`fi${f.id}`)} /> : null}</div>
-                  <div style={{ flex:1 }}><div style={{ fontSize:14, fontWeight:600, color:'#111' }}>{f.name} <span style={{ color:'#9CA3AF', fontWeight:400 }}>{f.rank}</span></div><div style={{ fontSize:13, color:'#9CA3AF' }}>{f.city}</div></div>
-                  <button onClick={e => { e.stopPropagation(); navigate('/profile'); }} style={{ background:'none', border:'none', cursor:'pointer', color:'#9CA3AF', padding:4, display:'flex' }} onMouseEnter={e=>e.currentTarget.style.color='#374151'} onMouseLeave={e=>e.currentTarget.style.color='#9CA3AF'}><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></button>
+              <div style={{ padding:'18px 24px', borderBottom:'1px solid #F0F0F0', display:'flex', alignItems:'center', gap:10 }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg><span style={{ fontSize:18, fontWeight:700, color:'#111' }}>Общий рейтинг курсантов</span></div>
+              {rankedFighters.map((f,i) => (
+                <div key={f.id} className="fighter-row" style={{ display:'flex', alignItems:'center', gap:14, padding:'13px 20px', borderBottom:i<rankedFighters.length-1?'1px solid #F5F5F7':'none', cursor:'pointer' }} onClick={() => navigate(userProfilePath(f.name))}>
+                  <div style={{ width:24, flexShrink:0, textAlign:'center', fontSize:14, fontWeight:800, color: i<3 ? RANK_COLORS[i] : '#9CA3AF' }}>{i+1}</div>
+                  <div style={{ width:46, height:46, borderRadius:'50%', overflow:'hidden', border:`2px solid ${i<3 ? RANK_COLORS[i] : '#E5E7EB'}`, flexShrink:0, background:'#F3F4F6' }}>{!imgErrs[`fi${f.id}`] ? <img src={f.img} alt={f.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={() => setE(`fi${f.id}`)} /> : null}</div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' as const, marginBottom:2 }}>
+                      <span style={{ fontSize:14, fontWeight:600, color:'#111' }}>{f.name} <span style={{ color:'#9CA3AF', fontWeight:400 }}>{f.rank}</span></span>
+                      <IVDisplay index={f.index} rating={f.rating} />
+                    </div>
+                    <div style={{ fontSize:13, color:'#9CA3AF' }}>{f.city}</div>
+                  </div>
+                  <button onClick={e => { e.stopPropagation(); navigate(userProfilePath(f.name)); }} style={{ background:'none', border:'none', cursor:'pointer', color:'#9CA3AF', padding:4, display:'flex' }} onMouseEnter={e=>e.currentTarget.style.color='#374151'} onMouseLeave={e=>e.currentTarget.style.color='#9CA3AF'}><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></button>
                 </div>
               ))}
             </div>
           </div>
         </AnimSection>
 
-        <AnimSection style={{ marginBottom:24 }}>
-          <PeopleSection />
-        </AnimSection>
+        <div style={{ marginBottom: 24 }}>
+          <PeopleSection noOuterPadding />
+        </div>
 
         <AnimSection style={{ marginBottom:24 }}>
           <SectionWrap>
-            <SecTitle icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="1.5" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>} title="Отзывы" separator
-              action={<button className="btn-outline" onClick={() => document.querySelector('.review-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' })} style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', border:'1px solid #E5E7EB', borderRadius:10, background:'#fff', fontSize:13, color:'#374151', cursor:'pointer' }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/></svg>По дате<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg></button>}
-            />
-            {REVIEWS.map((r,i) => (
-              <div key={r.id} className="review-card" style={{ padding:'28px 0', borderBottom:i<REVIEWS.length-1?'1px solid #F0F0F0':'none' }}>
-                <div style={{ display:'flex', alignItems:'center', gap:16, marginBottom:20 }}>
-                  <div style={{ width:54, height:54, borderRadius:'50%', overflow:'hidden', flexShrink:0, background:'#F3F4F6', border:'2px solid #E5E7EB' }}>{!imgErrs[`rev${r.id}`] ? <img src={r.img} alt={r.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={() => setE(`rev${r.id}`)} /> : null}</div>
-                  <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' as const }}>
-                    <span style={{ fontSize:17, fontWeight:700, color:'#111' }}>{r.name}</span>
-                    <span style={{ fontSize:15, color:'#9CA3AF' }}>{r.rank}</span>
-                    <div style={{ display:'flex', alignItems:'center', gap:5 }}><svg width="15" height="15" viewBox="0 0 24 24" fill="#F59E0B" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><span style={{ fontSize:15, color:'#374151', fontWeight:500 }}>{r.rating} баллов</span></div>
+            <SecTitle icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="1.5" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>} title="Отзывы" separator />
+            <div style={{ display:'grid', gridTemplateColumns:isMobile?'1fr':'repeat(2,minmax(0,1fr))', gap:16 }}>
+              {REVIEWS.map(r => (
+                <article key={r.id} className="review-card" style={{ minHeight:260, padding:'22px', border:'1px solid #E3E8F3', borderRadius:18, background:'linear-gradient(145deg,#FFFFFF 0%,#F8FAFF 100%)', display:'flex', flexDirection:'column' }}>
+                  <svg aria-hidden="true" width="34" height="26" viewBox="0 0 40 30" fill="#DCE5FF" style={{ position:'absolute', right:18, top:16 }}><path d="M0 30V18C0 6 6 0 18 0v7c-6 0-9 3-9 9h9v14H0Zm22 0V18C22 6 28 0 40 0v7c-6 0-9 3-9 9h9v14H22Z"/></svg>
+                  <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:18, paddingRight:42 }}>
+                    <div style={{ width:52, height:52, borderRadius:'50%', overflow:'hidden', flexShrink:0, background:'#F3F4F6', border:'3px solid #fff', boxShadow:'0 0 0 1px #C9D7FF' }}>{!imgErrs[`rev${r.id}`] ? <img src={r.img} alt={r.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={() => setE(`rev${r.id}`)} /> : null}</div>
+                    <div>
+                      <div style={{ display:'flex', alignItems:'baseline', gap:7 }}><span style={{ fontSize:16, fontWeight:800, color:'#17213A' }}>{r.name}</span><span style={{ fontSize:12, color:'#8A96AE' }}>{r.rank}</span></div>
+                      <div style={{ display:'flex', alignItems:'center', gap:5, marginTop:5 }}><span style={{ display:'flex', gap:2 }}>{Array.from({length:5}).map((_,i)=><svg key={i} width="13" height="13" viewBox="0 0 24 24" fill="#F5A623"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>)}</span><span style={{ fontSize:11, color:'#9AA5BA' }}>{r.date}</span></div>
+                    </div>
                   </div>
-                </div>
-                <div style={{ background:'#F9FAFB', borderRadius:14, padding:'18px 22px', border:'1px solid #F0F0F0' }}>
-                  <div style={{ fontSize:16, fontWeight:700, color:'#111', marginBottom:10 }}>{r.title}</div>
-                  <div style={{ fontSize:15, color:'#374151', lineHeight:1.7 }}>{r.text}</div>
-                </div>
-              </div>
-            ))}
+                  <h3 style={{ fontSize:16, lineHeight:1.35, fontWeight:800, color:'#17213A', margin:'0 0 10px' }}>{r.title}</h3>
+                  <p style={{ fontSize:14, color:'#53617E', lineHeight:1.68, margin:0 }}>{r.text}</p>
+                  <button onClick={() => navigate(userProfilePath(r.name))} style={{ alignSelf:'flex-start', marginTop:'auto', padding:'14px 0 0', border:0, background:'none', color:'#375DFB', fontSize:12, fontWeight:800, cursor:'pointer' }}>Профиль автора →</button>
+                </article>
+              ))}
+            </div>
           </SectionWrap>
         </AnimSection>
 
@@ -713,17 +779,11 @@ export function CoursesPage() {
               {!imgErrs[`ltm${letterIdx}`] ? <img key={letterIdx} src={LETTERS[letterIdx]} alt="" style={{ width:'100%', maxHeight:'65vh', objectFit:'contain', display:'block', animation:'tylModalIn .18s ease' }} onError={() => setE(`ltm${letterIdx}`)} /> : <div style={{ height:300, display:'flex', alignItems:'center', justifyContent:'center', color:'rgba(255,255,255,.4)' }}>Документ</div>}
             </div>
             <div style={{ display:'flex', alignItems:'center', gap:12, marginTop:18 }}>
-              <button onClick={() => letterIdx > 0 && setLetterIdx(letterIdx - 1)} disabled={letterIdx === 0} style={{ width:44, height:44, borderRadius:12, background:'rgba(255,255,255,.1)', border:'1px solid rgba(255,255,255,.15)', color:'#fff', cursor:letterIdx===0?'not-allowed':'pointer', opacity:letterIdx===0?.35:1, display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <button className="voevoda-slider-arrow voevoda-slider-arrow--prev" onClick={() => letterIdx > 0 && setLetterIdx(letterIdx - 1)} disabled={letterIdx === 0} style={{ cursor:letterIdx===0?'not-allowed':'pointer', opacity:letterIdx===0?.35:1 }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
               </button>
-              <div style={{ display:'flex', gap:6, overflowX:'auto', maxWidth:420 }}>
-                {LETTERS.map((src, i) => (
-                  <div key={i} className="tyl-thumb-nav" onClick={() => setLetterIdx(i)} style={{ width:42, height:54, flexShrink:0, borderRadius:6, overflow:'hidden', border:`2px solid ${i===letterIdx?'#375DFB':'rgba(255,255,255,.15)'}`, opacity:i===letterIdx?1:0.55 }}>
-                    {!imgErrs[`lt${i}`] ? <img src={src} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : <div style={{ width:'100%', height:'100%', background:'rgba(255,255,255,.1)' }} />}
-                  </div>
-                ))}
-              </div>
-              <button onClick={() => letterIdx < LETTERS.length - 1 && setLetterIdx(letterIdx + 1)} disabled={letterIdx === LETTERS.length - 1} style={{ width:44, height:44, borderRadius:12, background:'rgba(255,255,255,.1)', border:'1px solid rgba(255,255,255,.15)', color:'#fff', cursor:letterIdx===LETTERS.length-1?'not-allowed':'pointer', opacity:letterIdx===LETTERS.length-1?.35:1, display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <div className="voevoda-slider-panel">{LETTERS.map((_, i) => <button key={i} className={`voevoda-slider-dot${i===letterIdx?' is-active':''}`} onClick={() => setLetterIdx(i)} aria-label={`Документ ${i+1}`} />)}</div>
+              <button className="voevoda-slider-arrow voevoda-slider-arrow--next" onClick={() => letterIdx < LETTERS.length - 1 && setLetterIdx(letterIdx + 1)} disabled={letterIdx === LETTERS.length - 1} style={{ cursor:letterIdx===LETTERS.length-1?'not-allowed':'pointer', opacity:letterIdx===LETTERS.length-1?.35:1 }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
               </button>
             </div>

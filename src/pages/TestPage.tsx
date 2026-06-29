@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useLearningStore } from '../store/useLearningStore';
 
 const CSS = `
   @keyframes fadeIn  { from{opacity:0} to{opacity:1} }
@@ -157,6 +158,17 @@ const QUESTIONS: Question[] = [
   },
 ];
 
+// Проходной балл и последовательность тестов: следующий открывается только
+// после сдачи предыдущего минимум на PASS_THRESHOLD%.
+const PASS_THRESHOLD = 80;
+const TESTS: { id: string; title: string }[] = [
+  { id: '1', title: 'Основы баллистики' },
+  { id: '2', title: 'Огневая подготовка снайпера' },
+  { id: '3', title: 'Внутренняя и внешняя баллистика' },
+  { id: '4', title: 'Тактика малых групп' },
+  { id: '5', title: 'Снайперская маскировка и наблюдение' },
+];
+
 type Phase = 'test' | 'review' | 'result';
 
 export function TestPage() {
@@ -170,7 +182,19 @@ export function TestPage() {
   const [reviewStep, setReviewStep] = useState(0);
   const [reviewAns, setReviewAns] = useState<string>('Усвоил');
   const [reviewComment, setReviewComment] = useState('');
+  const [reviewResponses, setReviewResponses] = useState<{ question: string; answer: string; comment: string }[]>([]);
   const [imgErr, setImgErr] = useState(false);
+  const testId = id ?? 'test';
+  const submitTestResult = useLearningStore(state => state.submitTest);
+  const savedSubmission = useLearningStore(state => state.submissions[testId]);
+
+  // Последовательность тестов: какой по счёту, какой предыдущий/следующий
+  const seqIdx = TESTS.findIndex(t => t.id === testId);
+  const testMeta = seqIdx >= 0 ? TESTS[seqIdx] : null;
+  const prevTest = seqIdx > 0 ? TESTS[seqIdx - 1] : null;
+  const nextTest = seqIdx >= 0 && seqIdx < TESTS.length - 1 ? TESTS[seqIdx + 1] : null;
+  const prevSubmission = useLearningStore(state => prevTest ? state.submissions[prevTest.id] : undefined);
+  const locked = !!prevTest && !prevSubmission?.passed;
 
   useEffect(() => { injectCss(CSS, 'tp-css'); }, []);
 
@@ -213,8 +237,32 @@ export function TestPage() {
   }
 
   function submitReview() {
-    if (reviewStep < 3) { setReviewStep(s => s + 1); setReviewComment(''); setReviewAns('Усвоил'); }
-    else { setReviewModal(false); setReviewStep(0); setPhase('result'); }
+    const responses = [...reviewResponses, {
+      question: REVIEW_QUESTIONS[reviewStep],
+      answer: reviewAns,
+      comment: reviewComment.trim(),
+    }];
+    setReviewResponses(responses);
+
+    if (reviewStep < REVIEW_QUESTIONS.length - 1) {
+      setReviewStep(s => s + 1);
+      setReviewComment('');
+      setReviewAns('Усвоил');
+      return;
+    }
+
+    submitTestResult({
+      testId,
+      score: pct,
+      correct: correctCount,
+      total: QUESTIONS.length,
+      passed: pct >= PASS_THRESHOLD,
+      answers: answers.map(answer => answer ?? -1),
+      review: responses,
+    });
+    setReviewModal(false);
+    setReviewStep(0);
+    setPhase('result');
   }
 
   const REVIEW_QUESTIONS = [
@@ -225,6 +273,30 @@ export function TestPage() {
   ];
 
   const progressW = `${((current + 1) / QUESTIONS.length) * 100}%`;
+
+  /* ── LOCKED SCREEN (предыдущий тест не сдан на 80%) ── */
+  if (locked) {
+    return (
+      <div style={{ paddingTop: 60, marginLeft: 56, minHeight: '100vh', background: '#F4F6FB' }}>
+        <div style={{ maxWidth: 620, margin: '0 auto', padding: '60px 28px' }}>
+          <div style={{ background: '#fff', borderRadius: 24, border: '1px solid #E5E7EB', padding: '40px 36px', textAlign: 'center', animation: 'scaleIn .3s ease' }}>
+            <div style={{ width: 84, height: 84, borderRadius: '50%', background: '#F3F4F6', border: '2px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px' }}>
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="1.8" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: '#111', marginBottom: 10 }}>Тест ещё закрыт</div>
+            <p style={{ fontSize: 15, color: '#6B7280', lineHeight: 1.6, margin: '0 0 8px' }}>
+              Чтобы открыть тест «{testMeta?.title}», сначала сдайте тест{prevTest ? ` «${prevTest.title}»` : ''} минимум на {PASS_THRESHOLD}%.
+            </p>
+            {prevSubmission && <p style={{ fontSize: 13, color: '#B45309', fontWeight: 600, margin: '0 0 4px' }}>Ваш результат по предыдущему тесту: {prevSubmission.score}% (нужно ≥ {PASS_THRESHOLD}%).</p>}
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 22 }}>
+              <button className="tp-btn-prim" onClick={() => prevTest && navigate(`/tests/${prevTest.id}`)} style={{ padding: '13px 26px', background: '#375DFB', border: 'none', borderRadius: 14, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 14px rgba(55,93,251,.28)' }}>{prevSubmission ? 'Пересдать предыдущий тест' : 'Перейти к предыдущему тесту'}</button>
+              <button className="tp-btn-sec" onClick={() => navigate(-1)} style={{ padding: '13px 22px', background: '#fff', border: '1px solid #E5E7EB', borderRadius: 14, color: '#374151', fontSize: 14, cursor: 'pointer' }}>К занятию</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   /* ── RESULT SCREEN ── */
   if (phase === 'result') {
@@ -301,16 +373,43 @@ export function TestPage() {
               })}
             </div>
 
+            {savedSubmission && (
+              <div style={{ margin: '0 28px 22px', padding: '16px 18px', borderRadius: 14, background: savedSubmission.passed ? '#F0FDF4' : '#FFF7ED', border: `1px solid ${savedSubmission.passed ? '#BBF7D0' : '#FED7AA'}` }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: savedSubmission.passed ? '#047857' : '#C2410C', marginBottom: 6 }}>
+                  {savedSubmission.passed
+                    ? (nextTest ? `Тест сдан на ${savedSubmission.score}% — следующий тест открыт` : `Тест сдан на ${savedSubmission.score}% — это последний тест курса`)
+                    : `Нужно набрать минимум ${PASS_THRESHOLD}% — назначена повторная попытка`}
+                </div>
+                <div style={{ fontSize: 13, lineHeight: 1.55, color: '#4B5563' }}>{savedSubmission.passed ? (nextTest ? `Отличная работа! Можете переходить к тесту «${nextTest.title}».` : 'Вы прошли все тесты курса. Поздравляем!') : `Ваш результат: ${savedSubmission.score}%. Изучите разбор ответов ниже и пройдите тест ещё раз.`}</div>
+                <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 8 }}>Результат сохранён и доступен инструктору. Прогресс не сбрасывается.</div>
+              </div>
+            )}
+
             {/* Buttons */}
-            <div style={{ display: 'flex', gap: 12, padding: '0 28px 28px' }}>
-              <button className="tp-btn-prim" onClick={() => { setAnswers(Array(QUESTIONS.length).fill(null)); setCurrent(0); setSelected(null); setPhase('test'); }}
-                style={{ flex: 1, padding: '13px 0', background: '#375DFB', border: 'none', borderRadius: 14, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 14px rgba(55,93,251,.28)' }}>
-                Пройти ещё раз
-              </button>
-              <button className="tp-btn-sec" onClick={() => navigate(-1)}
-                style={{ flex: 1, padding: '13px 0', background: '#fff', border: '1px solid #E5E7EB', borderRadius: 14, color: '#374151', fontSize: 14, cursor: 'pointer' }}>
-                К занятию
-              </button>
+            <div style={{ display: 'flex', gap: 12, padding: '0 28px 28px', flexWrap: 'wrap' }}>
+              {savedSubmission?.passed && nextTest ? (
+                <>
+                  <button className="tp-btn-prim" onClick={() => navigate(`/tests/${nextTest.id}`)}
+                    style={{ flex: 1, minWidth: 220, padding: '13px 0', background: '#10B981', border: 'none', borderRadius: 14, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 14px rgba(16,185,129,.28)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                    Следующий тест<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+                  </button>
+                  <button className="tp-btn-sec" onClick={() => navigate(-1)}
+                    style={{ minWidth: 130, padding: '13px 22px', background: '#fff', border: '1px solid #E5E7EB', borderRadius: 14, color: '#374151', fontSize: 14, cursor: 'pointer' }}>
+                    К занятию
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button className="tp-btn-prim" onClick={() => { setAnswers(Array(QUESTIONS.length).fill(null)); setReviewResponses([]); setCurrent(0); setSelected(null); setPhase('test'); }}
+                    style={{ flex: 1, minWidth: 160, padding: '13px 0', background: '#375DFB', border: 'none', borderRadius: 14, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 14px rgba(55,93,251,.28)' }}>
+                    Пройти ещё раз
+                  </button>
+                  <button className="tp-btn-sec" onClick={() => navigate(-1)}
+                    style={{ flex: 1, minWidth: 130, padding: '13px 0', background: '#fff', border: '1px solid #E5E7EB', borderRadius: 14, color: '#374151', fontSize: 14, cursor: 'pointer' }}>
+                    К занятию
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -356,8 +455,8 @@ export function TestPage() {
                 <span style={{ fontSize: 18, fontWeight: 800, color: '#375DFB' }}>{current + 1}</span>
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 17, fontWeight: 700, color: '#111' }}>Внутренняя и внешняя баллистика</div>
-                <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 2 }}>Для закрепления информации, необходимо пройти тест из {QUESTIONS.length} вопросов.</div>
+                <div style={{ fontSize: 17, fontWeight: 700, color: '#111' }}>{testMeta?.title ?? 'Тест по теме урока'}{seqIdx >= 0 ? ` · Тест ${seqIdx + 1} из ${TESTS.length}` : ''}</div>
+                <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 2 }}>Для перехода к следующему тесту нужно набрать минимум {PASS_THRESHOLD}% из {QUESTIONS.length} вопросов.</div>
               </div>
               <button onClick={() => navigate(-1)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', background: '#fff', border: '1px solid #E5E7EB', borderRadius: 10, fontSize: 13, color: '#374151', cursor: 'pointer' }}>
                 Завершить

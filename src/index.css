@@ -5,6 +5,10 @@
   font-family: Inter, Arial, sans-serif;
 }
 
+html {
+  scrollbar-gutter: stable;
+}
+
 body {
   background: #f5f6f8;
   color: #1e1e1e;
@@ -218,4 +222,229 @@ section {
 
 .pulse-on-hover:hover {
   animation: gentlePulse 1.5s infinite;
+}
+
+/* Единая акцентная кнопка для переходов «Все» / «Все материалы». */
+.voevoda-view-all {
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center;
+  gap: 8px !important;
+  min-height: 36px;
+  padding: 8px 14px !important;
+  border: none !important;
+  border-radius: 8px !important;
+  background: #375DFB !important;
+  color: #fff !important;
+  font-weight: 700 !important;
+  letter-spacing: 0;
+  box-shadow: 0 5px 18px rgba(55, 93, 251, 0.32);
+  cursor: pointer;
+  transform: translateY(0);
+  transition: background-color .22s ease, box-shadow .22s ease, transform .22s ease !important;
+}
+
+.voevoda-view-all::before,
+.voevoda-view-all::after { content: none !important; }
+
+.voevoda-view-all:hover {
+  background: #1E3F9F !important;
+  color: #fff !important;
+  box-shadow: 0 8px 26px rgba(55, 93, 251, 0.46) !important;
+  transform: translateY(-2px) !important;
+}
+
+.voevoda-view-all svg {
+  width: 20px;
+  height: 20px;
+  padding: 5px;
+  box-sizing: border-box;
+  flex: 0 0 20px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.20);
+  color: #fff;
+  transition: transform .22s ease, background-color .22s ease;
+}
+
+.voevoda-view-all:hover svg {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.28);
+  transform: translateX(2px);
+}
+
+.voevoda-view-all:active {
+  transform: translateY(0) !important;
+  box-shadow: 0 3px 10px rgba(55, 93, 251, 0.16) !important;
+}
+
+.voevoda-view-all:focus-visible {
+  outline: 3px solid rgba(55,93,251,.22);
+  outline-offset: 3px;
+}
+
+/*
+ * Обратный вариант только для ссылок «Все» в карточках людей и журнала.
+ * Модификатор добавляется точечно — остальные кнопки портала не меняются.
+ */
+.voevoda-view-all.voevoda-view-all--inverse {
+  border: 1px solid #C7D2FE !important;
+  background: #FFFFFF !important;
+  color: #375DFB !important;
+  box-shadow: 0 3px 12px rgba(55, 93, 251, 0.10) !important;
+}
+
+.voevoda-view-all.voevoda-view-all--inverse svg {
+  background: #EBF1FF;
+  color: #375DFB;
+}
+
+.voevoda-view-all.voevoda-view-all--inverse:hover {
+  border-color: #375DFB !important;
+  background: #375DFB !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 8px 22px rgba(55, 93, 251, 0.30) !important;
+}
+
+.voevoda-view-all.voevoda-view-all--inverse:hover svg {
+  background: rgba(255, 255, 255, 0.20);
+  color: #FFFFFF;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .voevoda-view-all,
+  .voevoda-view-all svg { transition: none !important; }
+}
+
+/*
+ * Единая геометрия кнопок портала.
+ * Эталон — кнопка «Личное дело» в блоке людей на главной странице.
+ * Правило перекрывает локальные и inline-радиусы на всех страницах.
+ */
+button {
+  border-radius: 8px !important;
+}
+
+img[src*="teacher1-main"],
+img[src*="teacher2-main"],
+img[src*="teacher3-main"],
+img[src*="сержант"] {
+  object-position: center top !important;
+}
+
+.voevoda-slider-arrow,
+.cl-photo-nav,
+.vdip-nav-btn,
+.mp-dip-nav-btn,
+.rv-lb-nav {
+  width: 48px !important;
+  height: 48px !important;
+  padding: 0 !important;
+  border: 2px solid rgba(255,255,255,.45) !important;
+  border-radius: 50% !important;
+  background: rgba(8,16,34,.62) !important;
+  color: #fff !important;
+  display: grid !important;
+  place-items: center !important;
+  box-shadow: 0 5px 18px rgba(0,0,0,.3) !important;
+  backdrop-filter: blur(10px);
+  transition: background .18s ease, transform .18s ease, opacity .18s ease !important;
+}
+
+.voevoda-slider-arrow:hover:not(:disabled),
+.cl-photo-nav:hover:not(:disabled),
+.vdip-nav-btn:hover:not(:disabled),
+.mp-dip-nav-btn:hover:not(:disabled),
+.rv-lb-nav:hover:not(:disabled) {
+  background: rgba(8,16,34,.86) !important;
+  transform: translateY(-50%) scale(1.08) !important;
+}
+
+.voevoda-slider-arrow:disabled {
+  opacity: .32 !important;
+  cursor: default !important;
+}
+
+.voevoda-slider-arrow--prev,
+.voevoda-slider-arrow--next {
+  position: absolute !important;
+  top: 50% !important;
+  z-index: 9 !important;
+  transform: translateY(-50%) !important;
+}
+
+.voevoda-slider-arrow--prev { left: 16px !important; }
+.voevoda-slider-arrow--next { right: 16px !important; }
+
+.voevoda-slider-panel {
+  position: absolute !important;
+  left: 50% !important;
+  bottom: 15px !important;
+  z-index: 8 !important;
+  transform: translateX(-50%) !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  margin: 0 !important;
+  padding: 7px 10px !important;
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 999px !important;
+  background: rgba(8,16,34,.46) !important;
+  box-shadow: 0 5px 20px rgba(0,0,0,.2);
+  backdrop-filter: blur(10px);
+}
+
+.voevoda-slider-dot {
+  width: 6px !important;
+  height: 6px !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: rgba(255,255,255,.48) !important;
+  cursor: pointer;
+  transition: width .25s ease, background .25s ease !important;
+}
+
+.voevoda-slider-dot.is-active {
+  width: 22px !important;
+  background: #fff !important;
+}
+@keyframes eliteBadgeFloat {
+  0%, 100% { transform: translateY(0); filter: brightness(1); }
+  50% { transform: translateY(-1px); filter: brightness(1.06); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [style*="eliteBadgeFloat"] { animation: none !important; }
+}
+
+/* ── Global image hover zoom ─────────────────────────────────────────────────
+   Only zooms object-fit:cover images. Uses > (direct child) combinator for the
+   hover rule so hovering a section doesn't zoom ALL nested images at once —
+   only the image's own overflow:hidden wrapper triggers the scale.
+   ────────────────────────────────────────────────────────────────────────── */
+[style*="overflow: hidden"] img[style*="object-fit: cover"],
+[style*="overflow:hidden"]  img[style*="object-fit: cover"] {
+  transition: transform 0.52s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: center center;
+}
+
+/* Zoom only when hovering the DIRECT parent overflow:hidden wrapper */
+[style*="overflow: hidden"]:hover > img[style*="object-fit: cover"],
+[style*="overflow:hidden"]:hover  > img[style*="object-fit: cover"] {
+  transform: scale(1.06);
+}
+
+/* Card-level zoom: hovering the whole card zooms the image inside */
+.zoom-on-hover:hover [style*="overflow: hidden"] > img[style*="object-fit: cover"],
+.zoom-on-hover:hover [style*="overflow:hidden"]  > img[style*="object-fit: cover"] {
+  transform: scale(1.06);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [style*="overflow: hidden"] img[style*="object-fit: cover"],
+  [style*="overflow:hidden"]  img[style*="object-fit: cover"] {
+    transition: none;
+  }
 }

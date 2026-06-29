@@ -103,11 +103,17 @@ function AreaChartRC({ series, labels, yMax = 1, yMin = 0, height = 230 }: {
   );
 }
 
-function RadarChartRC({ data }: { data: { label: string; value: number; color: string; max: number }[] }) {
+function RadarChartRC({ data, height = 340 }: { data: { label: string; value: number; color: string; max: number }[]; height?: number }) {
   const chartData = data.map(d => ({ subject: d.label, value: d.value, fullMark: d.max }));
   return (
-    <ResponsiveContainer width="100%" height={300}>
-      <RcRadarChart data={chartData} cx="50%" cy="50%" outerRadius="68%">
+    <ResponsiveContainer width="100%" height={height}>
+      <RcRadarChart
+        data={chartData}
+        cx="50%"
+        cy="49%"
+        outerRadius="84%"
+        margin={{ top: 24, right: 42, bottom: 24, left: 42 }}
+      >
         <PolarGrid stroke="#E5E7EB" strokeWidth={1}/>
         <PolarAngleAxis dataKey="subject" tick={{ fontSize: 12, fill: "#6B7280", fontWeight: 600 }}/>
         <PolarRadiusAxis domain={[0, 5]} tick={false} axisLine={false} tickCount={6}/>
@@ -277,7 +283,7 @@ function MeasurementsEditForm({ entries, onAdd }: { entries: Entry[]; onAdd: (e:
 /* ═══════════════════════════════════════
    COMPACT READ-ONLY VIEW
 ═══════════════════════════════════════ */
-function MeasurementsCompact({ entries }: { entries: Entry[] }) {
+function MeasurementsCompact({ entries, onEdit }: { entries: Entry[]; onEdit?: () => void }) {
   const latest = entries[entries.length - 1];
   const prev = entries[entries.length - 2];
   const r1 = (v: number) => Math.round(v * 10) / 10;
@@ -287,28 +293,28 @@ function MeasurementsCompact({ entries }: { entries: Entry[] }) {
     { label: "Грудь",  value: `${latest.values["Грудная клетка"]}`,   unit: "см", color: "#06B6D4", bg: "#ECFEFF", delta: r1(latest.values["Грудная клетка"] - (prev?.values["Грудная клетка"] ?? latest.values["Грудная клетка"])) },
     { label: "Бицепс", value: `${latest.values["Бицепс"]}`,           unit: "см", color: "#A78BFA", bg: "#F5F3FF", delta: r1(latest.values["Бицепс"] - (prev?.values["Бицепс"] ?? latest.values["Бицепс"])) },
   ];
-  const scale = 0.72;
+  const scale = 0.55;
   const W = 171; const H = 406;
   const svgW = Math.round(W * scale);
   const svgH = Math.round(H * scale);
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
         <span style={{ fontSize: 12, color: "#9CA3AF" }}>Последнее измерение:</span>
         <span style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>{latest.date}</span>
         <span style={{ fontSize: 10, background: "#ECFDF5", color: "#10B981", fontWeight: 600, borderRadius: 6, padding: "2px 7px", border: "1px solid #BBF7D0" }}>Актуально</span>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8, marginBottom: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 6, marginBottom: 12 }}>
         {TOP_STATS.map(s => (
-          <div key={s.label} style={{ background: s.bg, borderRadius: 12, padding: "10px 12px", border: `1px solid ${s.color}22`, textAlign: "center" }}>
-            <div style={{ fontSize: 10, color: "#9CA3AF", marginBottom: 3, fontWeight: 600 }}>{s.label}</div>
-            <div style={{ fontSize: 20, fontWeight: 800, color: s.color, lineHeight: 1.1 }}>{s.value}</div>
-            <div style={{ fontSize: 10, color: "#9CA3AF" }}>{s.unit}</div>
+          <div key={s.label} style={{ background: s.bg, borderRadius: 12, padding: "10px 8px 8px", border: `1px solid ${s.color}30`, textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <div style={{ fontSize: 10, color: s.color, marginBottom: 3, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: ".4px" }}>{s.label}</div>
+            <div style={{ fontSize: 24, fontWeight: 900, color: s.color, lineHeight: 1 }}>{s.value}</div>
+            <div style={{ fontSize: 10, color: `${s.color}99`, fontWeight: 600, marginTop: 1 }}>{s.unit}</div>
             <div style={{ marginTop: 4 }}><TrendBadge delta={s.delta}/></div>
           </div>
         ))}
       </div>
-      <div style={{ display: "flex", gap: 16, alignItems: "center", justifyContent: "center" }}>
+      <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
         <div style={{ flexShrink: 0 }}>
           <svg viewBox={`0 0 ${W} ${H}`} width={svgW} height={svgH} style={{ display: "block" }}>
             <path fill="#E5E7EB" d={BODY_PATH}/>
@@ -322,19 +328,32 @@ function MeasurementsCompact({ entries }: { entries: Entry[] }) {
           </svg>
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ border: "1px solid #F0F0F0", borderRadius: 8, overflow: "hidden" }}>
           {MEASURE_KEYS.map((k, i) => {
             const cur = latest.values[k];
             const prv = prev?.values[k] ?? cur;
             const delta = cur - prv;
             return (
-              <div key={k} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", background: "#fff", border: "1px solid #F0F0F0", borderRadius: 8, marginBottom: i < MEASURE_KEYS.length - 1 ? 2 : 0 }}>
-                <span style={{ width: 8, height: 8, borderRadius: "50%", background: DOT_COLORS[k], display: "inline-block", flexShrink: 0 }}/>
-                <span style={{ flex: 1, fontSize: 13, color: "#374151", fontWeight: 500 }}>{k}</span>
-                <span style={{ fontSize: 14, fontWeight: 700, color: "#111" }}>{cur} см</span>
+              <div key={k} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 8px", background: "#fff", borderBottom: i < MEASURE_KEYS.length - 1 ? "1px solid #F5F5F7" : "none" }}>
+                <span style={{ width: 7, height: 7, borderRadius: "50%", background: DOT_COLORS[k], display: "inline-block", flexShrink: 0 }}/>
+                <span style={{ flex: 1, fontSize: 12, color: "#374151", fontWeight: 500 }}>{k}</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: "#111" }}>{cur} см</span>
                 <TrendBadge delta={delta}/>
               </div>
             );
           })}
+          </div>
+          {onEdit && (
+            <button
+              onClick={onEdit}
+              style={{ marginTop: 10, width: "100%", padding: "9px 0", background: "#F8F9FC", border: "1.5px solid #E5E7EB", borderRadius: 8, color: "#374151", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, transition: "all .2s" }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = "#C7D2FE"; e.currentTarget.style.color = "#375DFB"; e.currentTarget.style.background = "#EEF3FF"; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = "#E5E7EB"; e.currentTarget.style.color = "#374151"; e.currentTarget.style.background = "#F8F9FC"; }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
+              Редактировать замеры
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -551,72 +570,77 @@ function BodyMeasures({ entries }: { entries: Entry[] }) {
    showHistory=true  → MeasurementsHistoryChart (график + таблица)
    default           → BodyMeasures (тело + обхваты)
 ═══════════════════════════════════════ */
-export function MeasurementsPanel({ compact = false, editable = false, showHistory = false }: {
+export function MeasurementsPanel({ compact = false, editable = false, showHistory = false, onEdit }: {
   compact?: boolean;
   editable?: boolean;
   showHistory?: boolean;
+  onEdit?: () => void;
 }) {
   const [entries, setEntries] = useState<Entry[]>(INIT_ENTRIES);
   const onAdd = (e: Entry) => setEntries(p => [...p, e]);
-  if (compact) return <MeasurementsCompact entries={entries} />;
+  if (compact) return <MeasurementsCompact entries={entries} onEdit={onEdit} />;
   if (editable) return <MeasurementsEditForm entries={entries} onAdd={onAdd} />;
   if (showHistory) return <MeasurementsHistoryChart entries={entries} />;
   return <BodyMeasures entries={entries} />;
 }
 
 /* ─── StatPanel ─── */
-function StatPanel({ score, delta, up, items, ratings }: {
+function StatPanel({ score, delta, up, items, ratings, compact }: {
   score: string; delta: string; up: boolean;
   items: { dot: string; label: string; value: string | number; info?: boolean }[];
   ratings: { icon: React.ReactNode; label: string; value: string | number }[];
+  compact?: boolean;
 }) {
   return (
-    <div style={{ width: 290, flexShrink: 0 }}>
-      <div style={{ background: "linear-gradient(135deg,#1E3FBF,#375DFB)", borderRadius: 14, padding: "18px 20px", marginBottom: 10 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,.65)", letterSpacing: ".5px", textTransform: "uppercase" as const, marginBottom: 6 }}>Ваша общая оценка</div>
+    <div style={{ width: compact ? 220 : 290, flexShrink: 0 }}>
+      <div style={{ background: "linear-gradient(135deg,#1E3FBF,#375DFB)", borderRadius: 14, padding: compact ? "12px 14px" : "18px 20px", marginBottom: compact ? 6 : 10 }}>
+        <div style={{ fontSize: compact ? 10 : 11, fontWeight: 700, color: "rgba(255,255,255,.65)", letterSpacing: ".5px", textTransform: "uppercase" as const, marginBottom: compact ? 4 : 6 }}>Ваша общая оценка</div>
         <div style={{ display: "flex", alignItems: "flex-end", gap: 10 }}>
-          <span style={{ fontSize: 44, fontWeight: 800, color: "#fff", lineHeight: 1 }}>{score}</span>
-          <div style={{ marginBottom: 6 }}><Delta value={delta} up={up}/></div>
+          <span style={{ fontSize: compact ? 36 : 44, fontWeight: 800, color: "#fff", lineHeight: 1 }}>{score}</span>
+          <div style={{ marginBottom: compact ? 3 : 6 }}><Delta value={delta} up={up}/></div>
         </div>
       </div>
-      <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #E5E7EB", padding: "14px 16px", marginBottom: 10 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: "#9CA3AF", letterSpacing: ".4px", textTransform: "uppercase" as const, marginBottom: 12 }}>Критерии</div>
+      <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #E5E7EB", padding: compact ? "10px 12px" : "14px 16px", marginBottom: compact ? 6 : 10 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "#9CA3AF", letterSpacing: ".4px", textTransform: "uppercase" as const, marginBottom: compact ? 7 : 12 }}>Критерии</div>
         {items.map((it, i) => {
           const pct = typeof it.value === "number" ? it.value * 100 : parseFloat(String(it.value).replace(",", ".")) * 100;
           return (
-            <div key={i} style={{ marginBottom: i < items.length - 1 ? 12 : 0 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
+            <div key={i} style={{ marginBottom: i < items.length - 1 ? (compact ? 5 : 12) : 0 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: compact ? 3 : 5 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: it.dot, display: "inline-block", flexShrink: 0 }}/>
-                  <span style={{ fontSize: 13, color: "#374151" }}>{it.label}</span>
+                  <span style={{ width: compact ? 7 : 8, height: compact ? 7 : 8, borderRadius: "50%", background: it.dot, display: "inline-block", flexShrink: 0 }}/>
+                  <span style={{ fontSize: compact ? 11 : 13, color: "#374151" }}>{it.label}</span>
                 </div>
-                <span style={{ fontSize: 13, fontWeight: 700, color: it.dot }}>{it.value}</span>
+                <span style={{ fontSize: compact ? 11 : 13, fontWeight: 700, color: it.dot }}>{it.value}</span>
               </div>
-              <div style={{ height: 7, borderRadius: 6, background: "#F0F0F0", overflow: "hidden" }}>
+              <div style={{ height: compact ? 5 : 7, borderRadius: 6, background: "#F0F0F0", overflow: "hidden" }}>
                 <div style={{ height: "100%", width: `${Math.min(pct, 100)}%`, borderRadius: 6, background: `linear-gradient(90deg,${it.dot}99,${it.dot})`, transition: "width .6s cubic-bezier(.4,0,.2,1)" }}/>
               </div>
             </div>
           );
         })}
       </div>
-      <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #E5E7EB", overflow: "hidden" }}>
-        <div style={{ padding: "10px 16px 4px", fontSize: 11, fontWeight: 700, color: "#9CA3AF", letterSpacing: ".4px", textTransform: "uppercase" as const }}>Рейтинги</div>
-        {ratings.map((r, i) => (
-          <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", borderBottom: i < ratings.length - 1 ? "1px solid #F5F5F7" : "none" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ color: "#9CA3AF" }}>{r.icon}</span>
-              <span style={{ fontSize: 14, color: "#374151" }}>{r.label}</span>
+      {!compact && (
+        <div style={{ background: "#fff", borderRadius: 14, border: "1px solid #E5E7EB", overflow: "hidden" }}>
+          <div style={{ padding: "10px 16px 4px", fontSize: 11, fontWeight: 700, color: "#9CA3AF", letterSpacing: ".4px", textTransform: "uppercase" as const }}>Рейтинги</div>
+          {ratings.map((r, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", borderBottom: i < ratings.length - 1 ? "1px solid #F5F5F7" : "none" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ color: "#9CA3AF" }}>{r.icon}</span>
+                <span style={{ fontSize: 14, color: "#374151" }}>{r.label}</span>
+              </div>
+              <span style={{ fontSize: 15, fontWeight: 700, color: "#111" }}>{r.value}</span>
             </div>
-            <span style={{ fontSize: 15, fontWeight: 700, color: "#111" }}>{r.value}</span>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-function DD({ label }: { label: string }) {
+function DD({ label, onChange }: { label: string; onChange?: (v: string) => void }) {
   const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState(label);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
@@ -630,13 +654,13 @@ function DD({ label }: { label: string }) {
   return (
     <div ref={ref} style={{ position: "relative", display: "inline-block" }}>
       <button onClick={() => setOpen(o => !o)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", background: open ? "#EBF1FF" : "#fff", border: `1px solid ${open ? "#A5B4FC" : "#E5E7EB"}`, borderRadius: 10, fontSize: 13, fontWeight: 500, color: open ? "#375DFB" : "#374151", cursor: "pointer", whiteSpace: "nowrap", transition: "all .15s" }}>
-        {label}
+        {selected}
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform .2s" }}><polyline points="6 9 12 15 18 9"/></svg>
       </button>
       {open && (
         <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, background: "#fff", border: "1px solid #E5E7EB", borderRadius: 10, boxShadow: "0 8px 24px rgba(0,0,0,.1)", zIndex: 50, minWidth: 160, overflow: "hidden", animation: "mpFadeIn .15s ease" }}>
           {options.map(o => (
-            <button key={o} onClick={() => setOpen(false)} style={{ display: "block", width: "100%", padding: "9px 16px", border: "none", background: o === label ? "#EBF1FF" : "transparent", fontSize: 13, color: o === label ? "#375DFB" : "#374151", fontWeight: o === label ? 600 : 400, cursor: "pointer", textAlign: "left", transition: "background .12s" }} onMouseEnter={e => { if (o !== label) e.currentTarget.style.background = "#F9FAFB"; }} onMouseLeave={e => { if (o !== label) e.currentTarget.style.background = "transparent"; }}>{o}</button>
+            <button key={o} onClick={() => { setSelected(o); setOpen(false); onChange?.(o); }} style={{ display: "block", width: "100%", padding: "9px 16px", border: "none", background: o === selected ? "#EBF1FF" : "transparent", fontSize: 13, color: o === selected ? "#375DFB" : "#374151", fontWeight: o === selected ? 600 : 400, cursor: "pointer", textAlign: "left", transition: "background .12s" }} onMouseEnter={e => { if (o !== selected) e.currentTarget.style.background = "#F9FAFB"; }} onMouseLeave={e => { if (o !== selected) e.currentTarget.style.background = "transparent"; }}>{o}</button>
           ))}
         </div>
       )}
@@ -680,6 +704,32 @@ const RATING_ROWS = [
   { icon: <IcCity size={16}/>, label: "По городу", value: "922" },
   { icon: <IcGroup size={16}/>, label: "В группе КМБ-77-41", value: "2" },
 ];
+
+const DATE_SCALE: Record<string, number> = {
+  "31.04 – 12.05": 1.00,
+  "13.05 – 26.05": 1.07,
+  "27.05 – 09.06": 1.13,
+  "10.06 – 23.06": 1.19,
+};
+
+function scaleSeries(base: ChartSeries[], dateKey: string): ChartSeries[] {
+  const f = DATE_SCALE[dateKey] ?? 1;
+  if (f === 1) return base;
+  return base.map(s => ({ ...s, data: s.data.map(v => Math.min(5, +(v * f).toFixed(2))) }));
+}
+
+const RADAR_BASE = [
+  { label: "Физическая", value: 3.6, color: "#10B981", max: 5 },
+  { label: "Тактическая", value: 4.1, color: "#375DFB", max: 5 },
+  { label: "Командирская", value: 2.8, color: "#F59E0B", max: 5 },
+  { label: "Инструктор.", value: 4.5, color: "#A78BFA", max: 5 },
+  { label: "Интеллект.", value: 3.2, color: "#06B6D4", max: 5 },
+];
+
+function scaleRadar(dateKey: string) {
+  const f = DATE_SCALE[dateKey] ?? 1;
+  return RADAR_BASE.map(d => ({ ...d, value: Math.min(5, +(d.value * f).toFixed(2)) }));
+}
 
 ;(() => {
   if (typeof document === "undefined") return;
@@ -738,76 +788,186 @@ const SECTION_META: Record<Exclude<SectionKey, "all">, {
   },
 };
 
-type MeasuresView = "history" | "edit" | "chart";
+type SectionView = "chart" | "edit" | "history";
 
-const SEG_BTNS: [MeasuresView, string][] = [
-  ["history", "Смотреть историю"],
-  ["edit",    "Редактировать данные"],
+const SEG_BTNS: [SectionView, string][] = [
   ["chart",   "История замеров"],
+  ["edit",    "Редактировать данные"],
+  ["history", "Смотреть историю"],
 ];
 
-function SectionContent({ sectionKey, isMobile, series }: {
+function SectionContent({ sectionKey, isMobile, series, onSeriesChange, initialView, compact, dateRange }: {
   sectionKey: Exclude<SectionKey, "all">; isMobile: boolean;
   series: ChartSeries[];
+  onSeriesChange: (s: ChartSeries[]) => void;
+  initialView?: SectionView;
+  compact?: boolean;
+  dateRange: string;
 }) {
   const m = SECTION_META[sectionKey];
-  const [view, setView] = useState<MeasuresView>("chart");
+  const [view, setView] = useState<SectionView>(initialView ?? "chart");
+  const activeSeries = scaleSeries(series, dateRange);
+
+  const downloadStatement = () => {
+    const rows = [
+      ["Дата", ...m.legend.map((item) => item.l)],
+      ...m.labels.map((label, dataIndex) => [
+        label,
+        ...series.map((item) => String(item.data[dataIndex] ?? "").replace(".", ",")),
+      ]),
+    ];
+    const csv = rows
+      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(";"))
+      .join("\r\n");
+    const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `ведомость-${sectionKey}-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const updatePoint = (si: number, di: number, raw: string) => {
+    const n = parseFloat(raw.replace(",", "."));
+    if (isNaN(n)) return;
+    onSeriesChange(
+      series.map((s, ri) =>
+        ri === si ? { ...s, data: s.data.map((v, vi) => vi === di ? n : v) } : s
+      )
+    );
+  };
 
   return (
     <div className="mp-section-fade">
-      {/* ── 3 кнопки-переключателя ── */}
-      <div style={{ display: "flex", border: "1px solid #E5E7EB", borderRadius: 10, overflow: "hidden", marginBottom: 20, width: "fit-content" }}>
-        {SEG_BTNS.map(([v, l], i) => (
-          <button key={v} onClick={() => setView(v)} style={{
-            padding: "8px 18px", border: "none",
-            borderRight: i < SEG_BTNS.length - 1 ? "1px solid #E5E7EB" : "none",
-            fontSize: 13, fontWeight: view === v ? 600 : 400,
-            background: view === v ? "#fff" : "transparent",
-            color: view === v ? "#111" : "#6B7280",
-            cursor: "pointer",
-            boxShadow: view === v ? "0 1px 4px rgba(0,0,0,.08)" : "none",
-            margin: view === v ? "2px" : "0",
-            borderRadius: view === v ? "8px" : "0",
-            transition: "all .15s", whiteSpace: "nowrap" as const,
-          }}>{l}</button>
-        ))}
-      </div>
-
-      {/* ── Замеры: history + edit (CSS-скрытие — стейт сохраняется) ── */}
-      <div style={{ display: view === "chart" ? "none" : "block", overflowX: "auto" }}>
-        <MeasurementsPanel editable={view === "edit"} />
-      </div>
+      {/* ── Сегментные кнопки (скрыты в compact) ── */}
+      {!compact && (
+        <div style={{ display: "flex", border: "1px solid #E5E7EB", borderRadius: 10, overflow: "hidden", marginBottom: 20, width: "fit-content" }}>
+          {SEG_BTNS.map(([v, l], i) => (
+            <button key={v} onClick={() => setView(v)} style={{
+              padding: "8px 18px", border: "none",
+              borderRight: i < SEG_BTNS.length - 1 ? "1px solid #E5E7EB" : "none",
+              fontSize: 13, fontWeight: view === v ? 600 : 400,
+              background: view === v ? "#fff" : "transparent",
+              color: view === v ? "#111" : "#6B7280",
+              cursor: "pointer",
+              boxShadow: view === v ? "0 1px 4px rgba(0,0,0,.08)" : "none",
+              margin: view === v ? "2px" : "0",
+              borderRadius: view === v ? "8px" : "0",
+              transition: "all .15s", whiteSpace: "nowrap" as const,
+            }}>{l}</button>
+          ))}
+        </div>
+      )}
 
       {/* ── История замеров: AreaChart + StatPanel ── */}
       {view === "chart" && (
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, background: m.noteBg, border: `1px solid ${m.noteBorder}`, borderRadius: 8, padding: "6px 14px", marginBottom: 16, width: "fit-content" }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill={m.noteColor} stroke="none"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12" stroke="#fff" strokeWidth="2"/><line x1="12" y1="8" x2="12.01" y2="8" stroke="#fff" strokeWidth="2"/></svg>
-            <span style={{ fontSize: 13, color: m.noteColor, fontWeight: 500 }}>{m.noteText}</span>
-          </div>
-          <div style={{ display: "flex", gap: 24, flexWrap: isMobile ? "wrap" : "nowrap", alignItems: "stretch" }}>
-            <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+        <div style={{ animation: "mpFadeIn .2s ease" }}>
+          <div style={{ display: "flex", gap: 24, flexWrap: isMobile ? "wrap" : "nowrap", alignItems: "flex-start" }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
-                <DD label="Среднее"/>
-                <DD label="31.04 – 12.05"/>
-                {(sectionKey === "tact" || sectionKey === "cmd" || sectionKey === "instr") && (
-                  <button onClick={() => window.alert("Ведомость сформирована в демо-режиме")} style={{ padding: "7px 14px", border: "1px solid #E5E7EB", borderRadius: 10, fontSize: 13, color: "#374151", background: "#fff", cursor: "pointer" }}>Ведомость</button>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, background: m.noteBg, border: `1px solid ${m.noteBorder}`, borderRadius: 8, padding: "6px 14px", width: "fit-content" }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill={m.noteColor} stroke="none"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12" stroke="#fff" strokeWidth="2"/><line x1="12" y1="8" x2="12.01" y2="8" stroke="#fff" strokeWidth="2"/></svg>
+                  <span style={{ fontSize: 13, color: m.noteColor, fontWeight: 500 }}>{m.noteText}</span>
+                </div>
+                {!compact && (
+                  <button onClick={downloadStatement} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "7px 14px", border: "1px solid #D7E0F0", borderRadius: 10, fontSize: 13, fontWeight: 600, color: "#24324A", background: "#fff", cursor: "pointer" }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6M9 13h8M9 17h8"/></svg>
+                    Ведомость
+                  </button>
                 )}
-                {sectionKey === "phys" && <span style={{ fontSize: 13, color: "#374151" }}>Возраст <strong>29 лет</strong></span>}
               </div>
-              <div style={{ flex: 1, minHeight: 220 }}>
-                <AreaChartRC series={series} labels={m.labels} yMax={m.yMax} height="100%"/>
-              </div>
-              <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 10 }}>
-                {m.legend.map(x => (
-                  <span key={x.l} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#6B7280" }}>
-                    <span style={{ width: 10, height: 10, borderRadius: "50%", background: x.c, display: "inline-block" }}/>{x.l}
-                  </span>
-                ))}
+              <div style={{ border: "1px solid #E3E9F2", borderRadius: 18, padding: compact ? "12px 14px 10px" : (isMobile ? "16px 12px 14px" : "18px 18px 16px"), background: "linear-gradient(180deg,#FBFDFF 0%,#F7FAFF 100%)", boxShadow: "0 10px 32px rgba(31,54,93,.06)" }}>
+                {!compact && (
+                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 14, marginBottom: 8, flexWrap: "wrap" }}>
+                    <div>
+                      <div style={{ fontSize: 15, fontWeight: 800, color: "#162033" }}>Динамика подготовки</div>
+                      <div style={{ fontSize: 11, color: "#8A96A8", marginTop: 3 }}>Изменение показателей за выбранный период</div>
+                    </div>
+                    {sectionKey === "phys" && <span style={{ padding: "6px 10px", borderRadius: 999, background: "#F0FDF4", border: "1px solid #BBF7D0", fontSize: 11, color: "#15803D", fontWeight: 700 }}>Возраст: 29 лет</span>}
+                  </div>
+                )}
+                <div key={dateRange} style={{ height: compact ? 210 : (isMobile ? 250 : 300), animation: "mpFadeIn .25s ease" }}>
+                  <AreaChartRC series={activeSeries} labels={m.labels} yMax={m.yMax} height={compact ? 210 : (isMobile ? 250 : 300)}/>
+                </div>
+                {!compact && (
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12, paddingTop: 12, borderTop: "1px solid #E8EDF5" }}>
+                    {m.legend.map(x => (
+                      <span key={x.l} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "6px 9px", borderRadius: 9, background: "#fff", border: "1px solid #E7EBF2", fontSize: 11, color: "#526074", fontWeight: 600 }}>
+                        <span style={{ width: 8, height: 8, borderRadius: "50%", background: x.c, boxShadow: `0 0 0 3px ${x.c}18`, display: "inline-block" }}/>{x.l}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
-            <StatPanel score={m.score} delta={m.delta} up={m.up} items={m.items} ratings={RATING_ROWS}/>
+            <StatPanel score={m.score} delta={m.delta} up={m.up} items={m.items} ratings={RATING_ROWS} compact={compact}/>
           </div>
+        </div>
+      )}
+
+      {/* ── Редактировать данные: таблица точек графика ── */}
+      {view === "edit" && (
+        <div style={{ animation: "mpFadeIn .2s ease", border: "1px solid #E5E7EB", borderRadius: 12, overflow: "hidden" }}>
+          <div style={{ background: "#F9FAFB", borderBottom: "1px solid #F0F0F0", padding: "12px 16px", display: "flex", alignItems: "center", gap: 8 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#375DFB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>Редактирование данных графика</span>
+            <span style={{ fontSize: 12, color: "#9CA3AF" }}>— изменения мгновенно отражаются на графике</span>
+          </div>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <thead>
+                <tr>
+                  <th style={{ padding: "9px 14px", textAlign: "left" as const, fontSize: 11, fontWeight: 700, color: "#9CA3AF", background: "#FAFAFA", borderBottom: "1px solid #F0F0F0", whiteSpace: "nowrap" as const, minWidth: 80 }}>Дата</th>
+                  {m.legend.map((l, i) => (
+                    <th key={i} style={{ padding: "9px 10px", textAlign: "center" as const, fontSize: 11, fontWeight: 700, color: l.c, background: "#FAFAFA", borderBottom: "1px solid #F0F0F0", whiteSpace: "nowrap" as const }}>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                        <span style={{ width: 8, height: 8, borderRadius: "50%", background: l.c, display: "inline-block", flexShrink: 0 }}/>
+                        {l.l}
+                      </span>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {m.labels.map((label, di) => (
+                  <tr key={di}
+                    onMouseEnter={e => (e.currentTarget.style.background = "#F8FAFF")}
+                    onMouseLeave={e => (e.currentTarget.style.background = "#fff")}
+                    style={{ borderBottom: di < m.labels.length - 1 ? "1px solid #F5F5F7" : "none", background: "#fff", transition: "background .12s" }}
+                  >
+                    <td style={{ padding: "6px 14px", color: "#374151", fontWeight: 600, fontSize: 12, whiteSpace: "nowrap" as const }}>{label}</td>
+                    {series.map((s, si) => (
+                      <td key={si} style={{ padding: "4px 8px", textAlign: "center" as const }}>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={s.data[di] ?? ""}
+                          onChange={e => updatePoint(si, di, e.target.value)}
+                          style={{ width: 72, padding: "5px 6px", border: `1.5px solid ${m.legend[si]?.c ?? "#E5E7EB"}33`, borderRadius: 7, fontSize: 12, fontWeight: 600, color: "#111", textAlign: "center" as const, outline: "none", background: `${m.legend[si]?.c ?? "#E5E7EB"}0D`, boxSizing: "border-box" as const, transition: "border .12s" }}
+                          onFocus={e => (e.target.style.borderColor = m.legend[si]?.c ?? "#375DFB")}
+                          onBlur={e => (e.target.style.borderColor = `${m.legend[si]?.c ?? "#E5E7EB"}33`)}
+                        />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div style={{ padding: "10px 16px", background: "#F9FAFB", borderTop: "1px solid #F0F0F0", display: "flex", alignItems: "center", gap: 8 }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span style={{ fontSize: 12, color: "#6B7280" }}>Переключитесь на <strong style={{ color: "#111" }}>«История замеров»</strong>, чтобы увидеть изменения на графике</span>
+          </div>
+        </div>
+      )}
+
+      {/* ── Смотреть историю: тело — замеры ── */}
+      {view === "history" && (
+        <div style={{ animation: "mpFadeIn .2s ease", overflowX: "auto" }}>
+          <MeasurementsPanel />
         </div>
       )}
     </div>
@@ -824,41 +984,44 @@ const TRAINING_SECTION_TABS: { key: SectionKey; label: string; color: string; bg
 
 type EditableSectionKey = Exclude<SectionKey, "all">;
 
-export function TrainingPanel({ compact: _compact = false }: { compact?: boolean }) {
+export function TrainingPanel({ compact = false, initialSection, initialView, onSectionChange }: { compact?: boolean; initialSection?: EditableSectionKey; initialView?: SectionView; onSectionChange?: (s: SectionKey) => void }) {
   const isMobile = useMediaQuery("(max-width:900px)");
-  const [activeSection, setActiveSection] = useState<SectionKey>("all");
+  const [activeSection, setActiveSection] = useState<SectionKey>(initialSection ?? "all");
+  const [dateRange, setDateRange] = useState("31.04 – 12.05");
   const [seriesData, setSeriesData] = useState<Record<EditableSectionKey, ChartSeries[]>>({
     phys: PHYS_SERIES.map(s => ({ ...s, data: [...s.data] })),
     tact: TACT_SERIES.map(s => ({ ...s, data: [...s.data] })),
     cmd: CMD_SERIES.map(s => ({ ...s, data: [...s.data] })),
     instr: INSTR_SERIES.map(s => ({ ...s, data: [...s.data] })),
   });
+  const radarData = scaleRadar(dateRange);
   return (
     <div>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
-        {TRAINING_SECTION_TABS.map(({ key, label, color, bg, border }) => (
-          <button key={key} className="mp-tab-btn" onClick={() => setActiveSection(key)}
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: compact ? 8 : 20, alignItems: "center" }}>
+        {TRAINING_SECTION_TABS.slice(0, 3).map(({ key, label, color, bg, border }) => (
+          <button key={key} className="mp-tab-btn" onClick={() => { setActiveSection(key); onSectionChange?.(key); }}
             style={{ padding: "8px 18px", borderRadius: 8, cursor: "pointer", border: `1.5px solid ${activeSection === key ? color : border}`, background: activeSection === key ? bg : "#fff", color: activeSection === key ? color : "#374151", fontSize: 13, fontWeight: activeSection === key ? 700 : 400, display: "flex", alignItems: "center", gap: 7 }}>
             {key !== "all" && <span style={{ width: 8, height: 8, borderRadius: "50%", background: activeSection === key ? color : border, display: "inline-block", flexShrink: 0 }}/>}
             {label}
           </button>
         ))}
-        {activeSection === "all" && <DD label="31.04 – 12.05"/>}
+        <DD label="31.04 – 12.05" onChange={v => setDateRange(v)}/>
+        {TRAINING_SECTION_TABS.slice(3).map(({ key, label, color, bg, border }) => (
+          <button key={key} className="mp-tab-btn" onClick={() => { setActiveSection(key); onSectionChange?.(key); }}
+            style={{ padding: "8px 18px", borderRadius: 8, cursor: "pointer", border: `1.5px solid ${activeSection === key ? color : border}`, background: activeSection === key ? bg : "#fff", color: activeSection === key ? color : "#374151", fontSize: 13, fontWeight: activeSection === key ? 700 : 400, display: "flex", alignItems: "center", gap: 7 }}>
+            {key !== "all" && <span style={{ width: 8, height: 8, borderRadius: "50%", background: activeSection === key ? color : border, display: "inline-block", flexShrink: 0 }}/>}
+            {label}
+          </button>
+        ))}
       </div>
       {activeSection === "all" && (
         <div className="mp-section-fade" style={{ display: "flex", gap: 20, flexWrap: isMobile ? "wrap" : "nowrap" }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <RadarChartRC data={[
-              { label: "Физическая", value: 3.6, color: "#10B981", max: 5 },
-              { label: "Тактическая", value: 4.1, color: "#375DFB", max: 5 },
-              { label: "Командирская", value: 2.8, color: "#F59E0B", max: 5 },
-              { label: "Инструктор.", value: 4.5, color: "#A78BFA", max: 5 },
-              { label: "Интеллект.", value: 3.2, color: "#06B6D4", max: 5 },
-            ]}/>
-            <div style={{ display: "flex", gap: 16, flexWrap: "wrap", justifyContent: "center", marginTop: 10 }}>
-              {[{ c: "#10B981", l: "Физическая", v: "3.6" }, { c: "#375DFB", l: "Тактическая", v: "4.1" }, { c: "#F59E0B", l: "Командирская", v: "2.8" }, { c: "#A78BFA", l: "Инструктор.", v: "4.5" }, { c: "#06B6D4", l: "Интеллект.", v: "3.2" }].map(d => (
-                <span key={d.l} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#6B7280" }}>
-                  <span style={{ width: 10, height: 10, borderRadius: "50%", background: d.c, display: "inline-block" }}/>{d.l}: <strong style={{ color: "#111" }}>{d.v}</strong>
+            <RadarChartRC data={radarData} height={compact ? 240 : 340}/>
+            <div style={{ display: "flex", gap: 16, flexWrap: "wrap", justifyContent: "center", marginTop: compact ? 0 : 4 }}>
+              {radarData.map(d => (
+                <span key={d.label} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#6B7280" }}>
+                  <span style={{ width: 10, height: 10, borderRadius: "50%", background: d.color, display: "inline-block" }}/>{d.label}: <strong style={{ color: "#111" }}>{d.value}</strong>
                 </span>
               ))}
             </div>
@@ -878,6 +1041,7 @@ export function TrainingPanel({ compact: _compact = false }: { compact?: boolean
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}><Delta value={r.delta} up={r.up}/><span style={{ fontSize: 14, fontWeight: 700, color: "#111" }}>{r.val}</span></div>
                 </div>
               ))}
+              {!compact && <>
               <div style={{ padding: "12px 20px 4px", fontSize: 14, fontWeight: 700, color: "#374151", borderTop: "1px solid #F0F0F0" }}>Подготовка</div>
               {[
                 { icon: <IcRun size={16} color="#10B981"/>, label: "Физическая", delta: "0,32", up: true, val: "3,55" },
@@ -890,6 +1054,7 @@ export function TrainingPanel({ compact: _compact = false }: { compact?: boolean
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}><Delta value={r.delta} up={r.up}/><span style={{ fontSize: 15, fontWeight: 700, color: "#111" }}>{r.val}</span></div>
                 </div>
               ))}
+              </>}
             </div>
           </div>
         </div>
@@ -900,6 +1065,10 @@ export function TrainingPanel({ compact: _compact = false }: { compact?: boolean
           sectionKey={activeSection as EditableSectionKey}
           isMobile={isMobile}
           series={seriesData[activeSection as EditableSectionKey]}
+          onSeriesChange={s => setSeriesData(p => ({ ...p, [activeSection]: s }))}
+          initialView={activeSection === initialSection ? initialView : undefined}
+          compact={compact}
+          dateRange={dateRange}
         />
       )}
     </div>

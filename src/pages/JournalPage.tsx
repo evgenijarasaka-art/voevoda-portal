@@ -1,11 +1,17 @@
 ﻿import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useRef } from 'react';
 import { JOURNAL_SCROLL_KEY } from './ArticlePage';
+import { HOME_JOURNAL_ARTICLES, formatHomeArticleViews, getHomeArticleExcerpt } from '../data/homeJournalArticles';
+import { useFavoritesStore, type FavArticle } from '../store/useFavoritesStore';
+import { useSubscriptionsStore } from '../store/useSubscriptionsStore';
+import { useNotifStore } from '../store/useNotifStore';
+import { bindSmoothPageWheel } from '../utils/smoothWheelScroll';
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 interface Article {
   id: number;
-  category: 'Статьи' | 'Новости' | 'Блог' | 'Видео';
+  category: 'Статьи' | 'Новости' | 'Поток' | 'Блог' | 'Видео';
   title: string;
   excerpt: string;
   author: string;
@@ -19,8 +25,24 @@ interface Article {
   tags: string[];
 }
 
+const HOME_ARTICLES: Article[] = HOME_JOURNAL_ARTICLES.map((article) => ({
+  id: article.id,
+  category: article.category,
+  title: article.title,
+  excerpt: getHomeArticleExcerpt(article),
+  author: article.author,
+  authorAvatar: article.authorAvatar,
+  date: article.date,
+  readTime: `${article.readTime} мин`,
+  views: formatHomeArticleViews(article.stats.views),
+  likes: article.stats.hearts,
+  comments: article.stats.jumbo,
+  image: article.image,
+  tags: [article.category, 'Воевода'],
+}));
+
 // ─── DATA ─────────────────────────────────────────────────────────────────────
-const ARTICLES: Article[] = [
+const ORIGINAL_ARTICLES: Article[] = [
   { id: 1, category: 'Статьи', title: 'Как правильно подготовиться к курсу молодого бойца: полное руководство', excerpt: 'Курс молодого бойца — это первый и важнейший этап военной подготовки. Мы расскажем, как физически и психологически подготовиться к интенсивным нагрузкам, что взять с собой и каких ошибок избежать.', author: 'Торнадо', authorAvatar: '/teacher1-main.jpg', date: '23 марта', readTime: '8 мин', views: '121,4 тыс', likes: 2600, comments: 432, image: '/kyrs1.png', tags: ['КМБ', 'Подготовка', 'Советы'] },
   { id: 2, category: 'Новости', title: 'Открыт набор на Курс молодого бойца V5 в Москве — старт 10 мая', excerpt: 'УТЦ «Воевода» объявляет об открытии нового потока КМБ. Места ограничены — успей записаться до 30 апреля.', author: 'Редакция Воевода', authorAvatar: '/logo.png', date: '21 марта', readTime: '2 мин', views: '45,2 тыс', likes: 890, comments: 67, image: '/voen1.png', tags: ['КМБ', 'Набор', 'Москва'] },
   { id: 3, category: 'Блог', title: 'Мой путь в ВДВ: от гражданки до десантника за 3 месяца', excerpt: 'Личный опыт прохождения КМБ и подготовки к службе в Воздушно-десантных войсках. Что меня удивило, что было тяжелее всего и как я справился.', author: 'Бек', authorAvatar: '/teacher2-main.jpg', date: '20 марта', readTime: '12 мин', views: '88,6 тыс', likes: 3400, comments: 215, image: '/kyrs2.png', tags: ['ВДВ', 'Личный опыт', 'КМБ'] },
@@ -31,34 +53,75 @@ const ARTICLES: Article[] = [
   { id: 8, category: 'Статьи', title: 'Физическая подготовка бойца: программа на 3 месяца до КМБ', excerpt: 'Детальная программа тренировок. Бег, силовые, выносливость — всё по неделям.', author: 'Стрелок', authorAvatar: '/teacher2-main.jpg', date: '14 марта', readTime: '14 мин', views: '156,7 тыс', likes: 4300, comments: 298, image: '/voen6.png', tags: ['Физподготовка', 'Программа'] },
 ];
 
-const CHANNELS = [
-  { id: 1, name: 'Торнадо | Инструктор', avatar: '/teacher1-main.jpg', subscribers: '14,2 тыс.', topic: 'Тактика и оружие' },
-  { id: 2, name: 'Коба | Тактика', avatar: '/teacher3-main.jpg', subscribers: '6,4 тыс.', topic: 'Военная подготовка' },
-  { id: 3, name: 'Медицина боя', avatar: '/voen1.png', subscribers: '4,1 тыс.', topic: 'Тактическая медицина' },
-  { id: 4, name: 'Редакция Воевода', avatar: '/logo.png', subscribers: '8,7 тыс.', topic: 'Новости и события' },
-];
+const ARTICLES: Article[] = [...HOME_ARTICLES, ...ORIGINAL_ARTICLES];
 
-const TRENDING = ['Курс молодого бойца V5','Тактическая медицина','Общевойсковой снайпер','Физическая подготовка','Оружие и снаряжение','Соревнования 2024','Путь Воеводы','Командирская подготовка'];
+const toFavoriteArticle = (article: Article): FavArticle => ({
+  id: article.id,
+  kind: 'article',
+  title: article.title,
+  author: article.author,
+  date: article.date,
+  image: article.image,
+  category: article.category,
+  stats: {
+    views: Number.parseInt(article.views.replace(/\D/g, ''), 10) || 0,
+    hearts: article.likes,
+    likes: article.likes,
+    comments: article.comments,
+  },
+  available: true,
+});
+
+// ─── РЕАЛЬНЫЕ АВТОРЫ ─── агрегируем из массива статей: число публикаций,
+// суммарные прочтения и основная тема (самая частая категория автора).
+const REAL_AUTHORS = (() => {
+  const map = new Map<string, { name: string; avatar: string; articles: number; views: number; cats: Record<string, number> }>();
+  for (const a of ARTICLES) {
+    const cur = map.get(a.author) ?? { name: a.author, avatar: a.authorAvatar, articles: 0, views: 0, cats: {} };
+    cur.articles += 1;
+    cur.views += parseViews(a.views);
+    cur.cats[a.category] = (cur.cats[a.category] ?? 0) + 1;
+    if (!cur.avatar) cur.avatar = a.authorAvatar;
+    map.set(a.author, cur);
+  }
+  return [...map.values()]
+    .sort((x, y) => y.views - x.views)
+    .slice(0, 5)
+    .map((x, i) => ({
+      id: i + 1,
+      name: x.name,
+      avatar: x.avatar,
+      articles: x.articles,
+      views: x.views,
+      topic: Object.entries(x.cats).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'Публикации',
+    }));
+})();
+
+// ─── В ТРЕНДЕ ─── реальный топ статей по числу просмотров.
+const TRENDING = [...ARTICLES]
+  .sort((a, b) => parseViews(b.views) - parseViews(a.views))
+  .slice(0, 8)
+  .map((a) => a.title);
+
 const ALL_TAGS = ['КМБ','Тактика','Медицина','ВДВ','Оружие','Подготовка','Снаряжение','Стрельба','Физподготовка','Инструктор','Советы','Мотивация'];
-const CATEGORIES = ['Все','Статьи','Новости','Блог','Видео'];
+const CATEGORIES = ['Все','Статьи','Новости','Поток','Блог','Видео'];
+// «Читают сейчас» — связываем читателей с реальными топ-статьями журнала.
+const TOP_BY_VIEWS = [...ARTICLES].sort((a, b) => parseViews(b.views) - parseViews(a.views));
 const LIVE_READERS = [
-  { name: 'Следопыт-42', avatar: '/teacher1-main.jpg', article: 'Тактическая медицина...' },
-  { name: 'Тень', avatar: '/teacher2-main.jpg', article: 'Курс молодого бойца...' },
-  { name: 'Нексус', avatar: '/logo.png', article: 'Физическая подготовка...' },
-];
+  { name: 'Следопыт-42', avatar: '/teacher1-main.jpg' },
+  { name: 'Тень', avatar: '/teacher2-main.jpg' },
+  { name: 'Нексус', avatar: '/logo.png' },
+].map((r, i) => ({ ...r, article: TOP_BY_VIEWS[i] ? `${TOP_BY_VIEWS[i].title.slice(0, 30)}…` : '—' }));
+
+const JOURNAL_TOTAL_VIEWS = ARTICLES.reduce((s, a) => s + parseViews(a.views), 0);
+const READING_NOW = Math.max(LIVE_READERS.length, Math.round(JOURNAL_TOTAL_VIEWS / 6500));
 const CAT_COLORS: Record<string, { bg: string; text: string }> = {
   Статьи: { bg: '#EBF1FF', text: '#375DFB' },
   Новости: { bg: '#FEF3C7', text: '#92400E' },
+  Поток:   { bg: '#EEF2FF', text: '#4338CA' },
   Блог:    { bg: '#F0FDF4', text: '#166534' },
   Видео:   { bg: '#FEE2E2', text: '#991B1B' },
 };
-const STATS = [
-  { label: 'Публикаций',    value: '1 247', color: '#375DFB', bg: '#EBF1FF' },
-  { label: 'Авторов',       value: '384',   color: '#8B5CF6', bg: '#F3EEFF' },
-  { label: 'Читателей',     value: '42,6 тыс.', color: '#10B981', bg: '#ECFDF5' },
-  { label: 'Читают сейчас', value: '318',   color: '#F59E0B', bg: '#FFFBEB' },
-];
-
 // ─── ICONS (те же что в JournalPreview) ──────────────────────────────────────
 function IcHeart({ active = false }: { active?: boolean }) {
   return (
@@ -90,26 +153,33 @@ const STYLES = `
   .jf:hover { box-shadow:0 12px 40px rgba(0,0,0,.13) !important; transform:translateY(-3px) !important; }
   .jsl { animation:jSlideL .5s ease both; }
 
-  /* ── ПРАВАЯ СЕКЦИЯ: своя полоса скролла ── */
+  /* ── ПРАВАЯ СЕКЦИЯ: умный скролл синхронно с лентой ── */
   .jsr {
     position: sticky !important;
-    top: 84px !important;
-    max-height: calc(100vh - 104px) !important;
-    overflow-y: auto !important;
-    scrollbar-width: thin;
-    scrollbar-color: #E5E7EB transparent;
+    top: 82px !important;
+    align-self: start;
+    max-height: calc(100vh - 98px) !important;
+    overflow-y: hidden !important;
+    overscroll-behavior: contain;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
   }
-  .jsr::-webkit-scrollbar { width: 4px; }
-  .jsr::-webkit-scrollbar-track { background: transparent; }
-  .jsr::-webkit-scrollbar-thumb { background: #E5E7EB; border-radius: 4px; }
-  .jsr::-webkit-scrollbar-thumb:hover { background: #C7D2FE; }
+  .jsr::-webkit-scrollbar { width:0;height:0;display:none; }
+  .jsr[data-fade-top="true"][data-fade-bottom="false"] { -webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 22px,#000 100%);mask-image:linear-gradient(to bottom,transparent 0,#000 22px,#000 100%); }
+  .jsr[data-fade-top="false"][data-fade-bottom="true"] { -webkit-mask-image:linear-gradient(to bottom,#000 0,#000 calc(100% - 22px),transparent 100%);mask-image:linear-gradient(to bottom,#000 0,#000 calc(100% - 22px),transparent 100%); }
+  .jsr[data-fade-top="true"][data-fade-bottom="true"] { -webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 22px,#000 calc(100% - 22px),transparent 100%);mask-image:linear-gradient(to bottom,transparent 0,#000 22px,#000 calc(100% - 22px),transparent 100%); }
 
   .iz  { transition:transform .5s ease !important; }
   .jc:hover .iz, .jf:hover .iz { transform:scale(1.05) !important; }
   .sw  { transition:box-shadow .2s !important; }
   .sw:hover { box-shadow:0 4px 20px rgba(0,0,0,.08) !important; }
-  .tp  { transition:background .15s,color .15s,transform .15s !important; cursor:pointer; }
-  .tp:hover { transform:scale(1.05) !important; }
+  .tp  { position:relative;isolation:isolate;overflow:hidden;transition:background .2s,color .2s,transform .2s,box-shadow .2s,border-color .2s !important;cursor:pointer; }
+  .tp::before { content:'';position:absolute;inset:0;z-index:-1;background:linear-gradient(135deg,#375DFB,#6384FF);opacity:0;transition:opacity .2s ease; }
+  .tp:hover { color:#fff !important;border-color:#375DFB !important;transform:translateY(-2px) !important;box-shadow:0 7px 16px rgba(55,93,251,.22) !important; }
+  .tp:hover::before,.tp.active::before { opacity:1; }
+  .tp.active { color:#fff !important;border-color:#375DFB !important;box-shadow:0 6px 15px rgba(55,93,251,.2) !important; }
+  .tp:active { transform:translateY(0) scale(.97) !important; }
+  .tp:focus-visible { outline:3px solid rgba(55,93,251,.2);outline-offset:2px; }
   .cb  { transition:all .18s ease !important; }
   .cb:hover { transform:translateY(-1px) !important; }
   .ld  { animation:jPulse 1.8s ease-in-out infinite; }
@@ -145,13 +215,69 @@ const STYLES = `
   }
   .arrow-btn:hover svg { stroke: #fff !important; }
   .arrow-btn:active { transform: scale(.93); }
+
+  .journal-to-top {
+    position: fixed;
+    bottom: 24px;
+    z-index: 450;
+    width: 68px;
+    height: 68px;
+    display: grid;
+    place-items: center;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    overflow: hidden;
+    border: 2px solid #fff;
+    border-radius: 21px;
+    background: linear-gradient(145deg,#4D70FF 0%,#3158F5 48%,#2447D8 100%);
+    color: #fff;
+    cursor: pointer;
+    box-shadow: 0 15px 34px rgba(37,72,216,.3), inset 0 0 0 1px rgba(255,255,255,.28);
+    transition: opacity .35s ease,filter .35s ease,transform .48s cubic-bezier(.16,1,.3,1),box-shadow .35s ease,border-radius .35s ease;
+    backdrop-filter: blur(10px);
+  }
+  .journal-to-top::before {
+    content:'';
+    position:absolute;
+    inset:6px;
+    border:1px solid rgba(255,255,255,.48);
+    border-radius:15px;
+    transition:inset .35s ease,border-radius .35s ease,border-color .35s ease;
+  }
+  .journal-to-top::after {
+    content:'';
+    position:absolute;
+    top:-45%;
+    left:-80%;
+    width:55%;
+    height:190%;
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);
+    transform:rotate(18deg);
+    transition:left .65s cubic-bezier(.2,.75,.2,1);
+  }
+  .journal-to-top.is-hidden { opacity:0;filter:blur(5px);transform:translateY(32px) scale(.68) rotate(7deg);pointer-events:none; }
+  .journal-to-top.is-visible { opacity:1;filter:blur(0);transform:translateY(0) scale(1) rotate(0); }
+  .journal-to-top:hover { transform:translateY(-8px) scale(1.06);border-radius:24px;box-shadow:0 23px 46px rgba(37,72,216,.42),0 0 0 5px rgba(55,93,251,.11),inset 0 0 0 1px rgba(255,255,255,.32); }
+  .journal-to-top:hover::before { inset:5px;border-radius:18px;border-color:rgba(255,255,255,.75); }
+  .journal-to-top:hover::after { left:135%; }
+  .journal-to-top:active { transform:translateY(-3px) scale(.94);transition-duration:.12s; }
+  .journal-to-top:focus-visible { outline:3px solid rgba(55,93,251,.3);outline-offset:4px; }
+  .journal-to-top-icon { position:relative;z-index:1;width:42px;height:42px;display:grid;place-items:center;transition:transform .38s cubic-bezier(.16,1,.3,1); }
+  .journal-to-top:hover .journal-to-top-icon { transform:translateY(-3px); }
+  @media(max-width:760px){
+    .journal-to-top{width:62px;height:62px;bottom:16px;border-radius:19px;}
+    .journal-to-top-icon{width:38px;height:38px;}
+  }
 `;
 
 // ─── FEATURED CARD ────────────────────────────────────────────────────────────
 function FeaturedCard({ article, onOpen }: { article: Article; onOpen: () => void }) {
   const [liked, setLiked] = useState(false);
   const [juked, setJuked] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const { toggle, has } = useFavoritesStore();
+  const navigate = useNavigate();
+  const saved = has(article.id, 'article');
   const cat = CAT_COLORS[article.category] ?? { bg: '#F3F4F6', text: '#374151' };
   return (
     <div className="jf" onClick={onOpen}
@@ -167,10 +293,16 @@ function FeaturedCard({ article, onOpen }: { article: Article; onOpen: () => voi
         </div>
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '24px 28px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-            <div style={{ width: 32, height: 32, borderRadius: '50%', overflow: 'hidden', border: '2px solid rgba(255,255,255,.5)', flexShrink: 0 }}>
+            <div
+              onClick={(e: React.MouseEvent) => { e.stopPropagation(); navigate(`/users/${encodeURIComponent(article.author)}`); }}
+              style={{ width: 32, height: 32, borderRadius: '50%', overflow: 'hidden', border: '2px solid rgba(255,255,255,.5)', flexShrink: 0, cursor: 'pointer' }}
+            >
               <img src={article.authorAvatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e: React.SyntheticEvent<HTMLImageElement>) => { e.currentTarget.style.background = '#9CA3AF'; }} />
             </div>
-            <span style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,.9)' }}>{article.author}</span>
+            <span
+              onClick={(e: React.MouseEvent) => { e.stopPropagation(); navigate(`/users/${encodeURIComponent(article.author)}`); }}
+              style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,.9)', cursor: 'pointer' }}
+            >{article.author}</span>
             <span style={{ fontSize: 12, color: 'rgba(255,255,255,.55)' }}>· {article.date} · {article.readTime} чтения</span>
           </div>
           <h2 style={{ fontSize: 22, fontWeight: 800, color: '#fff', margin: '0 0 10px', lineHeight: 1.3 }}>{article.title}</h2>
@@ -185,7 +317,7 @@ function FeaturedCard({ article, onOpen }: { article: Article; onOpen: () => voi
               style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 20, border: 'none', background: juked ? 'rgba(16,185,129,.85)' : 'rgba(255,255,255,.15)', color: '#fff', fontSize: 13, cursor: 'pointer', backdropFilter: 'blur(6px)', transition: 'all .15s' }}>
               <IcThumb color={juked ? '#fff' : 'rgba(255,255,255,.7)'} size={15} />Полезно
             </button>
-            <button onClick={(e: React.MouseEvent) => { e.stopPropagation(); setSaved(!saved); }}
+            <button onClick={(e: React.MouseEvent) => { e.stopPropagation(); toggle(toFavoriteArticle(article)); }}
               style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 20, border: 'none', background: saved ? 'rgba(55,93,251,.9)' : 'rgba(255,255,255,.15)', color: '#fff', fontSize: 13, cursor: 'pointer', backdropFilter: 'blur(6px)', transition: 'all .15s' }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill={saved ? '#fff' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /></svg>
               {saved ? 'Сохранено' : 'Сохранить'}
@@ -205,7 +337,9 @@ function FeaturedCard({ article, onOpen }: { article: Article; onOpen: () => voi
 function ArticleCard({ article, index, onOpen }: { article: Article; index: number; onOpen: () => void }) {
   const [liked, setLiked] = useState(false);
   const [juked, setJuked] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const { toggle, has } = useFavoritesStore();
+  const navigate = useNavigate();
+  const saved = has(article.id, 'article');
   const cat = CAT_COLORS[article.category] ?? { bg: '#F3F4F6', text: '#374151' };
   return (
     <div className="jc" onClick={onOpen}
@@ -220,10 +354,16 @@ function ArticleCard({ article, index, onOpen }: { article: Article; index: numb
       </div>
       <div style={{ flex: 1, padding: '18px 22px', display: 'flex', flexDirection: 'column' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-          <div style={{ width: 24, height: 24, borderRadius: '50%', overflow: 'hidden', background: '#E5E7EB', flexShrink: 0 }}>
+          <div
+            onClick={(e: React.MouseEvent) => { e.stopPropagation(); navigate(`/users/${encodeURIComponent(article.author)}`); }}
+            style={{ width: 24, height: 24, borderRadius: '50%', overflow: 'hidden', background: '#E5E7EB', flexShrink: 0, cursor: 'pointer' }}
+          >
             <img src={article.authorAvatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e: React.SyntheticEvent<HTMLImageElement>) => { e.currentTarget.style.background = '#9CA3AF'; }} />
           </div>
-          <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>{article.author}</span>
+          <span
+            onClick={(e: React.MouseEvent) => { e.stopPropagation(); navigate(`/users/${encodeURIComponent(article.author)}`); }}
+            style={{ fontSize: 12, fontWeight: 600, color: '#374151', cursor: 'pointer' }}
+          >{article.author}</span>
           <span style={{ fontSize: 11, color: '#D1D5DB' }}>·</span>
           <span style={{ fontSize: 11, color: '#9CA3AF' }}>{article.date} · {article.readTime}</span>
         </div>
@@ -250,7 +390,7 @@ function ArticleCard({ article, index, onOpen }: { article: Article; index: numb
               style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer', color: juked ? '#10B981' : '#9CA3AF', fontSize: 12, padding: 0, transition: 'color .15s' }}>
               <IcThumb color={juked ? '#10B981' : '#D1D5DB'} size={14} />
             </button>
-            <button onClick={(e: React.MouseEvent) => { e.stopPropagation(); setSaved(!saved); }}
+            <button onClick={(e: React.MouseEvent) => { e.stopPropagation(); toggle(toFavoriteArticle(article)); }}
               style={{ background: 'none', border: 'none', cursor: 'pointer', color: saved ? '#375DFB' : '#9CA3AF', padding: 0, transition: 'color .15s' }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill={saved ? '#375DFB' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /></svg>
             </button>
@@ -262,6 +402,20 @@ function ArticleCard({ article, index, onOpen }: { article: Article; index: numb
 }
 
 // ─── STATS BAR ────────────────────────────────────────────────────────────────
+// Считаем реальные показатели из массива статей, а не из заглушек.
+function parseViews(raw: string): number {
+  const cleaned = raw.replace(/\s/g, '').replace(/млн/i, '').replace(/тыс\.?/i, '').replace(',', '.');
+  const num = parseFloat(cleaned) || 0;
+  if (/млн/i.test(raw)) return num * 1_000_000;
+  if (/тыс/i.test(raw)) return num * 1_000;
+  return num;
+}
+function formatCompact(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace('.', ',')} млн`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1).replace('.', ',')} тыс.`;
+  return Math.round(n).toLocaleString('ru-RU');
+}
+
 function StatsBar() {
   const icons = [
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#375DFB" strokeWidth="1.6" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></svg>,
@@ -269,13 +423,27 @@ function StatsBar() {
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="1.6" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>,
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="1.6" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>,
   ];
+
+  const totalArticles = ARTICLES.length;
+  const uniqueAuthors = new Set(ARTICLES.map(a => a.author)).size;
+  const totalViews = ARTICLES.reduce((sum, a) => sum + parseViews(a.views), 0);
+  // «Читают сейчас» — нет реального стрима, поэтому оцениваем как ~0,015% от всех просмотров
+  const readingNow = Math.max(LIVE_READERS.length, Math.round(totalViews / 6500));
+
+  const stats = [
+    { label: 'Публикаций',    value: totalArticles.toLocaleString('ru-RU'), color: '#375DFB', bg: '#EBF1FF' },
+    { label: 'Авторов',       value: uniqueAuthors.toLocaleString('ru-RU'), color: '#8B5CF6', bg: '#F3EEFF' },
+    { label: 'Читателей',     value: formatCompact(totalViews),             color: '#10B981', bg: '#ECFDF5' },
+    { label: 'Читают сейчас', value: readingNow.toLocaleString('ru-RU'),    color: '#F59E0B', bg: '#FFFBEB' },
+  ];
+
   return (
-    <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E5E7EB', padding: '18px 24px', marginBottom: 20, display: 'grid', gridTemplateColumns: 'repeat(4,1fr)' }}>
-      {STATS.map((s, i) => (
+    <div className="sw" style={{ background: '#fff', borderRadius: 16, border: '1px solid #E5E7EB', padding: '18px 24px', marginBottom: 20, display: 'grid', gridTemplateColumns: 'repeat(4,1fr)' }}>
+      {stats.map((s, i) => (
         <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '0 16px', borderRight: i < 3 ? '1px solid #F0F0F0' : 'none' }}>
           <div style={{ width: 44, height: 44, borderRadius: 12, background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{icons[i]}</div>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: '#111', lineHeight: 1.1 }}>{s.value}</div>
+            <div style={{ fontSize: 19, fontWeight: 800, color: '#111', lineHeight: 1.1 }}>{s.value}</div>
             <div style={{ fontSize: 11, color: '#9CA3AF', fontWeight: 500, marginTop: 2 }}>{s.label}</div>
           </div>
           {s.label === 'Читают сейчас' && <div className="ld" style={{ width: 8, height: 8, borderRadius: '50%', background: '#10B981', marginLeft: 'auto' }} />}
@@ -290,8 +458,79 @@ export function JournalPage() {
   const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState('Все');
   const [activeTag, setActiveTag] = useState<string | null>(null);
-  const [subscribedChannels, setSubscribedChannels] = useState<number[]>([]);
+  const { isSubscribed, subscribe, unsubscribe } = useSubscriptionsStore();
+  const addNotif = useNotifStore(s => s.add);
   const [featuredOffset, setFeaturedOffset] = useState(0);
+  const [showToTop, setShowToTop] = useState(false);
+  const tagCardRef = useRef<HTMLDivElement>(null);
+  const journalFeedRef = useRef<HTMLDivElement>(null);
+  const rightColumnRef = useRef<HTMLElement>(null);
+  const [toTopRight, setToTopRight] = useState(24);
+
+  useEffect(() => {
+    const column = rightColumnRef.current;
+    const feedList = journalFeedRef.current;
+    if (!column || !feedList) return;
+
+    let lastScrollY = window.scrollY;
+    let frame = 0;
+
+    const feedStart = () => feedList.getBoundingClientRect().top + window.scrollY - 82;
+    const clampColumnScroll = (value: number) => Math.max(0, Math.min(value, column.scrollHeight - column.clientHeight));
+    const updateEdgeFades = () => {
+      const maxScroll = Math.max(0, column.scrollHeight - column.clientHeight);
+      column.dataset.fadeTop = column.scrollTop > 2 ? 'true' : 'false';
+      column.dataset.fadeBottom = column.scrollTop < maxScroll - 2 ? 'true' : 'false';
+    };
+
+    const syncColumn = (initialize = false) => {
+      if (window.innerWidth <= 1120) {
+        column.scrollTop = 0;
+        updateEdgeFades();
+        lastScrollY = window.scrollY;
+        return;
+      }
+
+      const currentScrollY = window.scrollY;
+      const trigger = feedStart();
+
+      if (initialize) {
+        column.scrollTop = clampColumnScroll(Math.max(0, currentScrollY - trigger));
+      } else if (currentScrollY <= trigger) {
+        column.scrollTop = 0;
+      } else {
+        const currentActiveScroll = Math.max(0, currentScrollY - trigger);
+        const previousActiveScroll = Math.max(0, lastScrollY - trigger);
+        column.scrollTop = clampColumnScroll(column.scrollTop + currentActiveScroll - previousActiveScroll);
+      }
+
+      updateEdgeFades();
+      lastScrollY = currentScrollY;
+    };
+
+    const handleScroll = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => syncColumn());
+    };
+
+    const handleResize = () => {
+      column.scrollTop = clampColumnScroll(column.scrollTop);
+      updateEdgeFades();
+      lastScrollY = window.scrollY;
+    };
+
+    syncColumn(true);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('resize', handleResize);
+    const unbindSmoothWheel = bindSmoothPageWheel(column);
+
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleResize);
+      unbindSmoothWheel();
+    };
+  }, []);
 
   // Восстановление позиции после возврата
   useEffect(() => {
@@ -302,9 +541,54 @@ export function JournalPage() {
     }
   }, []);
 
-  const filtered: Article[] = activeCategory === 'Все'
-    ? ARTICLES
-    : ARTICLES.filter((a: Article) => a.category === activeCategory);
+  useEffect(() => {
+    const updateToTop = () => setShowToTop(window.scrollY > 500);
+    updateToTop();
+    window.addEventListener('scroll', updateToTop, { passive: true });
+    return () => window.removeEventListener('scroll', updateToTop);
+  }, []);
+
+  useEffect(() => {
+    // Кнопку «наверх» ставим в конце статьи справа — её правый край у ЛЕВОЙ
+    // границы правого блока, чтобы кнопка не доходила до блока «Стать автором»,
+    // а оставалась в колонке статьи.
+    const alignToSidebar = () => {
+      const sidebar = rightColumnRef.current;
+      if (!sidebar) return;
+      const rect = sidebar.getBoundingClientRect();
+      setToTopRight(Math.max(16, Math.round(window.innerWidth - rect.left + 16)));
+    };
+    alignToSidebar();
+    window.addEventListener('resize', alignToSidebar);
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(alignToSidebar) : null;
+    if (rightColumnRef.current) observer?.observe(rightColumnRef.current);
+    return () => {
+      window.removeEventListener('resize', alignToSidebar);
+      observer?.disconnect();
+    };
+  }, []);
+
+  const tagKeywords: Record<string, string[]> = {
+    КМБ: ['кмб', 'курс молодого бойца'],
+    Тактика: ['тактик'],
+    Медицина: ['медицин', 'тссс'],
+    ВДВ: ['вдв', 'десант'],
+    Оружие: ['оруж', 'ак-74'],
+    Подготовка: ['подготов'],
+    Снаряжение: ['снаряж', 'экипиров', 'что взять'],
+    Стрельба: ['стрельб', 'стрелок'],
+    Физподготовка: ['физическ', 'трениров', 'вынослив'],
+    Инструктор: ['инструктор'],
+    Советы: ['совет', 'руководство', 'как правильно'],
+    Мотивация: ['мой путь', 'история', 'почему я выбрал'],
+  };
+  const filtered: Article[] = ARTICLES.filter((article) => {
+    const categoryMatches = activeCategory === 'Все' || article.category === activeCategory;
+    if (!categoryMatches) return false;
+    if (!activeTag) return true;
+    const haystack = `${article.title} ${article.excerpt} ${article.tags.join(' ')}`.toLowerCase();
+    return (tagKeywords[activeTag] ?? [activeTag.toLowerCase()]).some((keyword) => haystack.includes(keyword));
+  });
 
   const featuredIndex = filtered.length > 0 ? featuredOffset % filtered.length : 0;
   const featured = filtered[featuredIndex];
@@ -313,7 +597,7 @@ export function JournalPage() {
   // ★ Всегда navigate, никаких модалов
   const openArticle = (article: Article) => {
     sessionStorage.setItem(JOURNAL_SCROLL_KEY, String(window.scrollY));
-    navigate(`/journal/${article.id}`);
+    navigate(`/journal/${article.id}`, { state: { returnTo: '/journal' } });
   };
 
   const shiftFeatured = (dir: 1 | -1) => {
@@ -326,19 +610,12 @@ export function JournalPage() {
   return (
     <>
       <style>{STYLES}</style>
-      <div style={{ marginTop: 60, marginLeft: 56, minHeight: 'calc(100vh - 60px)', background: '#F4F5F8', fontFamily: 'Inter, system-ui, sans-serif' }}>
+      <div style={{ marginTop: 0, marginLeft: 0, minHeight: 'calc(100vh - 60px)', background: '#F4F5F8', fontFamily: 'Inter, system-ui, sans-serif' }}>
         <div style={{ maxWidth: 1380, margin: '0 auto', padding: '28px 28px 60px', display: 'grid', gridTemplateColumns: '220px 1fr 310px', gap: 24, alignItems: 'start' }}>
 
           {/* ─── LEFT SIDEBAR ─── */}
           <aside className="jsl" style={{ position: 'sticky', top: 84, display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div className="sw" style={{ background: '#fff', borderRadius: 16, border: '1px solid #E5E7EB', overflow: 'hidden' }}>
-              <div style={{ padding: '16px 20px', borderBottom: '1px solid #F0F0F0', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#375DFB" strokeWidth="2" strokeLinecap="round">
-                  <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 0-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2" />
-                  <line x1="9" y1="8" x2="17" y2="8" /><line x1="9" y1="12" x2="17" y2="12" /><line x1="9" y1="16" x2="14" y2="16" />
-                </svg>
-                <span style={{ fontSize: 14, fontWeight: 700, color: '#111' }}>Журнал</span>
-              </div>
               {CATEGORIES.map((cat: string) => (
                 <button key={cat} onClick={() => changeCategory(cat)} className="cb"
                   style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 20px', border: 'none', background: activeCategory === cat ? '#EBF1FF' : 'transparent', color: activeCategory === cat ? '#375DFB' : '#374151', fontSize: 13, fontWeight: activeCategory === cat ? 600 : 400, cursor: 'pointer', textAlign: 'left', borderLeft: `3px solid ${activeCategory === cat ? '#375DFB' : 'transparent'}` }}>
@@ -356,12 +633,16 @@ export function JournalPage() {
                 </button>
               ))}
             </div>
-            <div className="sw" style={{ background: '#fff', borderRadius: 16, border: '1px solid #E5E7EB', padding: '18px 20px' }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#111', marginBottom: 12 }}>Популярные теги</div>
+            <div ref={tagCardRef} className="sw" style={{ background: '#fff', borderRadius: 16, border: '1px solid #E5E7EB', padding: '18px 20px' }}>
+              <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,fontSize: 13, fontWeight: 700, color: '#111', marginBottom: 12 }}>
+                <span>Популярные теги</span>
+                {activeTag&&<button type="button" onClick={()=>{setActiveTag(null);setFeaturedOffset(0);}} style={{border:0,background:'none',color:'#375DFB',fontSize:10,fontWeight:750,cursor:'pointer',padding:0}}>Сбросить</button>}
+              </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {ALL_TAGS.map((tag: string) => (
-                  <button key={tag} onClick={() => setActiveTag(activeTag === tag ? null : tag)} className="tp"
-                    style={{ background: activeTag === tag ? '#EBF1FF' : '#F4F5F8', color: activeTag === tag ? '#375DFB' : '#6B7280', border: activeTag === tag ? '1px solid #C7D7FD' : '1px solid transparent', fontSize: 11, fontWeight: 500, padding: '4px 10px', borderRadius: 10 }}>
+                  <button key={tag} type="button" onClick={() => {setActiveTag(activeTag === tag ? null : tag);setFeaturedOffset(0);}} className={`tp${activeTag===tag?' active':''}`}
+                    aria-pressed={activeTag===tag}
+                    style={{ background: activeTag === tag ? '#375DFB' : '#F4F5F8', color: activeTag === tag ? '#fff' : '#6B7280', border: activeTag === tag ? '1px solid #375DFB' : '1px solid transparent', fontSize: 11, fontWeight: 600, padding: '5px 10px', borderRadius: 10 }}>
                     #{tag}
                   </button>
                 ))}
@@ -400,20 +681,22 @@ export function JournalPage() {
               </div>
             </div>
 
-            {featured && <FeaturedCard article={featured} onOpen={() => openArticle(featured)} />}
-            {rest.map((article: Article, i: number) => (
-              <ArticleCard key={article.id} article={article} index={i} onOpen={() => openArticle(article)} />
-            ))}
-            {filtered.length === 0 && (
-              <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E5E7EB', padding: '64px 32px', textAlign: 'center' }}>
-                <div style={{ fontSize: 16, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Пока пусто</div>
-                <div style={{ fontSize: 14, color: '#9CA3AF' }}>В этой категории ещё нет материалов</div>
-              </div>
-            )}
+            <div ref={journalFeedRef}>
+              {featured && <FeaturedCard article={featured} onOpen={() => openArticle(featured)} />}
+              {rest.map((article: Article, i: number) => (
+                <ArticleCard key={article.id} article={article} index={i} onOpen={() => openArticle(article)} />
+              ))}
+              {filtered.length === 0 && (
+                <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E5E7EB', padding: '64px 32px', textAlign: 'center' }}>
+                  <div style={{ fontSize: 16, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Пока пусто</div>
+                  <div style={{ fontSize: 14, color: '#9CA3AF' }}>В этой категории ещё нет материалов</div>
+                </div>
+              )}
+            </div>
           </main>
 
           {/* ─── RIGHT SIDEBAR — sticky + свой скролл ─── */}
-          <aside className="jsr" style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingRight: 2 }}>
+          <aside ref={rightColumnRef} className="jsr" style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingRight: 2 }}>
 
             <button onClick={() => navigate('/microblog')} className="wb"
               style={{ width: '100%', padding: '16px 0', borderRadius: 8, background: 'linear-gradient(135deg,#375DFB 0%,#2240D9 100%)', border: 'none', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, flexShrink: 0 }}>
@@ -425,7 +708,7 @@ export function JournalPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
                 <div className="ld" style={{ width: 8, height: 8, borderRadius: '50%', background: '#10B981', flexShrink: 0 }} />
                 <div style={{ fontSize: 14, fontWeight: 700, color: '#111' }}>Читают сейчас</div>
-                <span style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 700, color: '#10B981' }}>318</span>
+                <span style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 700, color: '#10B981' }}>{READING_NOW.toLocaleString('ru-RU')}</span>
               </div>
               {LIVE_READERS.map((r, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: i < LIVE_READERS.length - 1 ? 12 : 0 }}>
@@ -443,22 +726,34 @@ export function JournalPage() {
 
             <div className="sw" style={{ background: '#fff', borderRadius: 16, border: '1px solid #E5E7EB', padding: '18px 20px' }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: '#111', marginBottom: 16 }}>Авторы</div>
-              {CHANNELS.map((ch) => (
-                <div key={ch.id} className="ar" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, cursor: 'pointer', padding: '6px 8px' }}>
-                  <div style={{ width: 38, height: 38, borderRadius: '50%', overflow: 'hidden', background: '#E5E7EB', flexShrink: 0 }}>
-                    <img src={ch.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e: React.SyntheticEvent<HTMLImageElement>) => { e.currentTarget.style.background = '#9CA3AF'; }} />
+              {REAL_AUTHORS.map((ch) => {
+                const following = isSubscribed(ch.name);
+                return (
+                  <div key={ch.id} className="ar" onClick={() => navigate(`/users/${encodeURIComponent(ch.name)}`)} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, cursor: 'pointer', padding: '6px 8px' }}>
+                    <div style={{ width: 38, height: 38, borderRadius: '50%', overflow: 'hidden', background: '#E5E7EB', flexShrink: 0 }}>
+                      <img src={ch.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e: React.SyntheticEvent<HTMLImageElement>) => { e.currentTarget.style.background = '#9CA3AF'; }} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ch.name}</div>
+                      <div style={{ fontSize: 11, color: '#9CA3AF' }}>{ch.articles} публ. · {formatCompact(ch.views)} прочтений</div>
+                    </div>
+                    <button
+                      onClick={(e: React.MouseEvent) => {
+                        e.stopPropagation();
+                        if (following) {
+                          unsubscribe(ch.name);
+                        } else {
+                          subscribe(ch.name);
+                          addNotif({ kind: 'new_follower', title: `Подписка оформлена`, body: `Вы подписались на ${ch.name}`, avatar: ch.avatar, link: `/users/${encodeURIComponent(ch.name)}` });
+                        }
+                      }}
+                      className="sbb"
+                      style={{ flexShrink: 0, padding: '5px 12px', borderRadius: 6, border: '1px solid', borderColor: following ? '#E5E7EB' : '#375DFB', background: following ? '#F3F4F6' : '#EBF1FF', color: following ? '#6B7280' : '#375DFB', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                      {following ? '✓ Слежу' : 'Следить'}
+                    </button>
                   </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ch.name}</div>
-                    <div style={{ fontSize: 11, color: '#9CA3AF' }}>{ch.subscribers} · {ch.topic}</div>
-                  </div>
-                  <button onClick={() => setSubscribedChannels((prev: number[]) => prev.includes(ch.id) ? prev.filter((id: number) => id !== ch.id) : [...prev, ch.id])}
-                    className="sbb"
-                    style={{ flexShrink: 0, padding: '5px 12px', borderRadius: 6, border: '1px solid', borderColor: subscribedChannels.includes(ch.id) ? '#E5E7EB' : '#375DFB', background: subscribedChannels.includes(ch.id) ? '#F3F4F6' : '#EBF1FF', color: subscribedChannels.includes(ch.id) ? '#6B7280' : '#375DFB', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
-                    {subscribedChannels.includes(ch.id) ? '✓' : 'Следить'}
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             <div className="sw" style={{ background: '#fff', borderRadius: 16, border: '1px solid #E5E7EB', padding: '18px 20px' }}>
@@ -467,7 +762,7 @@ export function JournalPage() {
                 <div key={i} className="ti" onClick={() => changeCategory('Все')}
                   style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 0', borderBottom: i < TRENDING.length - 1 ? '1px solid #F5F5F7' : 'none', cursor: 'pointer' }}>
                   <span style={{ fontSize: 12, fontWeight: 800, color: i < 3 ? '#375DFB' : '#D1D5DB', width: 22, flexShrink: 0 }}>{String(i + 1).padStart(2, '0')}</span>
-                  <span className="tt" style={{ fontSize: 13, color: '#374151', lineHeight: 1.4, flex: 1 }}>{topic}</span>
+                  <span className="tt" style={{ fontSize: 13, color: '#374151', lineHeight: 1.4, flex: 1, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{topic}</span>
                   {i < 3 && <span style={{ fontSize: 10, background: '#FEF3C7', color: '#92400E', fontWeight: 800, padding: '2px 6px', borderRadius: 8 }}>TOP</span>}
                 </div>
               ))}
@@ -487,7 +782,20 @@ export function JournalPage() {
           </aside>
         </div>
       </div>
+      <button
+        type="button"
+        className={`journal-to-top ${showToTop ? 'is-visible' : 'is-hidden'}`}
+        style={{ right: toTopRight }}
+        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        aria-label="Вернуться наверх страницы"
+        title="Наверх"
+      >
+        <span className="journal-to-top-icon" aria-hidden="true">
+          <svg width="29" height="29" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.7" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="18 15 12 9 6 15" />
+          </svg>
+        </span>
+      </button>
     </>
   );
 }
-

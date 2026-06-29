@@ -1,0 +1,120 @@
+.portal-breadcrumbs {
+  width: 100%;
+  margin: 0 0 24px;
+  font-family: inherit;
+  animation: portalBreadcrumbIn .4s ease both;
+}
+
+.portal-breadcrumbs.course-breadcrumb {
+  margin-bottom: 0;
+}
+
+.portal-breadcrumbs.compact-breadcrumb {
+  margin-top: 4px;
+  margin-bottom: 0;
+}
+
+.portal-breadcrumbs.embedded-breadcrumb {
+  margin-bottom: 0;
+}
+
+.portal-breadcrumbs ol {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.portal-breadcrumbs li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: #9ca3af;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.portal-breadcrumbs button {
+  max-width: min(360px, 55vw);
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #9ca3af;
+  font: inherit;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color .15s ease, background-color .15s ease;
+}
+
+.portal-breadcrumbs button:hover,
+.portal-breadcrumbs button:focus-visible {
+  color: #375dfb;
+}
+
+.portal-breadcrumbs button:focus-visible {
+  outline: 2px solid #c7d2fe;
+  outline-offset: 3px;
+}
+
+.portal-breadcrumbs span {
+  max-width: min(520px, 65vw);
+  overflow: hidden;
+  color: #374151;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.portal-breadcrumbs__separator {
+  flex: 0 0 auto;
+  stroke: #d1d5db;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.portal-breadcrumbs--inverse li,
+.portal-breadcrumbs--inverse button {
+  color: rgba(255,255,255,.48);
+}
+
+.portal-breadcrumbs--inverse button:hover,
+.portal-breadcrumbs--inverse button:focus-visible {
+  color: #fff;
+}
+
+.portal-breadcrumbs--inverse span {
+  color: rgba(255,255,255,.86);
+}
+
+.portal-breadcrumbs--inverse .portal-breadcrumbs__separator {
+  stroke: rgba(255,255,255,.3);
+}
+
+@keyframes portalBreadcrumbIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 640px) {
+  .portal-breadcrumbs {
+    margin-bottom: 18px;
+  }
+
+  .portal-breadcrumbs li {
+    font-size: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portal-breadcrumbs {
+    animation: none;
+  }
+}

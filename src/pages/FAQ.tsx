@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { PortalBreadcrumb } from '../components/PortalBreadcrumb';
 
 /* ─────────────────────────────────────────────
    GLOBAL STYLES
@@ -666,17 +667,7 @@ export function FAQ() {
         {/* ── HERO ── */}
         <div className="faq-hero faq-stagger-1" style={{ padding: '32px 36px 36px', marginBottom: 18 }}>
           <div style={{ position: 'relative', zIndex: 1 }}>
-            {/* Breadcrumb */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'rgba(255,255,255,.45)', marginBottom: 20 }}>
-              <span
-                onClick={() => navigate('/')}
-                style={{ cursor: 'pointer', transition: 'color .15s' }}
-                onMouseEnter={e => (e.currentTarget.style.color = 'rgba(255,255,255,.9)')}
-                onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,.45)')}
-              >Главная</span>
-              <Icon path="M9 18l6-6-6-6" size={10} stroke="rgba(255,255,255,.3)" />
-              <span style={{ color: 'rgba(255,255,255,.85)', fontWeight: 500 }}>Вопросы и ответы</span>
-            </div>
+            <PortalBreadcrumb tone="inverse" items={[{ label:'Главная', to:'/' }, { label:'Вопросы и ответы' }]} />
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 48, alignItems: 'flex-start' }}>
               <div>

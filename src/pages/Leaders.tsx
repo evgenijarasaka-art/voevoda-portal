@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { userProfilePath } from '../api/testApi';
+import { IVDisplay } from '../components/PeopleSection';
 
 const CSS = `
 @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
@@ -61,7 +63,7 @@ export function LeadersPage() {
           const colors = [['#F59E0B', '#FFFBEB', '#FDE68A'], ['#9CA3AF', '#F9FAFB', '#E5E7EB'], ['#CD7F32', '#FFF7ED', '#FED7AA']];
           const [accent, bg, border] = colors[i];
           return (
-            <div key={l.id} style={{ background: bg, border: `2px solid ${border}`, borderRadius: 18, padding: '20px 18px', textAlign: 'center', position: 'relative' }}>
+            <div key={l.id} onClick={() => navigate(userProfilePath(l.name))} style={{ background: bg, border: `2px solid ${border}`, borderRadius: 18, padding: '20px 18px', textAlign: 'center', position: 'relative', cursor: 'pointer' }}>
               <div style={{ position: 'absolute', top: -14, left: '50%', transform: 'translateX(-50%)', width: 28, height: 28, borderRadius: '50%', background: accent, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, border: `3px solid ${bg}` }}>
                 {i + 1}
               </div>
@@ -72,7 +74,7 @@ export function LeadersPage() {
               <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 8 }}>{l.rank} · {l.city}</div>
               <div style={{ display: 'flex', justifyContent: 'center', gap: 12, marginBottom: 6 }}>
                 <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: 18, fontWeight: 800, color: accent }}>ИВ {l.iv}</div>
+                  <IVDisplay index={l.iv} rating={null} />
                 </div>
               </div>
               <div style={{ fontSize: 12, color: '#9CA3AF' }}>{l.courses} курсов · {l.awards} наград</div>
@@ -87,7 +89,7 @@ export function LeadersPage() {
           <span>#</span><span>Боец</span><span style={{ textAlign: 'right' }}>ИВ</span><span style={{ textAlign: 'right' }}>Рейтинг</span><span style={{ textAlign: 'right' }}>Курсов</span><span style={{ textAlign: 'right' }}>Наград</span>
         </div>
         {sorted.map((l, i) => (
-          <div key={l.id} className="ld-row" onClick={() => navigate('/profile')}
+          <div key={l.id} className="ld-row" onClick={() => navigate(userProfilePath(l.name))}
             style={{ padding: '12px 20px', borderBottom: i < sorted.length - 1 ? '1px solid #F3F4F6' : 'none', display: 'grid', gridTemplateColumns: '40px 1fr 80px 80px 80px 80px', gap: 10, alignItems: 'center', cursor: 'pointer' }}>
             <span style={{ fontSize: 14, fontWeight: 700, color: i < 3 ? '#F59E0B' : '#9CA3AF' }}>{i + 1}</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -99,7 +101,7 @@ export function LeadersPage() {
                 <div style={{ fontSize: 11, color: '#9CA3AF' }}>{l.rank} · {l.city}</div>
               </div>
             </div>
-            <span style={{ fontSize: 14, fontWeight: 800, color: '#111827', textAlign: 'right' }}>{l.iv}</span>
+            <span style={{ justifySelf: 'end' }} onClick={e => e.stopPropagation()}><IVDisplay index={l.iv} rating={null} /></span>
             <span style={{ fontSize: 13, fontWeight: 600, color: '#F59E0B', textAlign: 'right' }}>{l.rating ? `★ ${l.rating}` : '—'}</span>
             <span style={{ fontSize: 13, color: '#374151', textAlign: 'right' }}>{l.courses}</span>
             <span style={{ fontSize: 13, color: '#374151', textAlign: 'right' }}>{l.awards}</span>

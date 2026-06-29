@@ -221,7 +221,7 @@ export function Path() {
 
         <div style={{ marginLeft: 'auto', padding: isMobile ? '20px' : '28px 40px 28px 0', zIndex: 3, flexShrink: 0, position: 'relative' }}>
           <button
-            onClick={e => { e.stopPropagation(); navigate('/my-path'); }}
+            onClick={e => { e.stopPropagation(); navigate('/courses'); }}
             onMouseEnter={() => setBtnHov(true)}
             onMouseLeave={() => setBtnHov(false)}
             style={{

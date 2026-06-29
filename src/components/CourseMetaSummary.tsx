@@ -62,7 +62,17 @@ export function CourseMetaSummary({ compact = false }: { compact?: boolean }) {
           display: grid;
           grid-template-columns: 42px minmax(0, 1fr);
           gap: 12px;
-          align-items: start;
+          align-items: center;
+          transition: box-shadow .25s ease, border-color .25s ease;
+          animation: cmsItemIn .5s ease both;
+        }
+        .course-meta-item:hover {
+          box-shadow: 0 16px 34px rgba(15,23,42,.12);
+          border-color: #C7D2FE;
+        }
+        @keyframes cmsItemIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+        @media (prefers-reduced-motion: reduce) {
+          .course-meta-item, .cms-ico { animation: none !important; transition: none !important; }
         }
         @media (max-width: 1180px) {
           .course-meta-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -82,16 +92,12 @@ export function CourseMetaSummary({ compact = false }: { compact?: boolean }) {
             Формат обучения понятен до записи
           </div>
         </div>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 13px', borderRadius: 999, background: '#ECFDF5', border: '1px solid #BBF7D0', color: '#15803D', fontSize: 12, fontWeight: 850, whiteSpace: 'nowrap' }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
-          Данные готовы к оплате
-        </div>
       </div>
 
       <div className="course-meta-grid">
-        {ITEMS.map((item) => (
-          <div key={item.label} className="course-meta-item">
-            <div style={{ width: 42, height: 42, borderRadius: 14, background: `${item.tone}12`, border: `1px solid ${item.tone}24`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        {ITEMS.map((item, i) => (
+          <div key={item.label} className="course-meta-item" style={{ animationDelay: `${i * 45}ms` }}>
+            <div className="cms-ico" style={{ width: 42, height: 42, borderRadius: 14, background: `${item.tone}12`, border: `1px solid ${item.tone}24`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <Icon name={item.icon} color={item.tone} />
             </div>
             <div style={{ minWidth: 0 }}>

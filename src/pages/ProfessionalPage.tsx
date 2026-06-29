@@ -4,6 +4,10 @@ import { useMediaQuery } from '../useMediaQuery';
 import { useFavoritesStore } from '../store/useFavoritesStore';
 import { useCartStore } from '../store/useCartStore';
 import { PeopleSection } from '../components/PeopleSection';
+import { COURSE_CARD_MOTION_CSS } from '../components/courseCardMotion';
+import { userProfilePath } from '../api/testApi';
+import { PortalBreadcrumb } from '../components/PortalBreadcrumb';
+import { PROFESSIONAL_COURSES, toDedicated } from '../data/courses';
 
 const ANIMATIONS_CSS = `
   @keyframes fadeSlideUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
@@ -11,31 +15,30 @@ const ANIMATIONS_CSS = `
   @keyframes scaleIn     { from{opacity:0;transform:scale(0.98)} to{opacity:1;transform:scale(1)} }
   @keyframes dropdownIn  { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
   @keyframes tylModalIn  { from{opacity:0;transform:scale(.94)} to{opacity:1;transform:scale(1)} }
-  @keyframes cartBounce  { 0%{transform:scale(1)} 30%{transform:scale(.72)} 65%{transform:scale(1.18)} 85%{transform:scale(.95)} 100%{transform:scale(1)} }
+  @keyframes cartBounce  { 0%{transform:scale(1)} 20%{transform:scale(.65)} 55%{transform:scale(1.22)} 75%{transform:scale(.9)} 90%{transform:scale(1.06)} 100%{transform:scale(1)} }
   @keyframes checkPop    { from{opacity:0;transform:scale(.4) rotate(-25deg)} to{opacity:1;transform:scale(1) rotate(0deg)} }
+  @keyframes lockWiggle  { 0%{transform:rotate(0) scale(1)} 10%{transform:rotate(-20deg) scale(1.35)} 26%{transform:rotate(20deg) scale(1.4)} 42%{transform:rotate(-13deg) scale(1.28)} 58%{transform:rotate(13deg) scale(1.25)} 74%{transform:rotate(-6deg) scale(1.1)} 88%{transform:rotate(6deg) scale(1.05)} 100%{transform:rotate(0) scale(1)} }
+  @keyframes lockGlow    { 0%{box-shadow:0 0 0 0 rgba(255,255,255,.55)} 55%{box-shadow:0 0 0 14px rgba(255,255,255,0)} 100%{box-shadow:0 0 0 0 rgba(255,255,255,0)} }
+  @keyframes veilFade    { from{opacity:0} to{opacity:1} }
   .anim-section { opacity:0; transform:translateY(22px); transition:opacity .5s cubic-bezier(.4,0,.2,1), transform .5s cubic-bezier(.4,0,.2,1); }
   .anim-section.visible  { opacity:1; transform:translateY(0); }
-  .course-card-shell {
-    transform:translateZ(0);
-    transform-origin:center;
-    transition:transform .55s cubic-bezier(.22,1,.36,1);
-    will-change:transform;
-  }
-  .course-card-shell:hover { transform:translateY(-8px) scale(1.018); }
-  .course-card, .course-card-surface {
-    transition:border-color .35s ease, box-shadow .55s cubic-bezier(.22,1,.36,1), background .35s ease !important;
-    will-change:box-shadow;
-  }
-  .course-card-shell:hover .course-card,
-  .course-card-shell:hover .course-card-surface {
-    border-color:#C7D2FE !important;
-    box-shadow:0 22px 55px rgba(17,24,39,.14), 0 10px 26px rgba(55,93,251,.16) !important;
-  }
-  .c-img img { transition:transform .5s cubic-bezier(.4,0,.2,1); }
-  .c-enroll-btn { transition:opacity .15s,transform .12s; }
-  .c-enroll-btn:hover { opacity:.88; transform:translateY(-1px); }
-  .offer-card { transition:box-shadow .25s ease,transform .25s ease; }
-  .offer-card:hover { box-shadow:0 12px 36px rgba(0,0,0,.12); transform:translateY(-3px); }
+  .course-card-shell { position:relative; z-index:1; }
+  .c-img { overflow:hidden; }
+  .c-img img { transition:transform .65s cubic-bezier(.4,0,.2,1); transform-origin:center; }
+  .course-card-shell:hover .c-img img { transform:scale(1.08); }
+  .c-card-overlay { position:absolute;inset:0;pointer-events:none;background:linear-gradient(to top,rgba(17,24,39,.55) 0%,transparent 55%);opacity:0;transition:opacity .5s ease; }
+  .course-card-shell:hover .c-card-overlay { opacity:1; }
+  .c-series-wrap { overflow:hidden; max-width:0; transition:max-width .52s cubic-bezier(.4,0,.2,1); border-radius:0 8px 8px 0; }
+  .course-card-shell:hover .c-series-wrap { max-width:180px; }
+  .c-series-text { white-space:nowrap; display:flex; align-items:center; opacity:0; transform:translateX(-10px); transition:opacity .38s .12s ease, transform .52s .08s cubic-bezier(.22,1,.36,1); }
+  .course-card-shell:hover .c-series-text { opacity:1; transform:translateX(0); }
+  .course-card-shell:hover .c-lock-icon { animation:lockWiggle .7s .3s cubic-bezier(.36,.07,.19,.97) both, lockGlow .7s .3s ease both; }
+  .c-enroll-btn { transition:transform .18s ease, box-shadow .18s ease !important; }
+  .c-enroll-btn:hover { transform:translateY(-2px) !important; box-shadow:0 8px 20px rgba(55,93,251,.35) !important; }
+  .offer-card { transition:box-shadow .25s ease; }
+  .offer-card img { transition:transform .6s cubic-bezier(.22,1,.36,1); }
+  .offer-card:hover { box-shadow:0 12px 36px rgba(0,0,0,.12); }
+  .offer-card:hover img { transform:scale(1.045); }
   .city-img { transition:transform .4s cubic-bezier(.4,0,.2,1); }
   .city-card:hover .city-img { transform:scale(1.06); }
   .city-card { transition:opacity .2s; } .city-card:hover { opacity:.92; }
@@ -43,6 +46,11 @@ const ANIMATIONS_CSS = `
   .comp-row { transition:background .15s; } .comp-row:hover { background:#FAFBFF; }
   .fighter-row { transition:background .15s; } .fighter-row:hover { background:#F9FAFB; }
   .review-card { transition:box-shadow .2s ease; } .review-card:hover { box-shadow:0 4px 20px rgba(0,0,0,.06); }
+  .series-course-rail{scrollbar-width:none;scroll-snap-type:x mandatory;overscroll-behavior-inline:contain}
+  .series-course-rail::-webkit-scrollbar{display:none}
+  .series-course-rail>*{scroll-snap-align:start}
+  .series-nav{transition:transform .18s ease,box-shadow .18s ease,background .18s ease}
+  .series-nav:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 8px 20px rgba(55,93,251,.22);background:#375DFB!important;color:#fff!important}
   .letter-thumb { transition:transform .25s cubic-bezier(.4,0,.2,1),box-shadow .25s ease; cursor:pointer; }
   .letter-thumb:hover { transform:scale(1.03); box-shadow:0 10px 32px rgba(0,0,0,.16); }
   .tab-btn { transition:background .15s,border-color .15s,color .15s; }
@@ -54,6 +62,10 @@ const ANIMATIONS_CSS = `
   .p-btn-primary:hover { transform:translateY(-2px) !important; box-shadow:0 8px 26px rgba(55,93,251,.46) !important; }
   .p-btn-secondary { transition:all .22s ease; }
   .p-btn-secondary:hover { border-color:#C7D2FE !important; color:#375DFB !important; background:#EEF3FF !important; }
+  @media (prefers-reduced-motion:reduce) {
+    .course-card-shell, .c-img img, .c-series-wrap, .c-series-text, .c-card-overlay { transition:none !important; }
+  }
+  ${COURSE_CARD_MOTION_CSS}
 `;
 
 function injectCss(css: string) {
@@ -93,14 +105,8 @@ const FILTER_VENUES = ['Оффлайн','Онлайн','Комбинирован
 const FILTER_COSTS  = ['Платные','Бесплатные'];
 const FILTER_TYPES  = ['Серия курсов','Курс','Тренинг','Интенсив','Марафон'];
 
-const COURSES: CourseData[] = [
-  { id:1, title:'Управление проектами (PMP)', city:'Москва', duration:'3 месяца', price:45000, oldPrice:null, img:'/проф1.png', desc:'Комплексная программа подготовки проектных менеджеров по международному стандарту PMI. Охватывает все фазы жизненного цикла проекта — от инициации до закрытия.', seriesNum:1, seriesId:1, locked:false },
-  { id:2, title:'Data Science & Machine Learning', city:'Москва', duration:'6 месяцев', price:89000, oldPrice:null, img:'/проф2.png', desc:'Профессиональный курс по анализу данных и машинному обучению. Python, pandas, sklearn, нейросети — от основ до production-готовых решений.', locked:false },
-  { id:3, title:'Финансовый аналитик CFA Level I', city:'Москва', duration:'4 месяца', price:65000, oldPrice:80000, img:'/проф3.png', desc:'Подготовка к международной сертификации CFA. Портфельный анализ, оценка активов, корпоративные финансы и финансовая отчётность по МСФО.', seriesNum:3, seriesId:1, seriesName:'Финансовый трек', locked:true, prerequisite:'Управление проектами (PMP)' },
-  { id:4, title:'Корпоративное право и M&A', city:'Москва', duration:'3 месяца', price:55000, oldPrice:null, img:'/проф1.png', desc:'Правовые основы корпоративных сделок. Слияния и поглощения, due diligence, структурирование сделок и договорная работа.', seriesNum:1, seriesId:2, locked:false },
-  { id:5, title:'Стратегический маркетинг', city:'Москва', duration:'2 месяца', price:39000, oldPrice:48000, img:'/проф4.png', desc:'Построение маркетинговой стратегии, бренд-менеджмент, performance-маркетинг и аналитика. Курс для руководителей и senior-маркетологов.', seriesNum:2, seriesId:2, seriesName:'Управленческий трек', locked:true, prerequisite:'Data Science & Machine Learning' },
-  { id:6, title:'HR Business Partner', city:'Москва', duration:'2 месяца', price:35000, oldPrice:null, img:'/проф5.png', desc:'Стратегическое управление персоналом по методологии HRBP. Оценка и развитие талантов, создание HR-стратегии, работа с вовлечённостью.', seriesNum:3, seriesId:2, locked:true, prerequisite:'Корпоративное право и M&A' },
-];
+// Курсы берём из единого источника — список совпадает с главной страницей
+const COURSES: CourseData[] = PROFESSIONAL_COURSES.map(toDedicated);
 
 const OFFERS = [
   { id:1, bg:'#EDE9FF', img:'/предлож1.png', title:'Пакет «Два курса»', desc:'Запишись одновременно на два курса и получи скидку 20% на второй. Инвестируй в своё развитие выгоднее.' },
@@ -297,7 +303,6 @@ function FiltersModal({ filters, onApply, onClose }: { filters: FilterState; onA
 // ─── CourseCard ───────────────────────────────────────────────────────────────
 function CourseCard({ c, delay }: { c: CourseData; delay: number }) {
   const navigate = useNavigate();
-  const [hov, setHov] = useState(false);
   const [imgErr, setImgErr] = useState(false);
   const { toggle, has } = useFavoritesStore();
   const { addCourse, has: inCart } = useCartStore();
@@ -305,13 +310,61 @@ function CourseCard({ c, delay }: { c: CourseData; delay: number }) {
   const alreadyInCart = inCart(c.id + 1000, 'course');
   const faved = has(c.id + 3000, 'course');
   const sc = c.seriesId ? SERIES_COLORS[c.seriesId] : null;
-  const goToDetail = () => { if (!c.locked) navigate(`/courses/${encodeURIComponent(c.title)}`); };
+  const goToDetail = () => { if (!c.locked) navigate(`/professional/${encodeURIComponent(c.title)}`); };
+
+  const goCheckout = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const veil = document.createElement('div');
+    veil.style.cssText = 'position:fixed;inset:0;background:#fff;z-index:9999;opacity:0;pointer-events:all;transition:opacity .24s ease';
+    document.body.appendChild(veil);
+    requestAnimationFrame(() => requestAnimationFrame(() => { veil.style.opacity = '1'; }));
+    setTimeout(() => {
+      navigate('/checkout', { state: { directItem: { id:c.id+1000, kind:'course', title:c.title, city:c.city, duration:c.duration, price:c.price, oldPrice:c.oldPrice ?? undefined, format:'Онлайн', image:c.img, stream:'', isFav:false, isSelected:true } } });
+      veil.style.opacity = '0';
+      setTimeout(() => veil.remove(), 280);
+    }, 260);
+  };
 
   const blueBtnBase: React.CSSProperties = {
     background: 'linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0) 100%), #375DFB',
     boxShadow: '0 0 0 1px #375DFB, 0 1px 2px 0 rgba(37,62,167,0.48)',
     border: 'none', borderRadius: 12, color: '#fff', cursor: 'pointer',
   };
+
+  const BadgePill = () => c.seriesNum ? (
+    <div style={{ position:'absolute', top:10, left:10, display:'flex', alignItems:'stretch', zIndex:5, boxShadow:'0 2px 10px rgba(0,0,0,.22)', borderRadius:8 }}>
+      <div style={{ background:sc?.num||'#374151', color:'#fff', fontSize:12, fontWeight:700, padding:'5px 9px', lineHeight:1.4, display:'flex', alignItems:'center', letterSpacing:.3, borderRadius: c.seriesName ? '8px 0 0 8px' : 8 }}>
+        {String(c.seriesNum).padStart(2,'0')}
+      </div>
+      {c.seriesName && (
+        <div className="c-series-wrap">
+          <div className="c-series-text" style={{ background:'rgba(255,255,255,.92)', color:'#374151', fontSize:11, fontWeight:600, padding:'5px 9px', lineHeight:1.4, borderRadius:'0 8px 8px 0' }}>
+            {c.seriesName}
+          </div>
+        </div>
+      )}
+    </div>
+  ) : null;
+
+  const CardImg = () => (
+    <div className="c-img" style={{ height:200, overflow:'hidden', background:'#F3F4F6', borderRadius:'16px 16px 0 0', position:'relative' }}>
+      {!imgErr
+        ? <img src={c.img} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={() => setImgErr(true)} />
+        : <div style={{ width:'100%', height:'100%', background:'linear-gradient(135deg,#EBF1FF,#DFE8FF)' }} />}
+      <div className="c-card-overlay" />
+      <BadgePill />
+      {c.oldPrice && !c.locked && !c.seriesNum && (
+        <div style={{ position:'absolute', top:10, left:10, background:'#EF4444', color:'#fff', fontSize:11, fontWeight:700, padding:'4px 9px', borderRadius:8 }}>СКИДКА</div>
+      )}
+      {c.locked && (
+        <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.32)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:4, borderRadius:'16px 16px 0 0' }}>
+          <div className="c-lock-icon" style={{ width:56, height:56, borderRadius:'50%', background:'rgba(255,255,255,.18)', backdropFilter:'blur(6px)', display:'flex', alignItems:'center', justifyContent:'center', border:'2px solid rgba(255,255,255,.45)' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 
   const HeartSvg = () => (
     <svg width="18" height="17" viewBox="0 0 18 17" fill="none">
@@ -320,37 +373,13 @@ function CourseCard({ c, delay }: { c: CourseData; delay: number }) {
     </svg>
   );
 
-  const CardImg = ({ zoom }: { zoom: boolean }) => (
-    <div className="c-img" style={{ height:200, overflow:'hidden', background:'#F3F4F6', borderRadius:'16px 16px 0 0', position:'relative' }}>
-      {!imgErr
-        ? <img src={c.img} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', transition:'transform .4s cubic-bezier(.4,0,.2,1)', transform: zoom ? 'scale(1.05)' : 'scale(1)' }} onError={() => setImgErr(true)} />
-        : <div style={{ width:'100%', height:'100%', background:'linear-gradient(135deg,#EBF1FF,#DFE8FF)' }} />}
-      {c.seriesNum && (
-        <div style={{ position:'absolute', top:10, left:10, display:'flex', alignItems:'stretch', borderRadius:8, overflow:'hidden', zIndex:5, boxShadow:'0 2px 8px rgba(0,0,0,.2)' }}>
-          <div style={{ background:sc?.num||'#374151', color:'#fff', fontSize:12, fontWeight:700, padding:'4px 8px', lineHeight:1.4, display:'flex', alignItems:'center' }}>{String(c.seriesNum).padStart(2,'0')}</div>
-          {c.seriesName && <div style={{ background:'rgba(255,255,255,.88)', color:'#374151', fontSize:11, fontWeight:500, padding:'4px 8px', lineHeight:1.4, display:'flex', alignItems:'center', maxWidth:150, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' as const }}>{c.seriesName}</div>}
-        </div>
-      )}
-      {c.oldPrice && !c.locked && !c.seriesNum && (
-        <div style={{ position:'absolute', top:10, left:10, background:'#EF4444', color:'#fff', fontSize:11, fontWeight:700, padding:'3px 8px', borderRadius:6 }}>СКИДКА</div>
-      )}
-      {c.locked && (
-        <div style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.32)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:4, borderRadius:'16px 16px 0 0' }}>
-          <div style={{ width:52, height:52, borderRadius:'50%', background:'rgba(255,255,255,.2)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', border:'2px solid rgba(255,255,255,.4)' }}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-
   const PriceRow = () => (
     <div style={{ display:'flex', alignItems:'center', gap:8 }}>
       <span style={{ fontSize:18, fontWeight:800, color:c.locked?'#9CA3AF':'#10B981' }}>{c.price.toLocaleString('ru')} <span style={{ fontSize:13 }}>₽</span></span>
       {c.oldPrice && <span style={{ fontSize:13, color:'#9CA3AF', textDecoration:'line-through' }}>{(c.oldPrice as number).toLocaleString('ru')} ₽</span>}
       {!c.locked && (
         <button onClick={e => { e.stopPropagation(); toggle({ id:c.id+3000, kind:'course', title:c.title, city:c.city, duration:c.duration, price:c.price, format:'Онлайн', image:c.img }); }}
-          style={{ marginLeft:'auto', background:'none', border:'none', outline:'none', padding:0, lineHeight:1, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, transition:'transform .15s' }}
+          style={{ marginLeft:'auto', background:'none', border:'none', outline:'none', padding:0, lineHeight:1, cursor:'pointer', display:'flex', alignItems:'center', flexShrink:0, transition:'transform .15s' }}
           onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.22)'; }}
           onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}>
           <HeartSvg />
@@ -359,81 +388,93 @@ function CourseCard({ c, delay }: { c: CourseData; delay: number }) {
     </div>
   );
 
-  const LockNotice = () => c.locked && c.prerequisite && sc ? (
-    <div style={{ marginBottom:10, background:sc.pillBg, border:`1px solid ${sc.pillText}33`, borderRadius:10, padding:'8px 12px', display:'flex', alignItems:'flex-start', gap:8 }}>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={sc.pillText} strokeWidth="2" strokeLinecap="round" style={{ flexShrink:0, marginTop:1 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-      <div style={{ fontSize:12, color:'#374151', lineHeight:1.5 }}>Будет открыт после прохождения{' '}<span onClick={e => e.stopPropagation()} style={{ color:sc.pillText, fontWeight:600, cursor:'pointer', textDecoration:'underline' }}>{c.prerequisite}</span></div>
-    </div>
-  ) : null;
-
   return (
-    <div className="course-card-shell" style={{ position:'relative', zIndex: hov ? 30 : 1 }} onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)} onClick={goToDetail}>
-      {/* Base card */}
-      <div className="course-card" style={{
-        background:'#fff', borderRadius:16, border:'1px solid #E5E7EB',
-        cursor: c.locked ? 'default' : 'pointer',
-        animation:`fadeSlideUp 0.45s cubic-bezier(.4,0,.2,1) ${delay}ms both`,
-        opacity: hov ? 0 : 1,
-        transition: 'opacity .28s ease',
-      }}>
-        <CardImg zoom={false} />
-        <div style={{ padding:'14px 16px 16px' }}>
-          <div style={{ display:'flex', justifyContent:'space-between', fontSize:13, color:'#9CA3AF', marginBottom:7 }}><span>{c.city}</span><span>{c.duration}</span></div>
-          <div style={{ fontSize:15, fontWeight:700, color:c.locked?'#6B7280':'#111', lineHeight:1.35, marginBottom:10 }}>{c.title}</div>
-          <PriceRow />
-        </div>
-      </div>
-
-      {/* Hover overlay — всегда в DOM, opacity transition */}
-      <div className="course-card-surface" style={{
-        position:'absolute', top:0, left:0, right:0,
-        background:'#fff', borderRadius:16,
-        border:`1px solid ${c.locked ? '#E5E7EB' : '#375DFB'}`,
-        boxShadow: c.locked ? '0 8px 32px rgba(0,0,0,.10)' : '0 8px 32px rgba(55,93,251,.18)',
-        overflow:'hidden', zIndex:5,
-        cursor: c.locked ? 'default' : 'pointer',
-        opacity: hov ? 1 : 0,
-        pointerEvents: hov ? 'auto' : 'none',
-        transition: 'opacity .28s ease',
-      }}>
-        <CardImg zoom={false} />
+    <div className="course-card-shell" style={{ cursor: c.locked ? 'default' : 'pointer' }} onClick={goToDetail}>
+      <div className="c-card-wrap" data-locked={c.locked ? '' : undefined}
+           style={{ animation:`fadeSlideUp 0.45s cubic-bezier(.4,0,.2,1) ${delay}ms both` }}>
+        <CardImg />
         <div style={{ padding:'14px 16px 16px' }}>
           <div style={{ display:'flex', justifyContent:'space-between', fontSize:13, color:'#9CA3AF', marginBottom:7 }}><span>{c.city}</span><span>{c.duration}</span></div>
           <div style={{ fontSize:15, fontWeight:700, color:c.locked?'#6B7280':'#111', lineHeight:1.35, marginBottom:8 }}>{c.title}</div>
-          <p style={{ fontSize:13, color:'#6B7280', lineHeight:1.55, margin:'0 0 10px', display:'-webkit-box', WebkitLineClamp:3, WebkitBoxOrient:'vertical', overflow:'hidden' } as React.CSSProperties}>{c.desc}</p>
-          <LockNotice />
           <PriceRow />
-          {!c.locked && (
-            <div style={{ display:'flex', gap:8, marginTop:12 }}>
-              <button
-                onClick={e => {
-                  e.stopPropagation();
-                  if (!alreadyInCart) {
-                    addCourse({ id: c.id + 1000, kind: 'course', title: c.title, city: c.city, duration: c.duration, price: c.price, format: 'Онлайн', image: c.img, stream: '' });
-                    setJustAdded(true);
-                    setTimeout(() => setJustAdded(false), 700);
-                  }
-                }}
-                title={alreadyInCart ? 'В корзине' : 'В корзину'}
-                className="c-enroll-btn"
-                style={{ ...blueBtnBase, width:46, height:46, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center',
-                  background: alreadyInCart ? 'linear-gradient(180deg,rgba(255,255,255,.12) 0%,rgba(255,255,255,0) 100%),#059669' : blueBtnBase.background as string,
-                  boxShadow: alreadyInCart ? '0 0 0 1px #059669,0 1px 2px 0 rgba(4,120,87,.48)' : blueBtnBase.boxShadow as string,
-                  transition: 'background .3s ease, box-shadow .3s ease',
-                  animation: justAdded ? 'cartBounce .42s cubic-bezier(.36,.07,.19,.97)' : 'none',
-                }}
-              >
-                {alreadyInCart
-                  ? <svg style={{ animation: 'checkPop .32s cubic-bezier(.34,1.56,.64,1)' }} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-                  : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
-                }
-              </button>
-              <button onClick={e => { e.stopPropagation(); navigate(`/checkout`); }} className="c-enroll-btn" style={{ ...blueBtnBase, flex:1, height:46, fontSize:14, fontWeight:600 }}>
-                Записаться и оплатить
-              </button>
-            </div>
-          )}
         </div>
+      </div>
+      <div className="c-expand-wrap">
+        <div className="c-expand-inner">
+          <div style={{ padding:'0 16px 16px' }}>
+              <p className="c-oi c-oi-1" style={{ fontSize:13, color:'#6B7280', lineHeight:1.55, margin:'0 0 8px',
+                display:'-webkit-box', WebkitLineClamp:3, WebkitBoxOrient:'vertical', overflow:'hidden',
+              } as React.CSSProperties}>{c.desc}</p>
+
+              {c.locked && c.prerequisite && sc && (
+                <div className="c-oi c-oi-2" style={{ marginBottom:10, background:sc.pillBg, border:`1px solid ${sc.pillText}33`, borderRadius:10, padding:'8px 12px', display:'flex', alignItems:'flex-start', gap:8 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={sc.pillText} strokeWidth="2" strokeLinecap="round" style={{ flexShrink:0, marginTop:1 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  <div style={{ fontSize:12, color:'#374151', lineHeight:1.5, minWidth:0 }}>Будет открыт после прохождения{' '}<span onClick={e => e.stopPropagation()} style={{ color:sc.pillText, fontWeight:600, cursor:'pointer', textDecoration:'underline' }}>{c.prerequisite}</span></div>
+                </div>
+              )}
+
+              {!c.locked && (
+                <div className="c-oi c-oi-2" style={{ display:'flex', gap:8 }}>
+                  <button
+                    onClick={e => {
+                      e.stopPropagation();
+                      if (!alreadyInCart) {
+                        addCourse({ id:c.id+1000, kind:'course', title:c.title, city:c.city, duration:c.duration, price:c.price, format:'Онлайн', image:c.img, stream:'' });
+                        setJustAdded(true);
+                        setTimeout(() => setJustAdded(false), 800);
+                      }
+                    }}
+                    title={alreadyInCart ? 'В корзине' : 'В корзину'}
+                    className="c-enroll-btn"
+                    style={{ ...blueBtnBase, width:46, height:46, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center',
+                      background: alreadyInCart ? 'linear-gradient(180deg,rgba(255,255,255,.12) 0%,rgba(255,255,255,0) 100%),#059669' : blueBtnBase.background as string,
+                      boxShadow: alreadyInCart ? '0 0 0 1px #059669,0 1px 2px 0 rgba(4,120,87,.48)' : blueBtnBase.boxShadow as string,
+                      transition:'background .3s ease, box-shadow .3s ease, transform .18s ease',
+                      animation: justAdded ? 'cartBounce .52s cubic-bezier(.36,.07,.19,.97)' : 'none',
+                    }}
+                  >
+                    {alreadyInCart
+                      ? <svg style={{ animation:'checkPop .35s cubic-bezier(.34,1.56,.64,1)' }} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+                    }
+                  </button>
+                  <button onClick={goCheckout} className="c-enroll-btn" style={{ ...blueBtnBase, flex:1, height:46, fontSize:14, fontWeight:600 }}>
+                    Записаться и оплатить
+                  </button>
+                </div>
+              )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CourseRail({ courses, title, color = '#375DFB' }: { courses: CourseData[]; title?: string | null; color?: string }) {
+  const railRef = useRef<HTMLDivElement>(null);
+  const [edge,setEdge] = useState({start:true,end:courses.length<=3});
+  const updateEdges = () => {
+    const el=railRef.current;
+    if(!el) return;
+    setEdge({start:el.scrollLeft<=4,end:el.scrollLeft+el.clientWidth>=el.scrollWidth-4});
+  };
+  const move=(direction:-1|1)=>{
+    const el=railRef.current;
+    if(el) el.scrollLeft=el.scrollLeft+direction*el.clientWidth*.92;
+  };
+  useEffect(()=>{updateEdges();window.addEventListener('resize',updateEdges);return()=>window.removeEventListener('resize',updateEdges);},[courses.length]);
+  return (
+    <div style={{marginBottom:32}}>
+      {(title || courses.length>3) && <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:16,padding:'12px 16px',background:'#fff',borderRadius:14,border:'1px solid #DCE3F4'}}>
+        {title && <><div style={{width:10,height:28,borderRadius:99,background:color}}/><span style={{fontSize:15,fontWeight:700,color:'#374151'}}>{title}</span></>}
+        <span style={{marginLeft:'auto',fontSize:12,color:'#9CA3AF'}}>{courses.length} курсов</span>
+        {courses.length>3 && <div style={{display:'flex',gap:8}}>
+          <button aria-label="Предыдущие курсы" className="series-nav" disabled={edge.start} onClick={()=>move(-1)} style={{width:38,height:38,borderRadius:11,border:'1px solid #C9D7FF',background:'#F5F8FF',color:'#375DFB',opacity:edge.start ? .38 : 1,cursor:edge.start?'default':'pointer',display:'grid',placeItems:'center'}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><polyline points="15 18 9 12 15 6"/></svg></button>
+          <button aria-label="Следующие курсы" className="series-nav" disabled={edge.end} onClick={()=>move(1)} style={{width:38,height:38,borderRadius:11,border:'1px solid #C9D7FF',background:'#F5F8FF',color:'#375DFB',opacity:edge.end ? .38 : 1,cursor:edge.end?'default':'pointer',display:'grid',placeItems:'center'}}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><polyline points="9 18 15 12 9 6"/></svg></button>
+        </div>}
+      </div>}
+      <div ref={railRef} onScroll={updateEdges} className="series-course-rail" style={{display:'grid',gridAutoFlow:'column',gridAutoColumns:'calc((100% - 40px)/3)',alignItems:'start',gap:20,overflowX:courses.length>3?'auto':'visible',overflowY:'hidden',scrollBehavior:'smooth',padding:'2px 2px 18px'}}>
+        {courses.map((c,i)=><CourseCard key={c.id} c={c} delay={i*60}/>)}
       </div>
     </div>
   );
@@ -448,7 +489,7 @@ export function ProfessionalPage() {
   const [calViewDate, setCalViewDate] = useState(new Date(2024, 9));
   const [selectedDay, setSelectedDay] = useState<number|null>(21);
   const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState<FilterState>({ cities:['Москва'], venues:['Онлайн'], costs:['Платные'], types:['Серия курсов'] });
+  const [filters, setFilters] = useState<FilterState>({ cities:[], venues:[], costs:[], types:[] });
   const [compTab, setCompTab] = useState<'will'|'past'>('will');
   const [imgErrs, setImgErrs] = useState<Record<string,boolean>>({});
   const [letterIdx, setLetterIdx] = useState<number|null>(null);
@@ -465,9 +506,19 @@ export function ProfessionalPage() {
     window.addEventListener('keydown', fn); return () => window.removeEventListener('keydown', fn);
   }, [letterIdx]);
 
+  const courseMatchesFilters = (c: CourseData) => {
+    if (filters.cities.length && !filters.cities.includes(c.city)) return false;
+    if (filters.types.length) {
+      const type = c.seriesNum ? 'Серия курсов' : 'Курс';
+      if (!filters.types.includes(type)) return false;
+    }
+    if (filters.costs.length === 1 && filters.costs[0] === 'Бесплатные') return false;
+    return true;
+  };
+  const displayedCourses = COURSES.filter(courseMatchesFilters);
   const seriesGroups = viewMode === 'series'
-    ? Object.values(COURSES.reduce((acc, c) => {
-        const key = c.seriesId != null ? `s${c.seriesId}` : `u${c.id}`;
+    ? Object.values(displayedCourses.filter(c => c.seriesId != null).reduce((acc, c) => {
+        const key = `s${c.seriesId}`;
         if (!acc[key]) acc[key] = { name: c.seriesName || null, color: c.seriesId ? (SERIES_COLORS[c.seriesId]?.num || '#374151') : '#374151', courses: [] as CourseData[] };
         acc[key].courses.push(c); return acc;
       }, {} as Record<string, { name: string|null; color: string; courses: CourseData[] }>))
@@ -479,7 +530,7 @@ export function ProfessionalPage() {
   return (
     <div style={{ paddingTop:60, marginLeft:56, minHeight:'100vh', background:'#F8F9FB' }}>
       {/* HEADER */}
-      <div style={{ background:'#fff', borderBottom:'1px solid #E5E7EB', padding:'14px 28px', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap' as const, gap:10, position:'sticky' as const, top:60, zIndex:40 }}>
+      <div className="route-controls-toolbar" style={{ background:'#fff', borderBottom:'1px solid #E5E7EB', padding:'14px 28px', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap' as const, gap:10, position:'sticky' as const, top:60, zIndex:40 }}>
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
           <h1 style={{ fontSize:20, fontWeight:700, color:'#111', margin:0 }}>Профессиональная подготовка</h1>
@@ -492,48 +543,29 @@ export function ProfessionalPage() {
               </button>
             ))}
           </div>
-          <PeriodSelector periodMode={periodMode} calViewDate={calViewDate} selectedDay={selectedDay} onChangePeriod={setPeriodMode} onNavigateCal={navigateCal} onSelectDay={setSelectedDay} />
-          <button className="btn-outline" onClick={() => setShowFilters(true)} style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 16px', border:'1px solid #E5E7EB', borderRadius:10, background:'#fff', fontSize:13, fontWeight:500, color:'#374151', cursor:'pointer', position:'relative' as const }}>
+          <button className="btn-outline" onClick={() => setShowFilters(true)} style={{ display:'flex', alignItems:'center', gap:6, padding:'8px 16px', border:'1px solid #E5E7EB', borderRadius:8, background:'#fff', fontSize:13, fontWeight:500, color:'#374151', cursor:'pointer', position:'relative' as const }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
             Фильтры
             {activeFilters > 0 && <span style={{ background:'#375DFB', color:'#fff', fontSize:11, fontWeight:700, borderRadius:'50%', width:18, height:18, display:'flex', alignItems:'center', justifyContent:'center', marginLeft:2 }}>{activeFilters}</span>}
           </button>
-          {viewMode === 'series' && (
-            <button className="btn-outline" onClick={() => navigate('/professional')} style={{ display:'flex', alignItems:'center', gap:5, padding:'8px 14px', border:'1px solid #E5E7EB', borderRadius:10, background:'#fff', fontSize:13, color:'#374151', cursor:'pointer' }}>
-              Все <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
-            </button>
-          )}
         </div>
       </div>
 
       <div style={{ padding:'20px 28px 48px' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:6, fontSize:13, color:'#9CA3AF', marginBottom:24, animation:'fadeIn 0.4s ease' }}>
-          <span onClick={() => navigate('/')} style={{ cursor:'pointer', transition:'color 0.15s' }} onMouseEnter={e=>e.currentTarget.style.color='#375DFB'} onMouseLeave={e=>e.currentTarget.style.color='#9CA3AF'}>Главная</span>
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="1.5"><polyline points="9 18 15 12 9 6"/></svg>
-          <span style={{ color:'#374151', fontWeight:500 }}>Профессиональная подготовка</span>
-        </div>
+        <PortalBreadcrumb items={[{ label:'Главная', to:'/' }, { label:'Профессиональная подготовка' }]} />
 
         {/* COURSES */}
         {viewMode === 'all' ? (
-          <div style={{ display:'grid', gridTemplateColumns:isMobile?'1fr':'repeat(3,1fr)', gap:20, marginBottom:24, overflow:'visible' }}>
-            {COURSES.map((c,i) => <CourseCard key={c.id} c={c} delay={i*60} />)}
-          </div>
+          displayedCourses.length
+            ? <div style={{display:'grid',gridTemplateColumns:isMobile?'1fr':'repeat(3,minmax(0,1fr))',gap:20,marginBottom:24,overflow:'visible'}}>
+                {displayedCourses.map((c,i)=><CourseCard key={c.id} c={c} delay={i*60}/>)}
+              </div>
+            : <div style={{textAlign:'center',padding:'56px 24px',color:'#9CA3AF',fontSize:15,marginBottom:24,background:'#fff',borderRadius:20,border:'1px solid #E5E7EB'}}>По выбранным фильтрам курсов не найдено</div>
         ) : (
           <div style={{ marginBottom:24 }}>
-            {seriesGroups?.map((group, gi) => (
-              <div key={gi} style={{ marginBottom:32 }}>
-                {group.name && (
-                  <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16, padding:'12px 18px', background:'#fff', borderRadius:14, border:'1px solid #E5E7EB', boxShadow:'0 2px 8px rgba(0,0,0,.04)' }}>
-                    <div style={{ width:10, height:10, borderRadius:'50%', background:group.color, flexShrink:0 }} />
-                    <span style={{ fontSize:15, fontWeight:600, color:'#374151' }}>{group.name}</span>
-                    <div style={{ marginLeft:'auto', fontSize:12, color:'#9CA3AF' }}>{group.courses.length} курс{group.courses.length===1?'':'а'}</div>
-                  </div>
-                )}
-                <div style={{ display:'grid', gridTemplateColumns:isMobile?'1fr':'repeat(3,1fr)', gap:20, overflow:'visible' }}>
-                  {group.courses.map((c,i) => <CourseCard key={c.id} c={c} delay={i*60} />)}
-                </div>
-              </div>
-            ))}
+            {seriesGroups?.map((group, gi) => isMobile
+              ? <div key={gi} style={{display:'grid',gridTemplateColumns:'1fr',gap:20,marginBottom:28}}>{group.courses.map((c,i)=><CourseCard key={c.id} c={c} delay={i*60}/>)}</div>
+              : <CourseRail key={gi} courses={group.courses} title={group.name || 'Профессиональная подготовка'} color={group.color}/>)}
           </div>
         )}
 
@@ -543,7 +575,7 @@ export function ProfessionalPage() {
             <SecTitle icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="1.5" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>} title="Специальные предложения" separator />
             <div style={{ display:'grid', gridTemplateColumns:isMobile?'1fr':'repeat(3,1fr)', gap:20 }}>
               {OFFERS.map(o => (
-                <div key={o.id} className="offer-card" style={{ background:'#fff', borderRadius:20, border:'1px solid #E5E7EB', overflow:'hidden', cursor:'pointer' }}>
+                <div key={o.id} className="offer-card" onClick={() => navigate('/referral')} style={{ background:'#fff', borderRadius:20, border:'1px solid #E5E7EB', overflow:'hidden', cursor:'pointer' }}>
                   <div style={{ position:'relative', height:260, background:o.bg, overflow:'hidden' }}>
                     {!imgErrs[`of${o.id}`] ? (
                       <img src={o.img} alt="" style={{ position:'absolute', bottom:0, left:'50%', transform: o.id === 3 ? 'translateX(-50%) scaleX(-1)' : 'translateX(-50%)', height:'95%', objectFit:'contain', objectPosition:'bottom center' }} onError={() => setE(`of${o.id}`)} />
@@ -570,7 +602,7 @@ export function ProfessionalPage() {
             />
             <div style={{ display:'grid', gridTemplateColumns:isMobile?'1fr 1fr':'repeat(3,1fr)', gap:20 }}>
               {CITIES.map((city,i) => (
-                <div key={city.id} className="city-card" onClick={() => navigate(`/city/${encodeURIComponent(city.name.toLowerCase())}`)} style={{ cursor:'pointer', animation:`fadeSlideUp 0.4s cubic-bezier(.4,0,.2,1) ${i*60}ms both` }}>
+                <div key={city.id} className="city-card" onClick={() => navigate(`/city/${encodeURIComponent(city.name.toLowerCase())}?track=professional`)} style={{ cursor:'pointer', animation:`fadeSlideUp 0.4s cubic-bezier(.4,0,.2,1) ${i*60}ms both` }}>
                   <div style={{ borderRadius:14, overflow:'hidden', height:220, background:'#F3F4F6', marginBottom:12 }}>
                     {!imgErrs[`city${city.id}`] ? <img src={city.img} alt={city.name} className="city-img" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={() => setE(`city${city.id}`)} /> : <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, fontWeight:700, color:'#375DFB' }}>{city.name[0]}</div>}
                   </div>
@@ -610,10 +642,10 @@ export function ProfessionalPage() {
                 <span style={{ fontSize:18, fontWeight:700, color:'#111' }}>Топ эксперты</span>
               </div>
               {FIGHTERS.map((f,i) => (
-                <div key={f.id} className="fighter-row" style={{ display:'flex', alignItems:'center', gap:14, padding:'13px 20px', borderBottom:i<FIGHTERS.length-1?'1px solid #F5F5F7':'none', cursor:'pointer' }} onClick={() => navigate('/profile')}>
+                <div key={f.id} className="fighter-row" style={{ display:'flex', alignItems:'center', gap:14, padding:'13px 20px', borderBottom:i<FIGHTERS.length-1?'1px solid #F5F5F7':'none', cursor:'pointer' }} onClick={() => navigate(userProfilePath(f.name))}>
                   <div style={{ width:46, height:46, borderRadius:'50%', overflow:'hidden', border:'2px solid #E5E7EB', flexShrink:0, background:'#F3F4F6' }}>{!imgErrs[`fi${f.id}`] ? <img src={f.img} alt={f.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={() => setE(`fi${f.id}`)} /> : null}</div>
                   <div style={{ flex:1 }}><div style={{ fontSize:14, fontWeight:600, color:'#111' }}>{f.name} <span style={{ color:'#9CA3AF', fontWeight:400 }}>{f.rank}</span></div><div style={{ fontSize:13, color:'#9CA3AF' }}>{f.city}</div></div>
-                  <button onClick={e => { e.stopPropagation(); navigate('/profile'); }} style={{ background:'none', border:'none', cursor:'pointer', color:'#9CA3AF', padding:4, display:'flex' }} onMouseEnter={e=>e.currentTarget.style.color='#374151'} onMouseLeave={e=>e.currentTarget.style.color='#9CA3AF'}><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></button>
+                  <button onClick={e => { e.stopPropagation(); navigate(userProfilePath(f.name)); }} style={{ background:'none', border:'none', cursor:'pointer', color:'#9CA3AF', padding:4, display:'flex' }} onMouseEnter={e=>e.currentTarget.style.color='#374151'} onMouseLeave={e=>e.currentTarget.style.color='#9CA3AF'}><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></button>
                 </div>
               ))}
             </div>
@@ -628,9 +660,7 @@ export function ProfessionalPage() {
         {/* ОТЗЫВЫ */}
         <AnimSection style={{ marginBottom:24 }}>
           <SectionWrap>
-            <SecTitle icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="1.5" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>} title="Отзывы" separator
-              action={<button className="btn-outline" onClick={() => document.querySelector('.review-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' })} style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', border:'1px solid #E5E7EB', borderRadius:10, background:'#fff', fontSize:13, color:'#374151', cursor:'pointer' }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/></svg>По дате<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg></button>}
-            />
+            <SecTitle icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="1.5" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2 2z"/></svg>} title="Отзывы" separator />
             {REVIEWS.map((r,i) => (
               <div key={r.id} className="review-card" style={{ padding:'28px 0', borderBottom:i<REVIEWS.length-1?'1px solid #F0F0F0':'none' }}>
                 <div style={{ display:'flex', alignItems:'center', gap:16, marginBottom:20 }}>
@@ -675,17 +705,11 @@ export function ProfessionalPage() {
               {!imgErrs[`ltm${letterIdx}`] ? <img key={letterIdx} src={LETTERS[letterIdx]} alt="" style={{ width:'100%', maxHeight:'65vh', objectFit:'contain', display:'block', animation:'tylModalIn .18s ease' }} onError={() => setE(`ltm${letterIdx}`)} /> : <div style={{ height:300, display:'flex', alignItems:'center', justifyContent:'center', color:'rgba(255,255,255,.4)' }}>Документ</div>}
             </div>
             <div style={{ display:'flex', alignItems:'center', gap:12, marginTop:18 }}>
-              <button onClick={() => letterIdx > 0 && setLetterIdx(letterIdx - 1)} disabled={letterIdx === 0} style={{ width:44, height:44, borderRadius:12, background:'rgba(255,255,255,.1)', border:'1px solid rgba(255,255,255,.15)', color:'#fff', cursor:letterIdx===0?'not-allowed':'pointer', opacity:letterIdx===0?.35:1, display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <button className="voevoda-slider-arrow voevoda-slider-arrow--prev" onClick={() => letterIdx > 0 && setLetterIdx(letterIdx - 1)} disabled={letterIdx === 0} style={{ cursor:letterIdx===0?'not-allowed':'pointer', opacity:letterIdx===0?.35:1 }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
               </button>
-              <div style={{ display:'flex', gap:6, overflowX:'auto', maxWidth:420 }}>
-                {LETTERS.map((src, i) => (
-                  <div key={i} className="tyl-thumb-nav" onClick={() => setLetterIdx(i)} style={{ width:42, height:54, flexShrink:0, borderRadius:6, overflow:'hidden', border:`2px solid ${i===letterIdx?'#375DFB':'rgba(255,255,255,.15)'}`, opacity:i===letterIdx?1:0.55 }}>
-                    {!imgErrs[`lt${i}`] ? <img src={src} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : <div style={{ width:'100%', height:'100%', background:'rgba(255,255,255,.1)' }} />}
-                  </div>
-                ))}
-              </div>
-              <button onClick={() => letterIdx < LETTERS.length - 1 && setLetterIdx(letterIdx + 1)} disabled={letterIdx === LETTERS.length - 1} style={{ width:44, height:44, borderRadius:12, background:'rgba(255,255,255,.1)', border:'1px solid rgba(255,255,255,.15)', color:'#fff', cursor:letterIdx===LETTERS.length-1?'not-allowed':'pointer', opacity:letterIdx===LETTERS.length-1?.35:1, display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <div className="voevoda-slider-panel">{LETTERS.map((_, i) => <button key={i} className={`voevoda-slider-dot${i===letterIdx?' is-active':''}`} onClick={() => setLetterIdx(i)} aria-label={`Документ ${i+1}`} />)}</div>
+              <button className="voevoda-slider-arrow voevoda-slider-arrow--next" onClick={() => letterIdx < LETTERS.length - 1 && setLetterIdx(letterIdx + 1)} disabled={letterIdx === LETTERS.length - 1} style={{ cursor:letterIdx===LETTERS.length-1?'not-allowed':'pointer', opacity:letterIdx===LETTERS.length-1?.35:1 }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
               </button>
             </div>

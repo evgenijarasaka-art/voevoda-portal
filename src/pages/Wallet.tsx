@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { createWalletTopupPayment, getPaymentOrder } from '../api/payments';
+import { createWalletTopupPayment, createCardBindingPayment, getPaymentOrder } from '../api/payments';
+import { PortalBreadcrumb } from '../components/PortalBreadcrumb';
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 type TxType = 'edu' | 'income' | 'kaptorka' | 'bonus' | 'market' | 'referral' | 'expense';
@@ -188,10 +189,7 @@ const ANIM = `
 .wv-balance-num{animation:balancePulse .5s ease both;font-variant-numeric:tabular-nums}
 .wv-payout-row{display:flex;justify-content:space-between;font-size:12px;padding:4px 6px;margin:0 -6px;transition:background .15s;border-radius:4px}
 .wv-payout-row:hover{background:#f8faff}
-.wv-right-col{max-height:calc(100vh - 96px);overflow-y:auto;scrollbar-width:thin;scrollbar-color:#e5e7eb transparent}
-.wv-right-col::-webkit-scrollbar{width:4px}
-.wv-right-col::-webkit-scrollbar-track{background:transparent}
-.wv-right-col::-webkit-scrollbar-thumb{background:#e5e7eb;border-radius:2px}
+.wv-right-col{align-self:start}
 
 /* CARDS */
 .wv-cards-container{position:relative;cursor:pointer}
@@ -206,11 +204,55 @@ const ANIM = `
 .wv-bar-segment{width:100%;border-radius:4px;transition:height .5s cubic-bezier(.4,0,.2,1)}
 
 /* MLM */
-.mc-tree-bg{background:linear-gradient(135deg,#0f1b2d 0%,#1a2744 50%,#12213a 100%);border-radius:16px;overflow:hidden;position:relative}
+.mc-tree-bg{background:linear-gradient(135deg,#0f1b2d 0%,#1a2744 50%,#12213a 100%);overflow:hidden;position:relative}
 .mc-line{stroke-dasharray:6 4;animation:lineFlow 2s linear infinite;transition:stroke .25s,stroke-width .25s}
 .mlm-legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
 .mlm-level-row{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:8px;transition:background .15s;cursor:default}
 .mlm-level-row:hover{background:rgba(255,255,255,.06)}
+
+/* ─── RESPONSIVE ─── */
+.wv-main-grid{display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start}
+.wv-stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.wv-history-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.wv-analytics-charts{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start}
+.wv-mlm-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#e5e7eb}
+.wv-funds-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.wv-hero-top{display:flex;align-items:flex-start;gap:24px;padding:32px 36px 18px;position:relative;z-index:2}
+.wv-hero-actions{padding:0 36px 28px;display:flex;gap:10px;flex-wrap:wrap;position:relative;z-index:2}
+.wv-fund-card{display:flex;flex-direction:column;border-radius:10px;padding:12px 14px;cursor:pointer;transition:all .18s}
+.wv-fund-card:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,.1)!important}
+.wv-stat-card-click{cursor:pointer}
+.wv-stat-card-click:active{transform:scale(.97)!important}
+.wv-hero-balance{font-size:58px}
+.wv-hero-rub{font-size:34px}
+
+@media(max-width:1200px){
+  .wv-main-grid{grid-template-columns:1fr 300px}
+}
+@media(max-width:1050px){
+  .wv-main-grid{grid-template-columns:1fr}
+  .wv-right-col{position:static!important;max-height:none!important;overflow:visible!important}
+}
+@media(max-width:900px){
+  .wv-stats-grid{grid-template-columns:repeat(2,1fr)}
+  .wv-history-stats{grid-template-columns:repeat(2,1fr)}
+  .wv-analytics-charts{grid-template-columns:1fr}
+  .wv-mlm-stats{grid-template-columns:repeat(2,1fr)}
+  .wv-hero-top{flex-direction:column;align-items:center;text-align:center;padding:24px 20px 14px}
+  .wv-hero-actions{justify-content:center;padding:0 20px 20px}
+  .wv-hero-balance{font-size:42px!important}
+  .wv-hero-rub{font-size:24px!important}
+}
+@media(max-width:640px){
+  .wv-stats-grid{grid-template-columns:1fr}
+  .wv-history-stats{grid-template-columns:repeat(2,1fr)}
+  .wv-funds-grid{grid-template-columns:1fr}
+  .wv-hero-top{padding:20px 16px 10px}
+  .wv-hero-actions{padding:0 16px 16px;gap:8px}
+  .wv-hero-balance{font-size:34px!important}
+  .wv-hero-rub{font-size:20px!important}
+  .wv-hero-action{padding:10px 14px!important;font-size:12px!important}
+}
 `;
 
 // ─── HERO AREA CHART (full-width) ─────────────────────────────────────────────
@@ -401,6 +443,115 @@ function StackedBarChart({ months, selectedMonth, onSelect, data }: {
   );
 }
 
+// ─── SMOOTH AREA CHART (динамика баланса) ────────────────────────────────────
+function smoothPath(pts: { x: number; y: number }[]) {
+  if (pts.length < 2) return '';
+  let d = `M ${pts[0].x},${pts[0].y}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1] || pts[i];
+    const p1 = pts[i];
+    const p2 = pts[i + 1];
+    const p3 = pts[i + 2] || p2;
+    const c1x = p1.x + (p2.x - p0.x) / 6, c1y = p1.y + (p2.y - p0.y) / 6;
+    const c2x = p2.x - (p3.x - p1.x) / 6, c2y = p2.y - (p3.y - p1.y) / 6;
+    d += ` C ${c1x},${c1y} ${c2x},${c2y} ${p2.x},${p2.y}`;
+  }
+  return d;
+}
+
+function SmoothAreaChart({ points, accent = '#375DFB' }: { points: { label: string; value: number }[]; accent?: string }) {
+  const W = 620, H = 200, padL = 12, padR = 12, padT = 24, padB = 30;
+  const [hover, setHover] = useState<number | null>(null);
+  const [drawn, setDrawn] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setDrawn(true), 80); return () => clearTimeout(t); }, []);
+  const vals = points.map(p => p.value);
+  const min = Math.min(...vals), max = Math.max(...vals), span = max - min || 1;
+  const innerW = W - padL - padR, innerH = H - padT - padB;
+  const xs = points.map((_, i) => padL + (points.length === 1 ? innerW / 2 : (i / (points.length - 1)) * innerW));
+  const ys = points.map(p => padT + innerH - ((p.value - min) / span) * innerH);
+  const pts = xs.map((x, i) => ({ x, y: ys[i] }));
+  const line = smoothPath(pts);
+  const area = `${line} L ${xs[xs.length - 1]},${padT + innerH} L ${xs[0]},${padT + innerH} Z`;
+  const gridYs = [0, 0.5, 1].map(t => padT + t * innerH);
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} style={{ display: 'block', overflow: 'visible' }}>
+      <defs>
+        <linearGradient id="wv-area-grad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={accent} stopOpacity="0.26" />
+          <stop offset="100%" stopColor={accent} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      {gridYs.map((gy, i) => <line key={i} x1={padL} y1={gy} x2={W - padR} y2={gy} stroke="#EEF0F4" strokeWidth="1" />)}
+      <path d={area} fill="url(#wv-area-grad)" style={{ opacity: drawn ? 1 : 0, transition: 'opacity .6s ease .25s' }} />
+      <path d={line} fill="none" stroke={accent} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+        pathLength={1} strokeDasharray={1} strokeDashoffset={drawn ? 0 : 1}
+        style={{ transition: 'stroke-dashoffset 1s cubic-bezier(.4,0,.2,1)' }} />
+      {hover !== null && <line x1={xs[hover]} y1={padT - 10} x2={xs[hover]} y2={padT + innerH} stroke={accent} strokeWidth="1" strokeDasharray="3 3" opacity="0.45" />}
+      {pts.map((p, i) => (
+        <g key={i}>
+          <circle cx={p.x} cy={p.y} r={hover === i ? 6 : 4} fill="#fff" stroke={accent} strokeWidth="2.5"
+            style={{ transition: 'r .15s, opacity .4s', opacity: drawn ? 1 : 0 }} />
+          <circle cx={p.x} cy={p.y} r={20} fill="transparent" style={{ cursor: 'pointer' }}
+            onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)} />
+        </g>
+      ))}
+      {points.map((p, i) => (
+        <text key={i} x={xs[i]} y={H - 8} textAnchor="middle" fontSize="11" fontFamily="inherit"
+          fill={hover === i ? accent : '#9ca3af'} fontWeight={hover === i ? 700 : 500}>{p.label}</text>
+      ))}
+      {hover !== null && (() => {
+        const tx = Math.min(Math.max(xs[hover], 48), W - 48);
+        const ty = Math.max(ys[hover] - 46, 2);
+        return (
+          <g style={{ pointerEvents: 'none' }}>
+            <rect x={tx - 46} y={ty} width="92" height="36" rx="9" fill="#0f1b2d" />
+            <text x={tx} y={ty + 15} textAnchor="middle" fontSize="10" fill="#9fb3d1" fontFamily="inherit">{points[hover].label}</text>
+            <text x={tx} y={ty + 29} textAnchor="middle" fontSize="13" fontWeight="800" fill="#fff" fontFamily="inherit">{fmt(points[hover].value)} ₽</text>
+          </g>
+        );
+      })()}
+    </svg>
+  );
+}
+
+// ─── CATEGORY BARS (структура трат по категориям) ────────────────────────────
+function CategoryBars({ data, total, prev }: { data: SpendItem[]; total: number; prev?: SpendItem[] }) {
+  const [drawn, setDrawn] = useState(false);
+  useEffect(() => { setDrawn(false); const t = setTimeout(() => setDrawn(true), 60); return () => clearTimeout(t); }, [data]);
+  const ranked = [...data].sort((a, b) => b.value - a.value);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {ranked.map((d, i) => {
+        const pct = total > 0 ? (d.value / total) * 100 : 0;
+        const prevVal = prev?.find(p => p.label === d.label)?.value;
+        const delta = prevVal != null && prevVal > 0 ? ((d.value - prevVal) / prevVal) * 100 : null;
+        return (
+          <div key={d.label}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ width: 10, height: 10, borderRadius: 3, background: d.color, flexShrink: 0 }} />
+                <span style={{ fontSize: 13, color: '#374151', fontWeight: 600 }}>{d.label}</span>
+                {delta != null && Math.abs(delta) >= 1 && (
+                  <span style={{ fontSize: 10.5, fontWeight: 700, color: delta > 0 ? '#e53935' : '#1d9e75', background: delta > 0 ? '#fdecea' : '#e8f8f2', borderRadius: 5, padding: '1px 5px' }}>
+                    {delta > 0 ? '▲' : '▼'} {Math.abs(Math.round(delta))}%
+                  </span>
+                )}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 800, color: '#111' }}>{fmt(d.value)} ₽</span>
+                <span style={{ fontSize: 11, color: '#9ca3af', fontWeight: 600, minWidth: 30, textAlign: 'right' as const }}>{Math.round(pct)}%</span>
+              </div>
+            </div>
+            <div style={{ height: 8, background: '#f1f2f5', borderRadius: 6, overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: drawn ? `${pct}%` : '0%', background: `linear-gradient(90deg, ${d.color}, ${d.color}cc)`, borderRadius: 6, transition: `width .7s cubic-bezier(.4,0,.2,1) ${i * 80}ms` }} />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ─── DONUT CHART (рабочий, с анимацией через CSS) ────────────────────────────
 function AnalyticsDonut({
   data,
@@ -510,6 +661,23 @@ function AnalyticsBlock() {
   } as MonthData), []);
   const displayData = period === 'month' ? currentData : period === 'quarter' ? quarterData : yearData;
   const displayTotal = displayData.breakdown.reduce((s, d) => s + d.value, 0);
+  const monthIdx = ALL_MONTHS.indexOf(selectedMonth);
+  const { prevTotal, prevBreakdown } = useMemo<{ prevTotal: number | null; prevBreakdown?: SpendItem[] }>(() => {
+    const sumBreak = (ms: MonthKey[]): SpendItem[] => MONTHLY_STATS['Апр'].breakdown.map((b, bi) => ({
+      label: b.label, color: b.color, value: ms.reduce((s, m) => s + MONTHLY_STATS[m].breakdown[bi].value, 0),
+    }));
+    if (period === 'month') {
+      const pk = monthIdx > 0 ? ALL_MONTHS[monthIdx - 1] : null;
+      return pk ? { prevTotal: MONTHLY_STATS[pk].total, prevBreakdown: MONTHLY_STATS[pk].breakdown } : { prevTotal: null };
+    }
+    if (period === 'quarter') {
+      const pm: MonthKey[] = ['Ноя', 'Дек', 'Янв'];
+      return { prevTotal: pm.reduce((s, m) => s + MONTHLY_STATS[m].total, 0), prevBreakdown: sumBreak(pm) };
+    }
+    return { prevTotal: null };
+  }, [period, monthIdx]);
+  const spentDelta = prevTotal && prevTotal > 0 ? ((displayTotal - prevTotal) / prevTotal) * 100 : null;
+  const balancePoints = BALANCE_HISTORY.map(h => ({ label: h.month, value: h.balance }));
   return (
     <div>
       {/* Header + Period tabs */}
@@ -541,31 +709,47 @@ function AnalyticsBlock() {
       )}
 
       {/* Stats row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginBottom: 18 }}>
         {[
-          { label: 'Потрачено', val: displayTotal, color: '#e53935', bg: '#fdecea', suf: ' ₽' },
-          { label: 'Пополнено', val: displayData.income, color: '#1d9e75', bg: '#e8f8f2', suf: ' ₽' },
-          { label: 'Кэшбэк', val: displayData.cashback, color: '#f5a623', bg: '#fff8ed', suf: ' БР' },
+          { label: 'Потрачено', val: displayTotal, color: '#e53935', bg: '#fdecea', suf: ' ₽', delta: spentDelta },
+          { label: 'Пополнено', val: displayData.income, color: '#1d9e75', bg: '#e8f8f2', suf: ' ₽', delta: null as number | null },
+          { label: 'Кэшбэк', val: displayData.cashback, color: '#f5a623', bg: '#fff8ed', suf: ' БР', delta: null as number | null },
         ].map(s => (
-          <div key={s.label} style={{ background: s.bg, borderRadius: 10, padding: '10px 12px', transition: 'transform .15s', cursor: 'default' }}
-            onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.02)')} onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}>
-            <div style={{ fontSize: 11, color: s.color, fontWeight: 500, marginBottom: 3 }}>{s.label}</div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: s.color }}>{fmt(s.val)}{s.suf}</div>
+          <div key={s.label} style={{ background: s.bg, borderRadius: 12, padding: '12px 14px', transition: 'transform .15s', cursor: 'default' }}
+            onMouseEnter={e => (e.currentTarget.style.transform = 'translateY(-2px)')} onMouseLeave={e => (e.currentTarget.style.transform = 'translateY(0)')}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4, minHeight: 16 }}>
+              <div style={{ fontSize: 11, color: s.color, fontWeight: 600 }}>{s.label}</div>
+              {s.delta != null && Math.abs(s.delta) >= 1 && (
+                <span style={{ fontSize: 10, fontWeight: 700, color: s.delta > 0 ? '#e53935' : '#1d9e75', display: 'flex', alignItems: 'center', gap: 2 }}>
+                  {s.delta > 0 ? '▲' : '▼'} {Math.abs(Math.round(s.delta))}%
+                </span>
+              )}
+            </div>
+            <div style={{ fontSize: 19, fontWeight: 800, color: s.color }}>{fmt(s.val)}{s.suf}</div>
           </div>
         ))}
       </div>
 
-      {/* Charts */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, alignItems: 'start' }}>
-        <div>
-          <div style={{ fontSize: 12, color: '#9ca3af', fontWeight: 500, marginBottom: 12, textTransform: 'uppercase', letterSpacing: '.5px' }}>По месяцам</div>
-          <StackedBarChart months={ALL_MONTHS} selectedMonth={selectedMonth} onSelect={handleSelectMonth} data={MONTHLY_STATS} />
+      {/* Hero: динамика баланса */}
+      <div style={{ background: 'linear-gradient(135deg,#F7F9FF,#EEF3FF)', border: '1px solid #E5EAFB', borderRadius: 14, padding: '14px 16px 6px', marginBottom: 18 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 2 }}>
+          <span style={{ fontSize: 12, color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.5px' }}>Динамика баланса</span>
+          <span style={{ fontSize: 12, color: '#9ca3af' }}>Ноя — Апр</span>
         </div>
+        <SmoothAreaChart points={balancePoints} />
+      </div>
+
+      {/* Charts: структура + категории */}
+      <div className="wv-analytics-charts">
         <div>
           <div style={{ fontSize: 12, color: '#9ca3af', fontWeight: 500, marginBottom: 12, textTransform: 'uppercase', letterSpacing: '.5px' }}>
-            {period === 'month' ? selectedMonth : period === 'quarter' ? 'Квартал (Фев–Апр)' : 'Весь год'}
+            Структура · {period === 'month' ? selectedMonth : period === 'quarter' ? 'Квартал (Фев–Апр)' : 'Весь год'}
           </div>
           <AnalyticsDonut key={animKey} data={displayData.breakdown} total={displayTotal} animKey={animKey} />
+        </div>
+        <div>
+          <div style={{ fontSize: 12, color: '#9ca3af', fontWeight: 500, marginBottom: 12, textTransform: 'uppercase', letterSpacing: '.5px' }}>По категориям</div>
+          <CategoryBars data={displayData.breakdown} total={displayTotal} prev={prevBreakdown} />
         </div>
       </div>
     </div>
@@ -622,7 +806,18 @@ function TxRow({ tx, isOpen, onToggle }: { tx: Transaction; isOpen: boolean; onT
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
               Скачать чек
             </button>
-            <button className="wv-outline-btn" onClick={e => { e.stopPropagation(); alert(`Операция: ${tx.ord}`); }}
+            <button className="wv-outline-btn" onClick={e => {
+              e.stopPropagation();
+              const statusMap: Record<string, string> = { done: 'Оплачено', pending: 'В обработке', error: 'Ошибка' };
+              const details = `Операция: ${tx.ord}\nНазвание: ${tx.title}\nСумма: ${tx.amount > 0 ? '+' : ''}${tx.amount.toLocaleString('ru-RU')} ₽\nДата: ${tx.date}\nСтатус: ${statusMap[tx.status]}\nОплата: ${tx.card === 'СБП' ? 'СБП' : `Карта •••• ${tx.card}`}${tx.cashback > 0 ? `\nКэшбэк: +${tx.cashback} БР` : ''}`;
+              navigator.clipboard?.writeText(details).catch(() => {});
+              const btn = e.currentTarget;
+              const orig = btn.innerHTML;
+              btn.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#1d9e75" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Скопировано';
+              btn.style.color = '#1d9e75';
+              btn.style.borderColor = '#1d9e75';
+              setTimeout(() => { btn.innerHTML = orig; btn.style.color = '#6b7280'; btn.style.borderColor = '#e5e7eb'; }, 1800);
+            }}
               style={{ background: '#f5f5f7', borderColor: '#e5e7eb', color: '#6b7280' }}>
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
               Детали
@@ -711,7 +906,7 @@ function ImprovedMLMTree({ onCopyRef, copyDone }: { onCopyRef: () => void; copyD
   return (
     <div>
       {/* Explanation banner */}
-      <div style={{ background: 'linear-gradient(135deg,#f0f4ff,#e0e7ff)', border: '1px solid #c7d2fe', borderRadius: 10, padding: '12px 16px', marginBottom: 0 }}>
+      <div style={{ background: 'linear-gradient(135deg,#f0f4ff,#e0e7ff)', border: 'none', padding: '12px 16px', marginBottom: 0 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
           <div>
             <div style={{ fontSize: 13, fontWeight: 700, color: '#1e3a8a', marginBottom: 4 }}>
@@ -747,7 +942,7 @@ function ImprovedMLMTree({ onCopyRef, copyDone }: { onCopyRef: () => void; copyD
       </div>
 
       {/* Stats bar */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 1, background: '#e5e7eb' }}>
+      <div className="wv-mlm-stats">
         {[
           { label: 'Ур.1 · 3%', val: '+8 бойцов', amount: '320 ₽', c: '#60a5fa' },
           { label: 'Ур.2 · 4%', val: '+3 бойца', amount: '680 ₽', c: '#34d399' },
@@ -953,7 +1148,7 @@ function ImprovedMLMTree({ onCopyRef, copyDone }: { onCopyRef: () => void; copyD
             ? <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>Скопировано!</>
             : <><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" /></svg>Скопировать реф-ссылку</>}
         </button>
-        <button className="wv-btn" onClick={onCopyRef} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', background: '#fff8ed', color: '#c47d0e', border: '1.5px solid #f5a623', borderRadius: 8, fontSize: 13, fontWeight: 600 }}>
+        <button className="wv-btn" onClick={() => navigate('/referral')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', background: '#fff8ed', color: '#c47d0e', border: '1.5px solid #f5a623', borderRadius: 8, fontSize: 13, fontWeight: 600 }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 12v10H4V12" /><path d="M22 7H2v5h20V7z" /><path d="M12 22V7" /><path d="M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7z" /><path d="M12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z" /></svg>
           Пригласи — получи рюкзак
         </button>
@@ -1245,35 +1440,82 @@ function TransferModal({ onClose, onConfirm }: { balance: number; onClose: () =>
   );
 }
 
-function AddCardModal({ onClose, onAdd }: { onClose: () => void; onAdd: () => void }) {
-  const [num, setNum] = useState(''); const [bank, setBank] = useState(''); const [exp, setExp] = useState(''); const [type, setType] = useState<'visa' | 'mir'>('visa');
-  const BG = { visa: 'linear-gradient(135deg,#375DFB,#7c3aed)', mir: 'linear-gradient(135deg,#1d9e75,#065f46)' };
+function AddCardModal({ onClose }: { onClose: () => void }) {
+  const [email, setEmail] = useState('');
+  const [isBinding, setIsBinding] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleBind = async () => {
+    setError('');
+    if (!email.trim()) {
+      setError('Укажите электронную почту для привязки карты.');
+      return;
+    }
+    setIsBinding(true);
+    try {
+      const payment = await createCardBindingPayment({
+        email,
+        return_url: `${window.location.origin}/wallet?card_bound=1`,
+      });
+      if (!payment.confirmation_url) throw new Error('Missing confirmation_url');
+      window.location.href = payment.confirmation_url;
+    } catch {
+      setError('Не удалось создать запрос на привязку карты. Попробуйте ещё раз.');
+      setIsBinding(false);
+    }
+  };
+
   return (
     <div>
-      <ModalHeader title="Добавить карту" onClose={onClose} />
+      <ModalHeader title="Привязать карту" onClose={onClose} />
       <div style={{ padding: '16px 20px' }}>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-          {(['visa', 'mir'] as const).map(t => (
-            <button key={t} className="wv-btn" onClick={() => setType(t)} style={{ flex: 1, padding: '10px 0', border: `2px solid ${type === t ? '#375DFB' : '#e5e7eb'}`, borderRadius: 8, background: type === t ? '#f0f4ff' : '#fff', fontWeight: 700, fontSize: 13, color: type === t ? '#375DFB' : '#9ca3af', cursor: 'pointer' }}>
-              {t.toUpperCase()}
-            </button>
+        <div style={{ background: 'linear-gradient(135deg,#375DFB,#1e3a8a)', borderRadius: 14, padding: '20px 18px', marginBottom: 16, position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,.08)' }} />
+          <div style={{ position: 'absolute', bottom: -14, left: 40, width: 60, height: 60, borderRadius: '50%', background: 'rgba(255,255,255,.06)' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, position: 'relative' }}>
+            <svg width="28" height="20" viewBox="0 0 24 17" fill="none" style={{ flexShrink: 0 }}>
+              <rect width="24" height="17" rx="3" fill="rgba(255,255,255,.25)" />
+              <rect x="1" y="6" width="22" height="5" fill="rgba(255,255,255,.15)" />
+            </svg>
+            <span style={{ fontSize: 16, fontWeight: 700, color: '#fff', letterSpacing: 2 }}>•••• •••• •••• ????</span>
+          </div>
+          <div style={{ fontSize: 11, color: 'rgba(255,255,255,.6)', position: 'relative' }}>Данные карты вводятся на защищённой странице ЮKassa</div>
+        </div>
+
+        <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 10, padding: '12px 14px', marginBottom: 16, display: 'flex', gap: 10 }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0284c7" strokeWidth="2" style={{ flexShrink: 0, marginTop: 1 }}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+          <div style={{ fontSize: 12, color: '#0369a1', lineHeight: 1.5 }}>
+            <strong>Безопасная привязка.</strong> Вы будете перенаправлены на защищённую страницу ЮKassa. Данные карты не хранятся на нашем сервере — только токен для повторных платежей.
+          </div>
+        </div>
+
+        <div style={{ fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Электронная почта</div>
+        <input type="email" value={email} placeholder="pochta@example.ru" onChange={e => setEmail(e.target.value)}
+          style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 14, outline: 'none', boxSizing: 'border-box', transition: 'border .15s,box-shadow .15s' }}
+          onFocus={e => { e.target.style.borderColor = '#375DFB'; e.target.style.boxShadow = '0 0 0 3px rgba(55,93,251,.1)'; }}
+          onBlur={e => { e.target.style.borderColor = '#e5e7eb'; e.target.style.boxShadow = 'none'; }} />
+
+        <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {[
+            { icon: '💳', text: 'Visa, MasterCard, МИР' },
+            { icon: '🔄', text: 'Автоплатежи и быстрое пополнение' },
+            { icon: '🗑️', text: 'Отвязка в любой момент' },
+          ].map(f => (
+            <div key={f.text} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#6b7280' }}>
+              <span style={{ fontSize: 14 }}>{f.icon}</span> {f.text}
+            </div>
           ))}
         </div>
-        {[{ label: 'Последние 4 цифры', val: num, set: setNum, ph: '4242', max: 4 }, { label: 'Банк', val: bank, set: setBank, ph: 'Тинькофф', max: 30 }, { label: 'Срок действия', val: exp, set: setExp, ph: '12/26', max: 5 }].map(f => (
-          <div key={f.label} style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 6 }}>{f.label}</div>
-            <input value={f.val} onChange={e => f.set(e.target.value.slice(0, f.max))} placeholder={f.ph}
-              style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: 14, outline: 'none', boxSizing: 'border-box', transition: 'border .15s,box-shadow .15s' }}
-              onFocus={e => { e.target.style.borderColor = '#375DFB'; e.target.style.boxShadow = '0 0 0 3px rgba(55,93,251,.1)'; }}
-              onBlur={e => { e.target.style.borderColor = '#e5e7eb'; e.target.style.boxShadow = 'none'; }} />
-          </div>
-        ))}
-        <div style={{ height: 64, background: BG[type], borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 18px', marginBottom: 16 }}>
-          <span style={{ fontSize: 15, color: 'rgba(255,255,255,.85)', letterSpacing: 2.5, fontWeight: 600 }}>{num ? `•••• ${num}` : '•••• ????'}</span>
-          <span style={{ fontSize: 13, color: '#fff', fontWeight: 800 }}>{type.toUpperCase()}</span>
+
+        {error && <div style={{ marginTop: 12, padding: '10px 12px', borderRadius: 8, background: '#FEF2F2', color: '#B91C1C', fontSize: 12 }}>{error}</div>}
+
+        <button className="wv-primary-btn" disabled={!email.trim() || isBinding} onClick={handleBind} style={{ marginTop: 16 }}>
+          {isBinding ? 'Переход на ЮKassa...' : 'Привязать через ЮKassa'}
+        </button>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, marginTop: 10, fontSize: 11, color: '#9ca3af' }}>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0110 0v4" /></svg>
+          Безопасно · ЮKassa · PCI DSS
         </div>
-        <button className="wv-primary-btn wv-btn" disabled={!num || !bank || !exp}
-          onClick={() => { if (num && bank && exp) onAdd(); }}>Добавить карту</button>
       </div>
     </div>
   );
@@ -1412,12 +1654,11 @@ function HeroEmblem() {
         {/* Inner face fill */}
         <circle cx="55" cy="55" r="26.5" fill="url(#emGoldInner)" opacity=".4" />
 
-        {/* ₽ symbol */}
-        <text x="55" y="65" textAnchor="middle" fontSize="30" fontWeight="900"
-          fontFamily="Georgia,Times,serif" fill="rgba(255,255,255,.95)"
-          style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,.4))' }}>
-          ₽
-        </text>
+        {/* Voevoda logo */}
+        <clipPath id="logoClip"><circle cx="55" cy="55" r="24" /></clipPath>
+        <image href="/logo.png" x="31" y="31" width="48" height="48"
+          clipPath="url(#logoClip)" preserveAspectRatio="xMidYMid slice"
+          style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,.4))' }} />
 
         {/* Highlight — lens flare */}
         <ellipse cx="43" cy="41" rx="10" ry="6" fill="rgba(255,255,255,.38)"
@@ -1514,6 +1755,12 @@ export function Wallet() {
     };
   }, [searchParams]);
 
+  useEffect(() => {
+    if (searchParams.get('card_bound') === '1') {
+      setPaymentNotice('Карта успешно привязана через ЮKassa.');
+    }
+  }, [searchParams]);
+
   const handleCopyRef = () => {
     navigator.clipboard?.writeText('https://voevoda.ru/ref/tornado').catch(() => { });
     setCopyDone(true); setTimeout(() => setCopyDone(false), 2200);
@@ -1552,7 +1799,7 @@ export function Wallet() {
               </div>
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 20 }}>
+          <div className="wv-history-stats">
             {[{ val: `${fmt(totalSpent)} ₽`, label: 'Всего потрачено', color: '#111' }, { val: successCount, label: 'Успешных', color: '#1d9e75' }, { val: pendingCount, label: 'В обработке', color: '#f57c00' }, { val: errorCount, label: 'Ошибок', color: '#e53935' }].map(m => (
               <Card key={m.label} style={{ padding: '14px 18px' }} className="wv-stat-card">
                 <div style={{ fontSize: 22, fontWeight: 700, color: m.color }}>{m.val}</div>
@@ -1587,20 +1834,6 @@ export function Wallet() {
             </div>
           )}
 
-          {/* PAGE TITLE */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-            <div style={{ width: 40, height: 40, borderRadius: 12, background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,.07)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#375DFB' }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M16 13a1 1 0 100-2 1 1 0 000 2z" fill="currentColor" /><path d="M2 10h20" /></svg>
-            </div>
-            <div>
-              <h1 style={{ fontFamily: 'inherit', fontSize: 22, fontWeight: 700, color: '#111', margin: 0 }}>Кошелёк</h1>
-              <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ cursor: 'pointer', transition: 'color .15s' }} onClick={() => navigate('/')} onMouseEnter={e => (e.currentTarget.style.color = '#375DFB')} onMouseLeave={e => (e.currentTarget.style.color = '#9ca3af')}>Главная</span>
-                <span>›</span><span>Кошелёк</span>
-              </div>
-            </div>
-          </div>
-
           {/* ── HERO BALANCE (full-width, dark blue) ── */}
           <div style={{ marginBottom: 20, borderRadius: 24 }}>
           <div style={{
@@ -1626,7 +1859,7 @@ export function Wallet() {
             <HeroParticles />
 
             {/* Top content */}
-            <div style={{ padding: '32px 36px 18px', display: 'flex', alignItems: 'flex-start', gap: 24, position: 'relative', zIndex: 2 }}>
+            <div className="wv-hero-top">
               <div style={{ flex: 1, minWidth: 0 }}>
                 {/* Live label */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
@@ -1639,31 +1872,44 @@ export function Wallet() {
 
                 {/* Amount */}
                 <div key={balance} style={{ animation: 'heroCountUp .6s cubic-bezier(.34,1.2,.64,1) both' }}>
-                  <div style={{ fontWeight: 900, fontSize: 58, color: '#fff', lineHeight: 1, letterSpacing: '-2.5px', textShadow: '0 4px 24px rgba(55,93,251,.5)', fontVariantNumeric: 'tabular-nums' }}>
+                  <div className="wv-hero-balance" style={{ fontWeight: 900, color: '#fff', lineHeight: 1, letterSpacing: '-2.5px', textShadow: '0 4px 24px rgba(55,93,251,.5)', fontVariantNumeric: 'tabular-nums' }}>
                     {fmt(displayBal)}
-                    <span style={{ fontSize: 34, fontWeight: 700, color: 'rgba(255,255,255,.55)', marginLeft: 10, letterSpacing: 0 }}>₽</span>
+                    <span className="wv-hero-rub" style={{ fontWeight: 700, color: 'rgba(255,255,255,.55)', marginLeft: 10, letterSpacing: 0 }}>₽</span>
                   </div>
                 </div>
 
-                {/* Sub row */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
+                {/* Sub row — bonus + stats */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(245,166,35,.14)', border: '1px solid rgba(245,166,35,.3)', borderRadius: 20, padding: '5px 12px' }}>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="#f5a623"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
                     <span style={{ fontSize: 13, color: '#f5a623', fontWeight: 800 }}>{fmt(bonusRubles)} БР</span>
                   </div>
                   <span style={{ fontSize: 12, color: 'rgba(255,255,255,.35)' }}>бонусных рублей</span>
-                  <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(52,211,153,.1)', border: '1px solid rgba(52,211,153,.2)', borderRadius: 8, padding: '4px 10px' }}>
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
-                    <span style={{ fontSize: 11, color: '#34d399', fontWeight: 700 }}>+2.4% за апрель</span>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(29,158,117,.12)', border: '1px solid rgba(29,158,117,.25)', borderRadius: 20, padding: '5px 12px' }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2"><polyline points="17 8 21 12 17 16" /><line x1="3" y1="12" x2="21" y2="12" /></svg>
+                    <span style={{ fontSize: 13, color: '#34d399', fontWeight: 800 }}>{fmt(referralMoney)} ₽</span>
                   </div>
+                  <span style={{ fontSize: 12, color: 'rgba(255,255,255,.35)' }}>реферальных</span>
                 </div>
 
-                {/* Last tx ticker */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 14, padding: '8px 12px', background: 'rgba(255,255,255,.06)', borderRadius: 10, border: '1px solid rgba(255,255,255,.08)', width: 'fit-content', animation: 'heroFadeSlide .6s .3s ease both' }}>
+                {/* Quick top-up pills inline */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,.4)', fontWeight: 600, marginRight: 2 }}>Пополнить:</span>
+                  {[1000, 3000, 5000, 10000].map(a => (
+                    <button key={a} className="wv-hero-pill-dark" onClick={() => setModal('topup')}>+{fmt(a)} ₽</button>
+                  ))}
+                </div>
+
+                {/* Last tx ticker — clickable */}
+                <div onClick={() => setView('history')}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 14, padding: '8px 12px', background: 'rgba(255,255,255,.06)', borderRadius: 10, border: '1px solid rgba(255,255,255,.08)', width: 'fit-content', cursor: 'pointer', animation: 'heroFadeSlide .6s .3s ease both', transition: 'background .15s, border-color .15s' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,.12)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,.18)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,.06)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,.08)'; }}>
                   <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#f5a623', flexShrink: 0 }} />
                   <span style={{ fontSize: 11, color: 'rgba(255,255,255,.45)' }}>Последняя: </span>
                   <span style={{ fontSize: 11, color: 'rgba(255,255,255,.75)', fontWeight: 600 }}>−4 900 ₽ · КМБ V5</span>
                   <span style={{ fontSize: 10, color: 'rgba(255,255,255,.3)', marginLeft: 4 }}>12 апр</span>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.35)" strokeWidth="2" style={{ marginLeft: 4, flexShrink: 0 }}><polyline points="9 18 15 12 9 6" /></svg>
                 </div>
               </div>
 
@@ -1673,15 +1919,8 @@ export function Wallet() {
               </div>
             </div>
 
-            {/* Quick fill pills */}
-            <div style={{ padding: '0 36px 16px', display: 'flex', gap: 8, flexWrap: 'wrap', position: 'relative', zIndex: 2 }}>
-              {[1000, 3000, 5000, 10000].map(a => (
-                <button key={a} className="wv-hero-pill-dark" onClick={() => setModal('topup')}>+{fmt(a)} ₽</button>
-              ))}
-            </div>
-
             {/* Action buttons */}
-            <div style={{ padding: '0 36px 28px', display: 'flex', gap: 10, flexWrap: 'wrap', position: 'relative', zIndex: 2 }}>
+            <div className="wv-hero-actions">
               {[
                 { label: 'Пополнить', fn: () => setModal('topup'), ic: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> },
                 { label: 'Вывести', fn: () => setModal('withdraw'), ic: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="17 8 21 12 17 16"/><line x1="3" y1="12" x2="21" y2="12"/></svg> },
@@ -1689,32 +1928,29 @@ export function Wallet() {
               ].map(b => <button key={b.label} className="wv-hero-action" onClick={b.fn}>{b.ic}{b.label}</button>)}
             </div>
 
-            {/* Chart */}
-            <div style={{ height: 100, position: 'relative', zIndex: 2, opacity: .65 }}>
-              <HeroAreaChart />
-            </div>
-
             {/* Bottom shimmer */}
             <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg, transparent, rgba(99,133,255,.8) 30%, rgba(245,166,35,.9) 50%, rgba(99,133,255,.8) 70%, transparent)', backgroundSize: '200% 100%', animation: 'heroShimmer 3s linear infinite', zIndex: 3 }} />
           </div>
           </div>{/* /hero wrapper */}
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 20, alignItems: 'start' }}>
+          <div className="wv-main-grid">
             {/* ══ LEFT ══ */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20, minWidth: 0 }}>
 
               {/* STATS */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14 }}>
+              <div className="wv-stats-grid">
                 {[
-                  { ic: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e53935" strokeWidth="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></svg>, bg: '#fdecea', val: `${fmt(14700)} ₽`, label: 'Потрачено за апрель', color: '#e53935', sub: 'рост 0.7% к марту' },
-                  { ic: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1d9e75" strokeWidth="2"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6" /><polyline points="17 18 23 18 23 12" /></svg>, bg: '#e8f8f2', val: `${fmt(10000)} ₽`, label: 'Пополнено за апрель', color: '#1d9e75', sub: 'меньше на 31% к марту' },
-                  { ic: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f5a623" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>, bg: '#fff8ed', val: `${fmt(bonusRubles)} БР`, label: 'Кэшбэк за апрель', color: '#f5a623', sub: '1% с каждой покупки' },
+                  { ic: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e53935" strokeWidth="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></svg>, bg: '#fdecea', val: `${fmt(14700)} ₽`, label: 'Потрачено за апрель', color: '#e53935', sub: 'рост 0.7% к марту', fn: () => setView('history') },
+                  { ic: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1d9e75" strokeWidth="2"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6" /><polyline points="17 18 23 18 23 12" /></svg>, bg: '#e8f8f2', val: `${fmt(10000)} ₽`, label: 'Пополнено за апрель', color: '#1d9e75', sub: 'меньше на 31% к марту', fn: () => setModal('topup') },
+                  { ic: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f5a623" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>, bg: '#fff8ed', val: `${fmt(bonusRubles)} БР`, label: 'Кэшбэк за апрель', color: '#f5a623', sub: '1% с каждой покупки', fn: () => navigate('/referral') },
                 ].map((st, i) => (
-                  <Card key={i} style={{ padding: '16px 18px' }} className="wv-stat-card">
-                    <div style={{ width: 32, height: 32, borderRadius: 8, background: st.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>{st.ic}</div>
-                    <div style={{ fontWeight: 800, fontSize: 22, color: st.color, lineHeight: 1 }}>{st.val}</div>
-                    <div style={{ fontSize: 12, color: '#6b7280', marginTop: 3 }}>{st.label}</div>
-                    <div style={{ fontSize: 11, color: '#c4c4c4', marginTop: 2 }}>{st.sub}</div>
+                  <Card key={i} style={{ padding: '16px 18px' }} className="wv-stat-card wv-stat-card-click">
+                    <div onClick={st.fn} style={{ cursor: 'pointer' }}>
+                      <div style={{ width: 32, height: 32, borderRadius: 8, background: st.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>{st.ic}</div>
+                      <div style={{ fontWeight: 800, fontSize: 22, color: st.color, lineHeight: 1 }}>{st.val}</div>
+                      <div style={{ fontSize: 12, color: '#6b7280', marginTop: 3 }}>{st.label}</div>
+                      <div style={{ fontSize: 11, color: '#c4c4c4', marginTop: 2 }}>{st.sub}</div>
+                    </div>
                   </Card>
                 ))}
               </div>
@@ -1728,7 +1964,7 @@ export function Wallet() {
               <Card style={{ paddingBottom: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px 12px' }}>
                   <span style={{ fontSize: 15, fontWeight: 700, color: '#111' }}>История операций</span>
-                  <button className="wv-nav-btn" onClick={() => setView('history')}>
+                  <button className="wv-nav-btn voevoda-view-all" onClick={() => setView('history')}>
                     Все операции <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
                   </button>
                 </div>
@@ -1751,14 +1987,15 @@ export function Wallet() {
               </Card>
             </div>
 
-            {/* ══ RIGHT COLUMN (sticky + scroll) ══ */}
-            <div className="wv-right-col" style={{ position: 'sticky', top: 80, display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* ══ RIGHT COLUMN (scrolls with the page) ══ */}
+            <div className="wv-right-col" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
               {/* FUNDS */}
               <Card style={{ padding: 18 }}>
                 <div style={{ fontSize: 14, fontWeight: 700, color: '#111', marginBottom: 14 }}>Мои средства</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
-                  <div style={{ background: '#fff8ed', border: '1px solid rgba(245,166,35,.25)', borderRadius: 10, padding: '12px 14px' }}>
+                <div className="wv-funds-grid">
+                  <div className="wv-fund-card" onClick={() => navigate('/shop')}
+                    style={{ background: '#fff8ed', border: '1px solid rgba(245,166,35,.25)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="#f5a623"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
                       <span style={{ fontSize: 11, color: '#c47d0e', fontWeight: 600 }}>Бонусные рубли</span>
@@ -1767,13 +2004,17 @@ export function Wallet() {
                       {fmt(bonusRubles)} <span style={{ fontSize: 13, fontWeight: 600, opacity: .7 }}>БР</span>
                     </div>
                     <div style={{ fontSize: 11, color: '#c47d0e', opacity: .65, marginTop: 5 }}>Тратить на платформе</div>
+                    <div style={{ flex: 1 }} />
                     <button
-                      onClick={() => setModal('topup')}
-                      style={{ marginTop: 10, width: '100%', padding: '6px 0', background: 'rgba(245,166,35,.15)', border: '1px solid rgba(245,166,35,.35)', borderRadius: 6, fontSize: 11, fontWeight: 600, color: '#c47d0e', cursor: 'pointer' }}>
+                      onClick={e => { e.stopPropagation(); navigate('/shop'); }}
+                      style={{ marginTop: 10, width: '100%', padding: '6px 0', background: 'rgba(245,166,35,.15)', border: '1px solid rgba(245,166,35,.35)', borderRadius: 6, fontSize: 11, fontWeight: 600, color: '#c47d0e', cursor: 'pointer', transition: 'all .18s' }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(245,166,35,.3)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(245,166,35,.15)'; e.currentTarget.style.transform = 'translateY(0)'; }}>
                       Потратить БР
                     </button>
                   </div>
-                  <div style={{ background: '#e8f8f2', border: '1px solid rgba(29,158,117,.25)', borderRadius: 10, padding: '12px 14px' }}>
+                  <div className="wv-fund-card" onClick={() => setModal('withdraw')}
+                    style={{ background: '#e8f8f2', border: '1px solid rgba(29,158,117,.25)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1d9e75" strokeWidth="2"><polyline points="17 8 21 12 17 16" /><line x1="3" y1="12" x2="21" y2="12" /></svg>
                       <span style={{ fontSize: 11, color: '#0f6e56', fontWeight: 600 }}>Реферальные</span>
@@ -1782,9 +2023,12 @@ export function Wallet() {
                       {fmt(referralMoney)} <span style={{ fontSize: 13, fontWeight: 600, opacity: .7 }}>₽</span>
                     </div>
                     <div style={{ fontSize: 11, color: '#0f6e56', opacity: .65, marginTop: 5 }}>Доступно к выводу</div>
+                    <div style={{ flex: 1 }} />
                     <button
-                      onClick={() => setModal('withdraw')}
-                      style={{ marginTop: 10, width: '100%', padding: '6px 0', background: 'rgba(29,158,117,.15)', border: '1px solid rgba(29,158,117,.35)', borderRadius: 6, fontSize: 11, fontWeight: 600, color: '#0f6e56', cursor: 'pointer' }}>
+                      onClick={e => { e.stopPropagation(); setModal('withdraw'); }}
+                      style={{ marginTop: 10, width: '100%', padding: '6px 0', background: 'rgba(29,158,117,.15)', border: '1px solid rgba(29,158,117,.35)', borderRadius: 6, fontSize: 11, fontWeight: 600, color: '#0f6e56', cursor: 'pointer', transition: 'all .18s' }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(29,158,117,.3)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(29,158,117,.15)'; e.currentTarget.style.transform = 'translateY(0)'; }}>
                       Вывести
                     </button>
                   </div>
@@ -1844,7 +2088,7 @@ export function Wallet() {
                     </div>
                   </div>
                   <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 12 }}>Осталось: <strong style={{ color: '#111' }}>{fmt(1580)} ₽</strong></div>
-                  <button className="wv-nav-btn" onClick={() => navigate('/payments')}>
+                  <button className="wv-nav-btn" onClick={() => navigate('/referral')}>
                     Подробнее <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
                   </button>
                 </div>
@@ -1876,7 +2120,7 @@ export function Wallet() {
       {modal === 'topup' && <Modal onClose={() => setModal(null)}><TopupModal onClose={() => setModal(null)} /></Modal>}
       {modal === 'withdraw' && <Modal onClose={() => setModal(null)}><WithdrawModal balance={balance} onClose={() => setModal(null)} onConfirm={a => { setBalance(b => Math.max(0, b - a)); setModal(null); }} /></Modal>}
       {modal === 'transfer' && <Modal onClose={() => setModal(null)}><TransferModal balance={balance} onClose={() => setModal(null)} onConfirm={a => { setBalance(b => Math.max(0, b - a)); setModal(null); }} /></Modal>}
-      {modal === 'addCard' && <Modal onClose={() => setModal(null)}><AddCardModal onClose={() => setModal(null)} onAdd={() => setModal(null)} /></Modal>}
+      {modal === 'addCard' && <Modal onClose={() => setModal(null)}><AddCardModal onClose={() => setModal(null)} /></Modal>}
     </div>
   );
 }

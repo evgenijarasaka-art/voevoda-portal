@@ -1,14 +1,40 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 import { useLessonProgressStore } from '../store/useLessonProgressStore';
+import { useLearningStore } from '../store/useLearningStore';
 import { YandexTrainingMap } from '../components/YandexTrainingMap';
+import { IVDisplay } from '../components/PeopleSection';
+import { PortalBreadcrumb } from '../components/PortalBreadcrumb';
+import { StreamCalendar } from '../components/StreamCalendar';
+import { VoevodaPlayer } from '../components/VoevodaPlayer';
+import { COURSE_CARD_MOTION_CSS } from '../components/courseCardMotion';
+import { BoardModal } from '../components/BoardModal';
+import { RideRequestModal } from '../components/RideRequestModal';
+import { ReportFormModal, StatusModal, STATUS_REQUESTED, STATUS_SUBMITTED, STATUS_ERROR, type ReportDraft, type ReportStatus } from '../components/ReportModals';
+import { useNotifStore } from '../store/useNotifStore';
+import { userProfilePath } from '../api/testApi';
 
 /* ─── CSS ─── */
 const CSS = `
   @keyframes fadeIn  { from{opacity:0} to{opacity:1} }
   @keyframes fadeUp  { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
-  .lp-sec { opacity:0; transform:translateY(16px); transition:opacity .5s cubic-bezier(.4,0,.2,1),transform .5s cubic-bezier(.4,0,.2,1); }
+  @keyframes lpCheckPop { 0%{transform:scale(0) rotate(-35deg);opacity:0} 60%{transform:scale(1.25) rotate(6deg)} 100%{transform:scale(1) rotate(0);opacity:1} }
+  @keyframes lpBlinkPulse { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.5);border-color:#FCA5A5} 50%{box-shadow:0 0 0 7px rgba(239,68,68,0);border-color:#EF4444} }
+  .lp-blink { animation:lpBlinkPulse 1.5s ease-in-out infinite; }
+  @keyframes lpDeadlineBlink { 0%,100%{box-shadow:0 0 0 0 rgba(245,158,11,.5);background:#FEF3C7;border-color:#FCD34D} 50%{box-shadow:0 0 0 6px rgba(245,158,11,0);background:#FDE68A;border-color:#F59E0B} }
+  .lp-deadline { animation:lpDeadlineBlink 1.3s ease-in-out infinite; }
+  .lp-check-pop { animation:lpCheckPop .45s cubic-bezier(.34,1.56,.64,1) both; }
+  .lp-viewed-card { transition:background .45s ease, border-color .45s ease, box-shadow .25s ease; }
+  .lp-viewed-card .lp-vc-icon { transition:background .45s ease; }
+  .lp-viewed-badge { width:30px; transition:width .32s cubic-bezier(.22,1,.36,1),background .2s ease; overflow:hidden; }
+  .lp-viewed-badge .lp-viewed-label { max-width:0; opacity:0; transform:translateX(-6px); white-space:nowrap; overflow:hidden; transition:max-width .32s cubic-bezier(.22,1,.36,1),opacity .2s ease,transform .32s cubic-bezier(.22,1,.36,1); }
+  .lp-lesson-shell:hover .lp-viewed-badge { width:118px; }
+  .lp-lesson-shell:hover .lp-viewed-badge .lp-viewed-label { max-width:82px; opacity:1; transform:translateX(0); }
+  .lp-sec { position:relative;z-index:1;opacity:0; transform:translateY(16px); transition:opacity .5s cubic-bezier(.4,0,.2,1),transform .5s cubic-bezier(.4,0,.2,1); }
   .lp-sec.vis { opacity:1; transform:translateY(0); }
+  .lp-sec:has(.c-mil-shell:hover) { z-index:80; }
   .lp-ghost { transition:background .15s,border-color .15s,color .15s,transform .12s; }
   .lp-ghost:hover { background:#EBF1FF!important; border-color:#C7D2FE!important; color:#375DFB!important; transform:translateY(-1px); }
   .lp-prim { transition:background .15s,box-shadow .15s,transform .12s; }
@@ -16,16 +42,15 @@ const CSS = `
   .lp-hw:hover { background:#F6F8FF!important; }
   .lp-plan:hover { background:#F8F9FB!important; }
   .lp-mat:hover { background:#F6F8FF!important; }
-  .lp-card { transition:box-shadow .22s,transform .22s,border-color .22s; cursor:pointer; }
-  .lp-card:hover:not(.locked) { box-shadow:0 10px 32px rgba(55,93,251,.14); transform:translateY(-4px); border-color:#B8CAFE!important; }
-  .lp-card:hover:not(.locked) .lp-img { transform:scale(1.05); }
-  .lp-img { transition:transform .45s cubic-bezier(.4,0,.2,1); }
+  .lp-lesson-shell .c-card-img { height:200px; }
+  .lp-lesson-shell .c-card-wrap { border-radius:18px; }
   .lp-ev { transition:opacity .15s,transform .12s; cursor:pointer; }
   .lp-ev:hover { opacity:.82; transform:translateY(-1px); }
   .lp-mate:hover { background:#F6F8FF!important; }
   .lp-star:hover { transform:scale(1.22); }
   .lp-tab { transition:color .15s,border-color .15s; }
   .lp-note { border-left:3px solid #375DFB; background:#F0F4FF; padding:14px 18px; border-radius:0 12px 12px 0; }
+  ${COURSE_CARD_MOTION_CSS}
 `;
 function injectCss(css: string, id: string) {
   if (document.getElementById(id)) return;
@@ -44,25 +69,6 @@ function useReveal() {
 function Sec({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   const ref = useReveal();
   return <div ref={ref} className="lp-sec" style={style}>{children}</div>;
-}
-
-/* ─── IVDisplay — как в Profile ─── */
-function IVDisplay({ index, rating }: { index: number; rating?: number }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
-      <span style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#F9FAFB', padding: '3px 8px', borderRadius: 7, border: '1px solid #E5E7EB', fontSize: 12 }}>
-        <span style={{ color: '#9CA3AF', fontWeight: 500 }}>ИВ</span>
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5" strokeLinecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
-        <span style={{ fontWeight: 700, color: '#111' }}>{index}</span>
-      </span>
-      {rating != null && (
-        <span style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#FFFBEB', padding: '3px 8px', borderRadius: 7, border: '1px solid #FDE68A', fontSize: 12 }}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="#F59E0B" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-          <span style={{ fontWeight: 700, color: '#374151' }}>{rating}</span>
-        </span>
-      )}
-    </div>
-  );
 }
 
 /* ─── PLAN ─── */
@@ -111,37 +117,13 @@ const LESSONS = [
   { id:6, num:'02', title:'Огневая подготовка',          date:'24 марта, 2026', time:'с 9 до 17', img:'/СписокЗанятий.png', locked:true  },
 ];
 
-/* ─── CALENDAR ─── */
-type EvType = 'auditorium'|'polygon'|'range';
-type CalEv = { day:number; month:number; year:number; title:string; num:number; time:string; type:EvType; instructor:string; img:string; lessonId:number };
-const EVTS: CalEv[] = [
-  { day:1,  month:2, year:2024, title:'Вводное занятие',                        num:1, time:'10:00 - 15:00', type:'auditorium', instructor:'Бек',     img:'/teacher1-main.jpg', lessonId:1 },
-  { day:5,  month:2, year:2024, title:'Личная тактическая подготовка снайпера', num:2, time:'10:00 - 15:00', type:'auditorium', instructor:'Бек',     img:'/teacher1-main.jpg', lessonId:2 },
-  { day:14, month:2, year:2024, title:'Личная тактическая подготовка снайпера', num:3, time:'10:00 - 15:00', type:'polygon',    instructor:'Торнадо', img:'/teacher2-main.jpg', lessonId:3 },
-  { day:17, month:2, year:2024, title:'Летучка',                                num:4, time:'10:00 - 15:00', type:'polygon',    instructor:'Торнадо', img:'/teacher2-main.jpg', lessonId:4 },
-  { day:20, month:2, year:2024, title:'Огневая подготовка',                     num:5, time:'10:00 - 15:00', type:'range',      instructor:'Grek',    img:'/teacher3-main.jpg', lessonId:5 },
-  { day:26, month:2, year:2024, title:'Азы военной топографии',                 num:6, time:'10:00 - 15:00', type:'auditorium', instructor:'Бек',     img:'/teacher1-main.jpg', lessonId:6 },
-  { day:28, month:2, year:2024, title:'Технические средства разведки',          num:7, time:'10:00 - 15:00', type:'auditorium', instructor:'Бек',     img:'/teacher1-main.jpg', lessonId:6 },
-  { day:30, month:2, year:2024, title:'Огневая подготовка',                     num:8, time:'10:00 - 15:00', type:'range',      instructor:'Grek',    img:'/teacher3-main.jpg', lessonId:5 },
-  { day:5,  month:3, year:2024, title:'Тактическая медицина',                   num:9, time:'10:00 - 15:00', type:'auditorium', instructor:'Бек',     img:'/teacher1-main.jpg', lessonId:1 },
-  { day:12, month:3, year:2024, title:'Ориентирование на местности',            num:10,time:'10:00 - 15:00', type:'polygon',    instructor:'Торнадо', img:'/teacher2-main.jpg', lessonId:2 },
-  { day:19, month:3, year:2024, title:'Огневая подготовка снайпера',            num:11,time:'10:00 - 15:00', type:'range',      instructor:'Grek',    img:'/teacher3-main.jpg', lessonId:3 },
-  { day:26, month:3, year:2024, title:'Разведка и наблюдение',                  num:12,time:'10:00 - 15:00', type:'polygon',    instructor:'Торнадо', img:'/teacher2-main.jpg', lessonId:4 },
-];
-const TC: Record<EvType,{bg:string;text:string;border:string}> = {
-  auditorium:{ bg:'#DBEAFE', text:'#1D4ED8', border:'#BFDBFE' },
-  polygon:   { bg:'#D1FAE5', text:'#065F46', border:'#A7F3D0' },
-  range:     { bg:'#FED7AA', text:'#C2410C', border:'#FDBA74' },
-};
-const MN = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
-const DN = ['ПН','ВТ','СР','ЧТ','ПТ','СБ','ВС'];
-
-/* ─── HW ─── */
+/* ─── HW / ТЕСТЫ ─── (последовательность: каждый следующий открывается после
+   сдачи предыдущего минимум на 80%. Статус считается из useLearningStore.) */
 const HW = [
-  { id:1, num:1, title:'Ориентирование в лесистой местности', sub:'Составить конспект и выписать правила', deadline:null as string|null, dc:'#10B981', status:'done' },
-  { id:2, num:2, title:'Огневая подготовка снайпера', sub:'Тест по огневой подготовке', deadline:'Сдать до завтра', dc:'#F59E0B', status:'retry' },
-  { id:3, num:3, title:'Внутренняя и внешняя баллистика', sub:'Пройдите тест на знание основ', deadline:'Сдать до 14 апреля', dc:'#10B981', status:'test' },
-  { id:4, num:4, title:'Огневая подготовка снайпера', sub:'Практика на полигоне', deadline:null, dc:'#9CA3AF', status:'locked' },
+  { id:1, num:1, testId:'1', title:'Основы баллистики', sub:'Тест на знание основ баллистики' },
+  { id:2, num:2, testId:'2', title:'Огневая подготовка снайпера', sub:'Тест по огневой подготовке' },
+  { id:3, num:3, testId:'3', title:'Внутренняя и внешняя баллистика', sub:'Тест на знание внутренней и внешней баллистики' },
+  { id:4, num:4, testId:'4', title:'Тактика малых групп', sub:'Тест по тактике действий в составе группы' },
 ];
 const MATS = [
   { type:'PDF', name:'Рабочая тетрадь', size:'224 мб' },
@@ -166,21 +148,120 @@ function downloadDemoFile(name: string, type: string) {
   URL.revokeObjectURL(url);
 }
 
+// Скачивание плана занятия в PDF — формируется 1-в-1 из секции «План занятия».
+// Содержимое рендерится в офскрин-узел, снимается html2canvas и кладётся в jsPDF,
+// поэтому пользователь получает готовый .pdf-файл (без диалога печати) с кириллицей.
+async function downloadPlanPdf(lessonTitle: string) {
+  const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const rows = PLAN.map(r => {
+    if (r.type === 'sep') {
+      return `<tr class="sep"><td colspan="4"><div class="st">${esc(r.title)}</div>${r.desc ? `<div class="sd">${esc(r.desc)}</div>` : ''}</td></tr>`;
+    }
+    const pl = r.level === 0 ? 0 : r.level === 1 ? 18 : 36;
+    const tcls = r.bold ? 'b' : r.level === 2 ? 'muted' : '';
+    return `<tr><td class="c num">${esc(r.num)}</td><td class="t ${tcls}" style="padding-left:${16 + pl}px">${esc(r.title).replace(/\n/g, '<br>')}</td><td class="c">${r.mins ?? '—'}</td><td class="c">${r.time || '—'}</td></tr>`;
+  }).join('');
+  const container = document.createElement('div');
+  container.style.cssText = 'position:fixed;left:-100000px;top:0;width:760px;background:#fff;padding:32px 36px;box-sizing:border-box;';
+  container.innerHTML = `
+    <style>
+      .lp-pdf * { box-sizing:border-box; font-family:'Segoe UI',Arial,sans-serif; }
+      .lp-pdf h1 { font-size:22px; margin:0 0 4px; color:#111; }
+      .lp-pdf .sub { color:#6B7280; font-size:13px; margin:0 0 18px; }
+      .lp-pdf table { width:100%; border-collapse:collapse; font-size:12.5px; }
+      .lp-pdf thead th { background:#F3F4F6; color:#6B7280; font-weight:600; text-align:left; padding:9px 16px; border-bottom:1px solid #E5E7EB; }
+      .lp-pdf thead th.c { text-align:center; }
+      .lp-pdf td { padding:8px 16px; border-bottom:1px solid #F0F0F0; vertical-align:top; color:#1F2937; }
+      .lp-pdf td.c { text-align:center; }
+      .lp-pdf td.num { font-weight:600; }
+      .lp-pdf td.t.b { font-weight:600; color:#374151; }
+      .lp-pdf td.t.muted { color:#6B7280; }
+      .lp-pdf tr.sep td { background:#F9FAFB; border-top:1px solid #E5E7EB; }
+      .lp-pdf .st { font-weight:700; color:#374151; }
+      .lp-pdf .sd { font-size:11px; color:#6B7280; margin-top:3px; }
+      .lp-pdf .foot { margin-top:16px; font-size:11px; color:#9CA3AF; }
+    </style>
+    <div class="lp-pdf">
+      <h1>План занятия</h1>
+      <p class="sub">${esc(lessonTitle)} · УТЦ «ВОЕВОДА»</p>
+      <table>
+        <thead><tr><th class="c">№</th><th>Упражнения</th><th class="c">Выделено минут</th><th class="c">Время начала</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div class="foot">Документ сформирован порталом ВОЕВОДА.</div>
+    </div>`;
+  document.body.appendChild(container);
+  try {
+    const canvas = await html2canvas(container, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+    const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const imgH = (canvas.height * pageW) / canvas.width;
+    let position = 0;
+    let heightLeft = imgH;
+    pdf.addImage(imgData, 'JPEG', 0, position, pageW, imgH);
+    heightLeft -= pageH;
+    while (heightLeft > 0) {
+      position -= pageH;
+      pdf.addPage();
+      pdf.addImage(imgData, 'JPEG', 0, position, pageW, imgH);
+      heightLeft -= pageH;
+    }
+    const safeName = lessonTitle.replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, '-').toLowerCase();
+    pdf.save(`план-занятия-${safeName || 'voevoda'}.pdf`);
+  } catch {
+    /* ignore */
+  } finally {
+    container.remove();
+  }
+}
+
 /* ─── CLASSMATES (каждый со своим ИВ и рейтингом) ─── */
 const MATES = [
-  { id:1, name:'Бек',   rank:'Майор',     spec:'Пулемётчик', img:'/teacher1-main.jpg', index:1842, rating:4.8 },
-  { id:2, name:'Резак', rank:'Майор',     spec:'Снайпер',    img:'/teacher2-main.jpg', index:2100, rating:5.0 },
-  { id:3, name:'Шторм', rank:'Капитан',   spec:'Медик',      img:'/teacher3-main.jpg', index:1654, rating:4.6 },
-  { id:4, name:'Лис',   rank:'Майор',     spec:'Разведчик',  img:'/teacher1-main.jpg', index:2230, rating:4.9 },
-  { id:5, name:'Волк',  rank:'Майор',     spec:'Сапёр',      img:'/teacher2-main.jpg', index:1980, rating:4.7 },
-  { id:6, name:'Ghost', rank:'Лейтенант', spec:'Связист',    img:'/teacher3-main.jpg', index:1540, rating:4.5 },
+  { id:1, chatId:2,  name:'Бек',   rank:'Майор',     spec:'Пулемётчик', img:'/teacher1-main.jpg', index:1842, rating:4.8 },
+  { id:2, chatId:14, name:'Резак', rank:'Майор',     spec:'Снайпер',    img:'/teacher2-main.jpg', index:2100, rating:5.0 },
+  { id:3, chatId:15, name:'Шторм', rank:'Капитан',   spec:'Медик',      img:'/teacher3-main.jpg', index:1654, rating:4.6 },
+  { id:4, chatId:16, name:'Лис',   rank:'Майор',     spec:'Разведчик',  img:'/teacher1-main.jpg', index:2230, rating:4.9 },
+  { id:5, chatId:17, name:'Волк',  rank:'Майор',     spec:'Сапёр',      img:'/teacher2-main.jpg', index:1980, rating:4.7 },
+  { id:6, chatId:18, name:'Ghost', rank:'Лейтенант', spec:'Связист',    img:'/teacher3-main.jpg', index:1540, rating:4.5 },
 ];
+
+type TeacherAssessment = {
+  status: 'pending' | 'reviewing' | 'graded';
+  score?: number;
+  comment?: string;
+  updatedAt?: string;
+};
+
+type LessonReminder = {
+  label: string;
+  hours: number;
+  startAt: string;
+  triggerAt: string;
+  delivered?: boolean;
+};
+
+const REMINDER_OPTIONS = [
+  { label:'за 2 часа', hours:2 },
+  { label:'за день', hours:24 },
+  { label:'за 3 дня', hours:72 },
+  { label:'за неделю', hours:168 },
+];
+
+function getNextLessonStart(lessonId: string) {
+  const lessonDays: Record<string, number> = { '1':3, '2':24, '3':3, '4':10, '5':17, '6':24 };
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 2, lessonDays[lessonId] ?? 24, 9, 0, 0, 0);
+  if (start.getTime() <= now.getTime()) start.setFullYear(start.getFullYear() + 1);
+  return start;
+}
 
 const STUDY = [
   { id:'s1', img:'/спрятался1.png', title:'Снайперская тактика',
     text:['На сегодняшний день в большинстве армий существуют две основные концепции снайпинга:','1. Снайперская пара или одиночный стрелок работают в режиме «свободной охоты».','2. Снайперско-разведывательный патруль сковывает действия противника в своей зоне ответственности.'],
     note:'Для выполнения боевых задач снайпер должен располагаться на тщательно замаскированной позиции.', video:false },
-  { id:'s2', img:'/спрятались2.png', title:'Маскировка и наблюдение',
+  { id:'s2', img:'/спрятался2.png', title:'Маскировка и наблюдение',
     text:['О законах и приёмах маскировки и наблюдения написано достаточно. Наблюдать нужно очень внимательно, не упуская никаких мелочей.'],
     note:null, video:true },
 ];
@@ -189,145 +270,6 @@ function IcLock() {
   return (
     <div style={{ width:48,height:48,borderRadius:'50%',background:'rgba(255,255,255,.18)',backdropFilter:'blur(10px)',display:'flex',alignItems:'center',justifyContent:'center' }}>
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.9)" strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-    </div>
-  );
-}
-
-function useCountdown(target: Date) {
-  const calc = () => { const d = Math.max(0,target.getTime()-Date.now()); return { days:Math.floor(d/86400000),hours:Math.floor((d%86400000)/3600000),minutes:Math.floor((d%3600000)/60000),seconds:Math.floor((d%60000)/1000) }; };
-  const [t,setT] = useState(calc);
-  useEffect(() => { const id = setInterval(()=>setT(calc()),1000); return ()=>clearInterval(id); },[]);
-  return t;
-}
-function Countdown({ target }: { target: Date }) {
-  const {days,hours,minutes,seconds} = useCountdown(target);
-  const pad = (n:number) => String(n).padStart(2,'0');
-  return (
-    <div style={{ display:'flex',alignItems:'center',gap:6,flexWrap:'wrap' }}>
-      {[['дней',days],['часов',hours],['минут',minutes],['секунд',seconds]].map(([l,v],i,arr)=>(
-        <div key={String(l)} style={{ display:'flex',alignItems:'center',gap:i<arr.length-1?6:0 }}>
-          <div style={{ textAlign:'center',minWidth:54,background:'#F8F9FB',borderRadius:12,padding:'8px 6px',border:'1px solid #E5E7EB' }}>
-            <div style={{ fontSize:24,fontWeight:800,color:'#111',lineHeight:1 }}>{pad(v as number)}</div>
-            <div style={{ fontSize:10,color:'#9CA3AF',marginTop:3 }}>{l}</div>
-          </div>
-          {i<arr.length-1&&<span style={{ fontSize:20,fontWeight:800,color:'#D1D5DB',marginBottom:10 }}>:</span>}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-const COURSE_START_DAY = 23;
-const COURSE_START_MONTHS = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
-
-function getNextCourseStart(reference = new Date()) {
-  const start = new Date(reference.getFullYear(), reference.getMonth(), COURSE_START_DAY, 9, 0, 0);
-  if (start.getTime() <= reference.getTime()) start.setMonth(start.getMonth() + 1);
-  return start;
-}
-
-function formatCourseStart(date: Date) {
-  return `${date.getDate()} ${COURSE_START_MONTHS[date.getMonth()]} ${date.getFullYear()}`;
-}
-
-/* ═══════════ CALENDAR ═══════════ */
-function CalendarView({ onGo }: { onGo:(id:number)=>void }) {
-  const today = new Date();
-  const [yr,setYr] = useState(2024);
-  const [mo,setMo] = useState(2);
-  const [drop,setDrop] = useState(false);
-  const prev = () => mo===0?(setMo(11),setYr(y=>y-1)):setMo(m=>m-1);
-  const next = () => mo===11?(setMo(0),setYr(y=>y+1)):setMo(m=>m+1);
-  const goToday = () => { setYr(today.getFullYear()); setMo(today.getMonth()); };
-  const fdow = (new Date(yr,mo,1).getDay()+6)%7;
-  const td = new Date(yr,mo+1,0).getDate();
-  const prevLast = new Date(yr,mo,0).getDate();
-  const cells: {day:number;cur:boolean;isToday:boolean}[] = [];
-  for (let i=fdow-1;i>=0;i--) cells.push({day:prevLast-i,cur:false,isToday:false});
-  for (let d=1;d<=td;d++) cells.push({day:d,cur:true,isToday:d===today.getDate()&&mo===today.getMonth()&&yr===today.getFullYear()});
-  const rem=(7-(cells.length%7))%7;
-  for (let d=1;d<=rem;d++) cells.push({day:d,cur:false,isToday:false});
-  const dayEvts = (d:number) => EVTS.filter(e=>e.day===d&&e.month===mo&&e.year===yr);
-  return (
-    <div style={{ background:'#fff',borderRadius:22,border:'1px solid #E5E7EB',overflow:'hidden' }}>
-      {/* header */}
-      <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',padding:'18px 24px',borderBottom:'1px solid #F0F0F0',flexWrap:'wrap',gap:12 }}>
-        <div style={{ display:'flex',alignItems:'center',gap:16,flexWrap:'wrap' }}>
-          <div style={{ position:'relative' }}>
-            <button onClick={()=>setDrop(x=>!x)} style={{ display:'flex',alignItems:'center',gap:8,background:'none',border:'none',cursor:'pointer',padding:0 }}>
-              <span style={{ fontSize:15,color:'#9CA3AF' }}>Расписание на</span>
-              <span style={{ fontSize:20,fontWeight:700,color:'#111' }}>{MN[mo]} {yr}</span>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
-            </button>
-            {drop&&(
-              <div style={{ position:'absolute',top:'calc(100% + 8px)',left:0,background:'#fff',border:'1px solid #E5E7EB',borderRadius:14,padding:'8px 0',boxShadow:'0 12px 36px rgba(0,0,0,.12)',zIndex:300,minWidth:160,animation:'fadeUp .14s ease' }}>
-                {MN.map((m,i)=>(
-                  <button key={m} onClick={()=>{setMo(i);setDrop(false);}}
-                    style={{ display:'block',width:'100%',padding:'8px 16px',textAlign:'left',background:i===mo?'#EBF1FF':'none',border:'none',fontSize:13,color:i===mo?'#375DFB':'#374151',cursor:'pointer',fontWeight:i===mo?600:400 }}
-                    onMouseEnter={e=>{if(i!==mo)e.currentTarget.style.background='#F9FAFB';}} onMouseLeave={e=>{if(i!==mo)e.currentTarget.style.background='none';}}>
-                    {m}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          <div style={{ display:'flex',gap:14,fontSize:12,color:'#6B7280' }}>
-            {([['#60A5FA','Аудитория'],['#34D399','Полигон'],['#FB923C','Стрельбище']] as [string,string][]).map(([c,l])=>(
-              <span key={l} style={{ display:'flex',alignItems:'center',gap:5 }}>
-                <span style={{ width:9,height:9,borderRadius:'50%',background:c,flexShrink:0,display:'inline-block' }}/>{l}
-              </span>
-            ))}
-          </div>
-        </div>
-        <div style={{ display:'flex',gap:8 }}>
-          <button onClick={prev} style={{ width:34,height:34,borderRadius:9,background:'#F4F6FA',border:'1px solid #E5E7EB',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',transition:'background .15s' }} onMouseEnter={e=>(e.currentTarget.style.background='#EBF1FF')} onMouseLeave={e=>(e.currentTarget.style.background='#F4F6FA')}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
-          </button>
-          <button onClick={goToday} style={{ padding:'6px 14px',background:'#fff',border:'1px solid #E5E7EB',borderRadius:9,fontSize:13,color:'#374151',cursor:'pointer',fontWeight:500,transition:'all .15s' }} onMouseEnter={e=>{e.currentTarget.style.background='#EBF1FF';e.currentTarget.style.borderColor='#C7D2FE';e.currentTarget.style.color='#375DFB';}} onMouseLeave={e=>{e.currentTarget.style.background='#fff';e.currentTarget.style.borderColor='#E5E7EB';e.currentTarget.style.color='#374151';}}>Сегодня</button>
-          <button onClick={next} style={{ width:34,height:34,borderRadius:9,background:'#F4F6FA',border:'1px solid #E5E7EB',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',transition:'background .15s' }} onMouseEnter={e=>(e.currentTarget.style.background='#EBF1FF')} onMouseLeave={e=>(e.currentTarget.style.background='#F4F6FA')}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
-          </button>
-        </div>
-      </div>
-      {/* grid */}
-      <div style={{ overflowX:'auto' }}>
-        <div style={{ minWidth:700 }}>
-          <div style={{ display:'grid',gridTemplateColumns:'repeat(7,1fr)',borderBottom:'1px solid #F0F0F0' }}>
-            {DN.map(d=><div key={d} style={{ padding:'10px 0',textAlign:'center',fontSize:12,fontWeight:600,color:'#9CA3AF',letterSpacing:'.3px' }}>{d}</div>)}
-          </div>
-          {Array.from({length:cells.length/7}).map((_,wi)=>(
-            <div key={wi} style={{ display:'grid',gridTemplateColumns:'repeat(7,1fr)',borderBottom:wi<cells.length/7-1?'1px solid #F5F5F7':'none' }}>
-              {cells.slice(wi*7,wi*7+7).map((cell,di)=>{
-                const evs = cell.cur?dayEvts(cell.day):[];
-                return (
-                  <div key={di} style={{ minHeight:100,padding:'5px 5px 7px',borderRight:di<6?'1px solid #F5F5F7':'none' }}>
-                    <div style={{ display:'flex',justifyContent:'flex-end',marginBottom:3 }}>
-                      <span style={{ width:24,height:24,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:cell.isToday?700:400,color:cell.isToday?'#fff':cell.cur?'#374151':'#D1D5DB',background:cell.isToday?'#EF4444':'transparent' }}>{cell.day}</span>
-                    </div>
-                    <div style={{ display:'flex',flexDirection:'column',gap:3 }}>
-                      {evs.map((ev,ei)=>{
-                        const c=TC[ev.type];
-                        return (
-                          <div key={ei} className="lp-ev" onClick={()=>onGo(ev.lessonId)} style={{ background:c.bg,border:`1px solid ${c.border}`,borderRadius:7,padding:'4px 6px' }}>
-                            <div style={{ fontSize:11,fontWeight:600,color:c.text,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',marginBottom:2 }}>{ev.title}</div>
-                            <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',fontSize:10,color:c.text,opacity:.85,marginBottom:3 }}><span>{ev.time}</span><span style={{ fontWeight:600 }}>№{ev.num}</span></div>
-                            <div style={{ display:'flex',alignItems:'center',gap:4 }}>
-                              <div style={{ width:16,height:16,borderRadius:'50%',overflow:'hidden',background:'#E5E7EB',flexShrink:0 }}>
-                                <img src={ev.img} alt="" style={{ width:'100%',height:'100%',objectFit:'cover' }} onError={e=>{(e.currentTarget as HTMLImageElement).style.display='none';}}/>
-                              </div>
-                              <span style={{ fontSize:10,color:c.text,opacity:.9,fontWeight:500 }}>{ev.instructor}</span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
@@ -346,42 +288,149 @@ export function LessonPage() {
   const viewedLessons = useLessonProgressStore(s => s.lessons);
   const lessonProgress = useLessonProgressStore(s => s.lessons[lessonId]);
   const markLessonViewed = useLessonProgressStore(s => s.markLessonViewed);
+  const markLessonOpened = useLessonProgressStore(s => s.markLessonOpened);
+  const submissions = useLearningStore(s => s.submissions);
+  const testPassed = Object.values(submissions).some(x => x.passed);
+  const addNotification = useNotifStore(s => s.add);
+  const reminderKey = `voevoda_lesson_reminder_${lessonId}`;
+  const assessmentKey = `voevoda_teacher_assessment_${lessonId}`;
   const [vote,setVote] = useState('Я в строю');
   const [voteSaved, setVoteSaved] = useState(false);
   const [voteTotals, setVoteTotals] = useState<Record<string, number>>({ 'Я в строю': 18, 'Отсутствую': 2, 'Под вопросом': 4 });
   const [attendancePulse, setAttendancePulse] = useState(false);
-  const [rideMode, setRideMode] = useState<'offer' | 'request' | null>(null);
-  const [reportReady, setReportReady] = useState(false);
-  const [reviewSaved, setReviewSaved] = useState(false);
+  const [lessonListFilter, setLessonListFilter] = useState<'all'|'available'|'viewed'|'unviewed'|'locked'>('all');
+  const [boardOpen, setBoardOpen] = useState(false);
+  const [rideOpen, setRideOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportStatus, setReportStatus] = useState<ReportStatus | null>(null);
+  const [reportWorkflow, setReportWorkflow] = useState<'idle' | 'requested' | 'draft' | 'submitted'>(() => {
+    try {
+      return (localStorage.getItem(`voevoda_lesson_report_${lessonId}`) as 'requested' | 'draft' | 'submitted' | null) ?? 'idle';
+    } catch {
+      return 'idle';
+    }
+  });
   const [tab,setTab] = useState<'hw'|'study'>('hw');
   const [matTab,setMatTab] = useState<'mat'|'comments'>('mat');
   const [studyDone,setStudyDone] = useState(false);
   const [notifyOpen,setNotifyOpen] = useState(false);
-  const [modal,setModal] = useState<typeof LESSONS[0]|null>(null);
-  const [stars,setStars] = useState(5);
-  const [hoverStar,setHoverStar] = useState(0);
+  const [reminder, setReminder] = useState<LessonReminder | null>(() => {
+    try {
+      const saved = localStorage.getItem(reminderKey);
+      return saved ? JSON.parse(saved) as LessonReminder : null;
+    } catch {
+      return null;
+    }
+  });
+  const [teacherAssessment, setTeacherAssessment] = useState<TeacherAssessment>(() => {
+    try {
+      const saved = localStorage.getItem(assessmentKey);
+      return saved ? JSON.parse(saved) as TeacherAssessment : { status:'pending' };
+    } catch {
+      return { status:'pending' };
+    }
+  });
   const [e1,setE1] = useState(false);
   const [e2,setE2] = useState(false);
   const [notice, setNotice] = useState('');
   const [commentText, setCommentText] = useState('');
   const [commentSent, setCommentSent] = useState(false);
 
-  useEffect(()=>{ injectCss(CSS,'lp-v4'); },[]);
+  useEffect(()=>{ injectCss(CSS,'lp-v5'); },[]);
 
+  // Открытие урока фиксируем, но «Просмотрено» ставит сам курсант кнопкой
   useEffect(() => {
-    markLessonViewed({
+    markLessonOpened({
       id: lessonId,
       title: TITLE,
       courseTitle,
       courseSlug,
     });
-  }, [lessonId, TITLE, courseTitle, courseSlug, markLessonViewed]);
+  }, [lessonId, TITLE, courseTitle, courseSlug, markLessonOpened]);
 
-  const target = useMemo(() => getNextCourseStart(), []);
-  const targetLabel = useMemo(() => formatCourseStart(target), [target]);
+  useEffect(() => {
+    try {
+      const savedReminder = localStorage.getItem(reminderKey);
+      setReminder(savedReminder ? JSON.parse(savedReminder) as LessonReminder : null);
+      const savedAssessment = localStorage.getItem(assessmentKey);
+      setTeacherAssessment(savedAssessment ? JSON.parse(savedAssessment) as TeacherAssessment : { status:'pending' });
+    } catch {
+      setReminder(null);
+      setTeacherAssessment({ status:'pending' });
+    }
+  }, [reminderKey, assessmentKey]);
+
+  useEffect(() => {
+    if (!reminder || reminder.delivered) return;
+    const delay = new Date(reminder.triggerAt).getTime() - Date.now();
+    const deliver = () => {
+      addNotification({
+        kind:'course_started',
+        title:'Занятие скоро начнётся',
+        body:`${TITLE} — ${new Intl.DateTimeFormat('ru-RU', { day:'numeric', month:'long', hour:'2-digit', minute:'2-digit' }).format(new Date(reminder.startAt))}`,
+        link:`/lessons/${lessonId}`,
+      });
+      if ('Notification' in window && window.Notification.permission === 'granted') {
+        new window.Notification('Занятие скоро начнётся', { body: TITLE });
+      }
+      const deliveredReminder = { ...reminder, delivered:true };
+      setReminder(deliveredReminder);
+      try { localStorage.setItem(reminderKey, JSON.stringify(deliveredReminder)); } catch { /* ignore */ }
+    };
+    const timeout = window.setTimeout(deliver, Math.max(0, Math.min(delay, 2_147_483_647)));
+    return () => window.clearTimeout(timeout);
+  }, [reminder, reminderKey, addNotification, TITLE, lessonId]);
+
+  useEffect(() => {
+    const applyAssessment = (next: TeacherAssessment) => {
+      setTeacherAssessment(previous => {
+        if (next.status === 'graded' && previous.status !== 'graded') {
+          addNotification({
+            kind:'achievement',
+            title:'Преподаватель поставил оценку',
+            body:`${TITLE}: ${next.score ?? 0} из 5. ${next.comment ?? 'Комментарий доступен в занятии.'}`,
+            link:`/lessons/${lessonId}`,
+          });
+        }
+        return next;
+      });
+      try { localStorage.setItem(assessmentKey, JSON.stringify(next)); } catch { /* ignore */ }
+    };
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== assessmentKey || !event.newValue) return;
+      try { applyAssessment(JSON.parse(event.newValue) as TeacherAssessment); } catch { /* ignore */ }
+    };
+    const onAssessment = (event: Event) => {
+      const detail = (event as CustomEvent<TeacherAssessment>).detail;
+      if (detail) applyAssessment(detail);
+    };
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('voevoda:teacher-assessment', onAssessment);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('voevoda:teacher-assessment', onAssessment);
+    };
+  }, [assessmentKey, addNotification, TITLE, lessonId]);
+
   const viewedAtLabel = lessonProgress?.viewedAt
     ? new Intl.DateTimeFormat('ru-RU', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(lessonProgress.viewedAt))
     : '';
+  const isViewed = lessonProgress?.status === 'viewed';
+  const progressSteps = [
+    { label: 'Занятие открыто', done: true },
+    { label: 'Материал изучен и отмечен', done: isViewed },
+    { label: 'Зачётный тест сдан на 80%+', done: testPassed },
+  ];
+  const progressDone = progressSteps.filter(s => s.done).length;
+  const progressPct = Math.round((progressDone / progressSteps.length) * 100);
+  const visibleLessons = LESSONS.filter(lesson => {
+    const viewed = viewedLessons[String(lesson.id)]?.status === 'viewed';
+    if (lessonListFilter === 'available') return !lesson.locked;
+    if (lessonListFilter === 'viewed') return !lesson.locked && viewed;
+    if (lessonListFilter === 'unviewed') return !lesson.locked && !viewed;
+    if (lessonListFilter === 'locked') return lesson.locked;
+    return true;
+  });
   const saveLessonViewed = () => {
     markLessonViewed({ id: lessonId, title: TITLE, courseTitle, courseSlug });
     setAttendancePulse(true);
@@ -391,11 +440,58 @@ export function LessonPage() {
     setVoteTotals(prev => ({ ...prev, [vote]: (prev[vote] ?? 0) + (voteSaved ? 0 : 1) }));
     setVoteSaved(true);
   };
-  const createReportDraft = () => {
-    setReportReady(true);
+  const setReportStep = (step: 'requested' | 'draft' | 'submitted') => {
+    setReportWorkflow(step);
+    try { localStorage.setItem(`voevoda_lesson_report_${lessonId}`, step); } catch { /* ignore */ }
   };
-  const submitReview = () => {
-    setReviewSaved(true);
+  const requestReport = () => {
+    setReportStep('requested');
+    setReportStatus(STATUS_REQUESTED);
+  };
+  const submitReport = (_draft: ReportDraft) => {
+    setReportOpen(false);
+    const online = typeof navigator === 'undefined' || navigator.onLine;
+    if (!online) {
+      setReportStatus(STATUS_ERROR);
+      return;
+    }
+    setReportStep('submitted');
+    setReportStatus(STATUS_SUBMITTED);
+  };
+  const saveReminder = async (option: typeof REMINDER_OPTIONS[number]) => {
+    const start = getNextLessonStart(lessonId);
+    const nextReminder: LessonReminder = {
+      ...option,
+      startAt:start.toISOString(),
+      triggerAt:new Date(start.getTime() - option.hours * 60 * 60 * 1000).toISOString(),
+      delivered:false,
+    };
+    setReminder(nextReminder);
+    try { localStorage.setItem(reminderKey, JSON.stringify(nextReminder)); } catch { /* ignore */ }
+    addNotification({
+      kind:'system',
+      title:'Напоминание настроено',
+      body:`${TITLE} — уведомим ${option.label}, ${new Intl.DateTimeFormat('ru-RU', { day:'numeric', month:'long', hour:'2-digit', minute:'2-digit' }).format(start)}`,
+      link:`/lessons/${lessonId}`,
+    });
+    setNotifyOpen(false);
+    showNotice(`Напоминание включено: ${option.label}`);
+    if ('Notification' in window && window.Notification.permission === 'default') {
+      await window.Notification.requestPermission();
+    }
+  };
+  const requestTeacherAssessment = () => {
+    if (!isViewed || !testPassed || teacherAssessment.status !== 'pending') return;
+    const next: TeacherAssessment = { status:'reviewing', updatedAt:new Date().toISOString() };
+    setTeacherAssessment(next);
+    try { localStorage.setItem(assessmentKey, JSON.stringify(next)); } catch { /* ignore */ }
+    addNotification({
+      kind:'system',
+      title:'Работа отправлена преподавателю',
+      body:`${TITLE} — Бек проверит материал и тест. После оценки придёт уведомление.`,
+      link:`/lessons/${lessonId}`,
+    });
+    showNotice('Работа отправлена на проверку');
   };
   const submitComment = () => {
     if (!commentText.trim()) {
@@ -409,7 +505,7 @@ export function LessonPage() {
     setNotice(text);
     window.setTimeout(() => setNotice(''), 2400);
   };
-  const BC: [string,string|null][] = [['Главная','/'],['Личный кабинет','/profile'],['Мои курсы','/my-courses'],[courseTitle,`/my-courses/${courseSlug}`],[TITLE,null]];
+  const BC = [{ label:'Главная', to:'/' }, { label:'Личный кабинет', to:'/profile' }, { label:'Мои курсы', to:'/my-courses' }, { label:courseTitle, to:`/my-courses/${courseSlug}` }, { label:TITLE }];
 
   return (
     <div style={{ paddingTop:60,marginLeft:56,minHeight:'100vh',background:'#F4F6FB' }}>
@@ -428,27 +524,28 @@ export function LessonPage() {
         <div style={{ position:'relative' }}>
           <button onClick={()=>setNotifyOpen(x=>!x)} style={{ display:'flex',alignItems:'center',gap:6,padding:'7px 14px',background:'#fff',border:'1px solid #E5E7EB',borderRadius:10,fontSize:13,color:'#374151',cursor:'pointer',transition:'all .15s' }} onMouseEnter={e=>{e.currentTarget.style.borderColor='#C7D2FE';e.currentTarget.style.color='#375DFB';}} onMouseLeave={e=>{e.currentTarget.style.borderColor='#E5E7EB';e.currentTarget.style.color='#374151';}}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-            Уведомить меня <span style={{ color:'#375DFB',fontWeight:600 }}>за день</span>
+            Уведомить меня <span style={{ color:'#375DFB',fontWeight:600 }}>{reminder?.label ?? 'за день'}</span>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
           </button>
           {notifyOpen&&(
-            <div style={{ position:'absolute',top:'calc(100% + 8px)',right:0,background:'#fff',border:'1px solid #E5E7EB',borderRadius:14,padding:'8px 0',boxShadow:'0 12px 36px rgba(0,0,0,.12)',zIndex:200,minWidth:180,animation:'fadeUp .15s ease' }}>
-              {['за 2 часа','за день','за 3 дня','за неделю'].map(o=>(
-                <button key={o} onClick={()=>setNotifyOpen(false)} style={{ display:'block',width:'100%',padding:'9px 16px',textAlign:'left',background:'none',border:'none',fontSize:13,color:'#374151',cursor:'pointer' }} onMouseEnter={e=>(e.currentTarget.style.background='#F4F6FA')} onMouseLeave={e=>(e.currentTarget.style.background='none')}>Уведомить {o}</button>
+            <div style={{ position:'absolute',top:'calc(100% + 8px)',right:0,background:'#fff',border:'1px solid #E5E7EB',borderRadius:14,padding:'8px 0 10px',boxShadow:'0 12px 36px rgba(0,0,0,.12)',zIndex:200,minWidth:260,animation:'fadeUp .15s ease',overflow:'hidden' }}>
+              {REMINDER_OPTIONS.map(option=>(
+                <button key={option.hours} onClick={()=>void saveReminder(option)} style={{ display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,width:'100%',padding:'9px 16px',textAlign:'left',background:reminder?.hours===option.hours?'#EEF3FF':'none',border:'none',fontSize:13,color:reminder?.hours===option.hours?'#2448D8':'#374151',cursor:'pointer',fontWeight:reminder?.hours===option.hours?700:500 }} onMouseEnter={e=>(e.currentTarget.style.background='#F4F6FA')} onMouseLeave={e=>(e.currentTarget.style.background=reminder?.hours===option.hours?'#EEF3FF':'none')}>
+                  <span>Уведомить {option.label}</span>
+                  {reminder?.hours===option.hours && <span aria-hidden="true">✓</span>}
+                </button>
               ))}
+              <div style={{ margin:'7px 12px 0',padding:'9px 10px',borderRadius:10,background:'#F8FAFC',fontSize:11,lineHeight:1.45,color:'#64748B' }}>
+                Напоминание появится в уведомлениях портала. Если разрешены уведомления браузера — придёт и системное сообщение.
+              </div>
             </div>
           )}
         </div>
       </div>
 
       {/* BREADCRUMB */}
-      <div style={{ background:'#fff',borderBottom:'1px solid #E5E7EB',padding:'9px 28px',display:'flex',alignItems:'center',gap:5,fontSize:12,color:'#9CA3AF',flexWrap:'wrap' }}>
-        {BC.map(([l,p],i)=>(
-          <span key={i} style={{ display:'flex',alignItems:'center',gap:5 }}>
-            {p?<span onClick={()=>navigate(p)} style={{ cursor:'pointer',transition:'color .15s' }} onMouseEnter={e=>(e.currentTarget.style.color='#375DFB')} onMouseLeave={e=>(e.currentTarget.style.color='#9CA3AF')}>{l}</span>:<span style={{ color:'#374151',fontWeight:500 }}>{l}</span>}
-            {i<BC.length-1&&<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="1.5"><polyline points="9 18 15 12 9 6"/></svg>}
-          </span>
-        ))}
+      <div style={{ background:'#fff',borderBottom:'1px solid #E5E7EB',padding:'9px 28px' }}>
+        <PortalBreadcrumb className="course-breadcrumb" items={BC} />
       </div>
 
       <div style={{ padding:'24px 28px 60px',maxWidth:1240,margin:'0 auto' }}>
@@ -456,7 +553,7 @@ export function LessonPage() {
         {/* ══ 1. УРОК ══ */}
         <Sec style={{ marginBottom:20 }}>
         <div style={{ background:'#fff',borderRadius:22,border:'1px solid #E5E7EB',padding:'24px' }}>
-            <div style={{ display:'grid',gridTemplateColumns:'1fr 420px',gap:24,alignItems:'start' }}>
+            <div style={{ display:'grid',gridTemplateColumns:'1fr 420px',gap:24,alignItems:'stretch' }}>
             <div style={{ display:'flex',flexDirection:'column',gap:14 }}>
                 {/* --- всё содержимое левой колонки без изменений --- */}
                 <div>
@@ -473,14 +570,23 @@ export function LessonPage() {
                 <div style={{ flex:1 }}><div style={{ fontSize:15,fontWeight:700,color:'#111' }}>Бек</div><div style={{ fontSize:12,color:'#9CA3AF' }}>Главный инструктор</div></div>
                 <button className="lp-ghost" onClick={()=>navigate('/messages?chat=1')} style={{ padding:'8px 14px',background:'#fff',border:'1px solid #E5E7EB',borderRadius:10,fontSize:13,color:'#374151',cursor:'pointer' }}>Задать вопрос</button>
                 </div>
-                <div style={{ background:'#F0FDF4',borderRadius:14,border:'1px solid #BBF7D0',padding:'13px 16px',display:'flex',alignItems:'center',gap:12,boxShadow:attendancePulse?'0 0 0 4px rgba(16,185,129,.14), 0 12px 30px rgba(16,185,129,.16)':'none',transform:attendancePulse?'scale(1.01)':'scale(1)',transition:'box-shadow .22s, transform .22s' }}>
-                <div style={{ width:34,height:34,borderRadius:9,background:'#10B981',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+                {(() => {
+                  return (
+                <div className={`lp-viewed-card${isViewed ? '' : ' lp-blink'}`}
+                  style={{ background:isViewed?'#F0FDF4':'#FEF2F2',borderRadius:14,border:`1px solid ${isViewed?'#BBF7D0':'#FECACA'}`,padding:'13px 16px',display:'flex',alignItems:'center',gap:12,cursor:'default',boxShadow:attendancePulse?'0 0 0 4px rgba(16,185,129,.16), 0 12px 30px rgba(16,185,129,.16)':'none',transform:attendancePulse?'scale(1.01)':'scale(1)' }}>
+                <div className="lp-vc-icon" style={{ width:34,height:34,borderRadius:9,background:isViewed?'#10B981':'#EF4444',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
+                  {isViewed
+                    ? <svg key="v" className="lp-check-pop" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    : <svg key="u" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4"/><circle cx="12" cy="16" r=".6" fill="#fff"/></svg>}
+                </div>
                 <div style={{ flex:1 }}>
-                  <div style={{ fontSize:14,fontWeight:800,color:'#065F46',marginBottom:2 }}>Просмотрено</div>
-                  <div style={{ fontSize:12,color:'#047857' }}>Отметка сохранена в личном кабинете{viewedAtLabel ? `: ${viewedAtLabel}` : ''}</div>
+                  <div style={{ fontSize:14,fontWeight:800,color:isViewed?'#065F46':'#991B1B',marginBottom:2,transition:'color .45s ease' }}>{isViewed ? 'Просмотрено' : 'Не просмотрено'}</div>
+                  <div style={{ fontSize:12,color:isViewed?'#047857':'#B91C1C',transition:'color .45s ease' }}>{isViewed ? `Отметка сохранена в личном кабинете${viewedAtLabel ? `: ${viewedAtLabel}` : ''}` : 'Нажмите, чтобы отметить занятие просмотренным'}</div>
                 </div>
-                <button className="lp-ghost" onClick={saveLessonViewed} style={{ padding:'8px 13px',background:attendancePulse?'#DCFCE7':'#fff',border:'1px solid #BBF7D0',borderRadius:10,fontSize:12,fontWeight:700,color:'#047857',cursor:'pointer',transition:'background .18s, transform .18s',transform:attendancePulse?'translateY(-1px)':'none' }}>{attendancePulse ? 'Отметка обновлена' : 'Обновить отметку'}</button>
+                {!isViewed && <button onClick={(e) => { e.stopPropagation(); saveLessonViewed(); }} style={{ padding:'9px 15px',background:'#EF4444',border:'none',borderRadius:10,fontSize:12,fontWeight:700,color:'#fff',cursor:'pointer',flexShrink:0,boxShadow:'0 4px 12px rgba(239,68,68,.3)' }}>Отметить</button>}
                 </div>
+                  );
+                })()}
                 <div style={{ background:'#F9FAFB',borderRadius:14,border:'1px solid #E5E7EB',padding:'14px 16px' }}>
                 <div style={{ fontSize:14,fontWeight:600,color:'#111',marginBottom:10 }}>Голосование по прибытию</div>
                 <div style={{ display:'flex',gap:10 }}>
@@ -515,50 +621,110 @@ export function LessonPage() {
                 <div style={{ fontSize:15,fontWeight:700,color:'#111',marginBottom:3 }}>Полигон «Калибр»</div>
                 <div style={{ fontSize:13,color:'#6B7280',marginBottom:12 }}>Минское шоссе, 31-й километр, с1</div>
                 <div style={{ display:'flex',gap:8,flexWrap:'wrap',marginBottom:10 }}>
-                    {[['Возьму на борт',<svg key="a" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v4h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>],['Запросить попутку',<svg key="b" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>],['Маршрут',<svg key="c" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="3" cy="6" r="2"/><circle cx="21" cy="6" r="2"/><polyline points="3 8 3 14 21 14 21 8"/><line x1="12" y1="14" x2="12" y2="19"/></svg>]].map(([l,ic])=>(
-                    <button key={String(l)} className="lp-ghost" onClick={() => String(l).includes('Маршрут') ? window.open('https://yandex.ru/maps/?rtext=~55.714,37.192&rtt=auto&z=12', '_blank', 'noopener,noreferrer') : setRideMode(String(l).includes('Возьму') ? 'offer' : 'request')} style={{ display:'flex',alignItems:'center',gap:6,padding:'7px 12px',background:!String(l).includes('Маршрут')&&rideMode===(String(l).includes('Возьму')?'offer':'request')?'#EBF1FF':'#fff',border:'1px solid #E5E7EB',borderRadius:9,fontSize:13,color:!String(l).includes('Маршрут')&&rideMode===(String(l).includes('Возьму')?'offer':'request')?'#375DFB':'#374151',cursor:'pointer' }}>{ic}{l}</button>
-                    ))}
+                  <button className="lp-ghost" onClick={() => setBoardOpen(true)} style={{ display:'flex',alignItems:'center',gap:6,padding:'7px 12px',background:'#fff',border:'1px solid #E5E7EB',borderRadius:9,fontSize:13,color:'#374151',cursor:'pointer' }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v4h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+                    Возьму на борт
+                  </button>
+                  <button className="lp-ghost" onClick={() => setRideOpen(true)} style={{ display:'flex',alignItems:'center',gap:6,padding:'7px 12px',background:'#fff',border:'1px solid #E5E7EB',borderRadius:9,fontSize:13,color:'#374151',cursor:'pointer' }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+                    Запросить попутку
+                  </button>
+                  <button className="lp-ghost" onClick={() => window.open('https://yandex.ru/maps/?rtext=~55.714,37.192&rtt=auto&z=12', '_blank', 'noopener,noreferrer')} style={{ display:'flex',alignItems:'center',gap:6,padding:'7px 12px',background:'#fff',border:'1px solid #E5E7EB',borderRadius:9,fontSize:13,color:'#374151',cursor:'pointer' }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="3" cy="6" r="2"/><circle cx="21" cy="6" r="2"/><polyline points="3 8 3 14 21 14 21 8"/><line x1="12" y1="14" x2="12" y2="19"/></svg>
+                    Маршрут
+                  </button>
+                  <button className="lp-ghost" type="button" onClick={() => setBoardOpen(true)} style={{ display:'inline-flex',alignItems:'center',gap:5,padding:'7px 11px',background:'#F5F8FF',border:'1px solid #C7D2FE',borderRadius:9,color:'#375DFB',cursor:'pointer',fontSize:12,fontWeight:700 }}>7 могут взять</button>
+                  <button className="lp-ghost" type="button" onClick={() => setRideOpen(true)} style={{ display:'inline-flex',alignItems:'center',gap:5,padding:'7px 11px',background:'#F5F8FF',border:'1px solid #C7D2FE',borderRadius:9,color:'#375DFB',cursor:'pointer',fontSize:12,fontWeight:700 }}>16 ищут попутку</button>
                 </div>
-                <div style={{ display:'flex',gap:14,fontSize:12 }}>
-                    <button type="button" onClick={() => setRideMode('offer')} style={{ border:'none',background:'transparent',color:'#375DFB',cursor:'pointer',fontSize:12,fontWeight:700,textDecoration:'underline dotted',padding:0,display:'inline-flex',alignItems:'center',gap:4 }}>7 могут взять на борт <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M7 17L17 7"/><path d="M8 7h9v9"/></svg></button>
-                    <button type="button" onClick={() => setRideMode('request')} style={{ border:'none',background:'transparent',color:'#375DFB',cursor:'pointer',fontSize:12,fontWeight:700,textDecoration:'underline dotted',padding:0,display:'inline-flex',alignItems:'center',gap:4 }}>16 ищут попутку <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M7 17L17 7"/><path d="M8 7h9v9"/></svg></button>
+                <div style={{ marginTop:12,border:'1px solid #DBEAFE',background:'#F5F8FF',borderRadius:12,padding:'10px 12px',fontSize:12,color:'#475569',lineHeight:1.5 }}>
+                  «Возьму на борт» публикует свободные места, «Запросить попутку» подбирает водителей по адресу и позволяет отправить им запрос.
                 </div>
-                {rideMode && (
-                  <div style={{ marginTop:12,border:'1px solid #C7D2FE',background:'#F5F8FF',borderRadius:12,padding:'12px 14px',animation:'fadeUp .18s ease both' }}>
-                    <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,marginBottom:8 }}>
-                      <div style={{ fontSize:13,fontWeight:800,color:'#172554' }}>{rideMode === 'offer' ? 'Свободные места в машинах' : 'Заявки на попутку'}</div>
-                      <button onClick={() => navigate(`/messages?chat=${rideMode === 'offer' ? 7 : 4}`)} style={{ border:'none',background:'#375DFB',color:'#fff',borderRadius:9,padding:'7px 12px',fontSize:12,fontWeight:800,cursor:'pointer' }}>Открыть чат</button>
-                    </div>
-                    <div style={{ display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8 }}>
-                      {(rideMode === 'offer' ? ['Нексус · 2 места', 'Бек · 1 место', 'Резак · 3 места'] : ['Стрелок · от Сокольников', 'Лис · от Митино', 'Шторм · от ВДНХ']).map(item => (
-                        <div key={item} style={{ background:'#fff',border:'1px solid #DBEAFE',borderRadius:10,padding:'8px 10px',fontSize:12,color:'#334155',fontWeight:700 }}>{item}</div>
-                      ))}
-                    </div>
-                  </div>
-                )}
                 </div>
-                <div style={{ background:'#F9FAFB',borderRadius:14,border:'1px solid #E5E7EB',padding:'13px 16px',display:'flex',alignItems:'center',gap:12 }}>
+                <div style={{ background:'#F9FAFB',borderRadius:14,border:'1px solid #E5E7EB',padding:'13px 16px',display:'flex',alignItems:'center',gap:12,flexWrap:'wrap' }}>
                 <div style={{ width:34,height:34,borderRadius:9,background:'#F4F6FA',border:'1px solid #E5E7EB',display:'flex',alignItems:'center',justifyContent:'center' }}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="1.5" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
                 <span style={{ fontSize:15,fontWeight:600,color:'#111',flex:1 }}>Рапорты</span>
-                <button className="lp-ghost" onClick={() => navigate('/messages?chat=7')} style={{ padding:'7px 14px',background:'#fff',border:'1px solid #E5E7EB',borderRadius:10,fontSize:13,color:'#374151',cursor:'pointer' }}>Запросить</button>
-                <button className="lp-ghost" onClick={createReportDraft} style={{ padding:'7px 14px',background:reportReady?'#ECFDF5':'#fff',border:'1px solid #E5E7EB',borderRadius:10,fontSize:13,color:reportReady?'#047857':'#374151',cursor:'pointer' }}>{reportReady ? 'Рапорт готов' : 'Составить'}</button>
-                {reportReady && (
-                  <div style={{ flexBasis:'100%',background:'#fff',border:'1px solid #D1FAE5',borderRadius:11,padding:'10px 12px',fontSize:12,color:'#047857',fontWeight:700,animation:'fadeUp .18s ease both' }}>
-                    Черновик рапорта создан. Можно открыть диалог с инструктором и отправить на проверку.
+                <button className="lp-ghost" onClick={requestReport} style={{ padding:'7px 14px',background:reportWorkflow==='requested'?'#EBF1FF':'#fff',border:'1px solid #E5E7EB',borderRadius:10,fontSize:13,color:reportWorkflow==='requested'?'#375DFB':'#374151',cursor:'pointer' }}>Запросить</button>
+                <button className="lp-prim" onClick={() => setReportOpen(true)} style={{ padding:'7px 14px',background:'#375DFB',border:'none',borderRadius:10,fontSize:13,color:'#fff',fontWeight:700,cursor:'pointer' }}>Составить</button>
+                {reportWorkflow !== 'idle' && (
+                  <div style={{ flexBasis:'100%',background:'#fff',border:'1px solid #D1FAE5',borderRadius:11,padding:'12px 14px',animation:'fadeUp .18s ease both' }}>
+                    <div style={{ fontSize:13,fontWeight:800,color:'#047857',marginBottom:4 }}>
+                      {reportWorkflow === 'requested' ? 'Запрос рапорта отправлен' : reportWorkflow === 'draft' ? 'Черновик рапорта сохранён' : 'Рапорт отправлен инструктору'}
+                    </div>
+                    <div style={{ fontSize:12,color:'#4B5563',lineHeight:1.5,marginBottom:10 }}>
+                      {reportWorkflow === 'requested'
+                        ? 'Инструктор получит запрос и сможет выдать форму рапорта по этому занятию.'
+                        : 'Рапорт связан с занятием и сохранён в личном деле. Его можно открыть или скачать.'}
+                    </div>
+                    <div style={{ display:'flex',gap:8,flexWrap:'wrap' }}>
+                      <button className="lp-prim" onClick={()=>navigate('/study-groups/report')} style={{ padding:'8px 14px',background:'#375DFB',border:'none',borderRadius:9,color:'#fff',fontSize:12,fontWeight:700,cursor:'pointer' }}>Открыть рапорт</button>
+                      <button className="lp-ghost" onClick={()=>downloadDemoFile('Рапорт по занятию','PDF')} style={{ padding:'8px 14px',background:'#fff',border:'1px solid #E5E7EB',borderRadius:9,color:'#374151',fontSize:12,fontWeight:600,cursor:'pointer' }}>Скачать шаблон</button>
+                    </div>
                   </div>
                 )}
+                </div>
+
+                {/* Прогресс по занятию — итоговая логика урока, выравнивает левую колонку с правой */}
+                <div style={{ background:'#F9FAFB',borderRadius:14,border:'1px solid #E5E7EB',padding:'15px 16px',flex:1,display:'flex',flexDirection:'column' }}>
+                  <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10 }}>
+                    <div style={{ fontSize:15,fontWeight:700,color:'#111' }}>Ваш прогресс по занятию</div>
+                    <div style={{ fontSize:14,fontWeight:800,color:progressPct===100?'#10B981':'#375DFB' }}>{progressPct}%</div>
+                  </div>
+                  <div style={{ height:8,background:'#E5E7EB',borderRadius:99,overflow:'hidden',marginBottom:14 }}>
+                    <div style={{ height:'100%',width:`${progressPct}%`,background:progressPct===100?'#10B981':'linear-gradient(90deg,#375DFB,#7B9FFF)',borderRadius:99,transition:'width .6s cubic-bezier(.4,0,.2,1)' }} />
+                  </div>
+                  {progressSteps.map((s,i)=>(
+                    <div key={s.label} style={{ display:'flex',alignItems:'center',gap:11,padding:'9px 0',borderBottom:i<progressSteps.length-1?'1px solid #EEF0F4':'none' }}>
+                      <span style={{ width:24,height:24,borderRadius:'50%',flexShrink:0,background:s.done?'#10B981':'#fff',border:`1.5px solid ${s.done?'#10B981':'#D1D5DB'}`,display:'flex',alignItems:'center',justifyContent:'center' }}>
+                        {s.done
+                          ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                          : <span style={{ width:7,height:7,borderRadius:'50%',background:'#D1D5DB' }} />}
+                      </span>
+                      <span style={{ fontSize:13.5,fontWeight:s.done?600:500,color:s.done?'#065F46':'#6B7280' }}>{s.label}</span>
+                    </div>
+                  ))}
+                  <div style={{ marginTop:'auto',paddingTop:12 }}>
+                    {!isViewed
+                      ? <button className="lp-prim" onClick={saveLessonViewed} style={{ width:'100%',padding:'11px 0',background:'#375DFB',border:'none',borderRadius:11,color:'#fff',fontSize:13.5,fontWeight:700,cursor:'pointer',boxShadow:'0 4px 14px rgba(55,93,251,.26)' }}>Отметить занятие просмотренным</button>
+                      : !testPassed
+                      ? <button className="lp-prim" onClick={()=>navigate('/tests/1')} style={{ width:'100%',padding:'11px 0',background:'#375DFB',border:'none',borderRadius:11,color:'#fff',fontSize:13.5,fontWeight:700,cursor:'pointer',boxShadow:'0 4px 14px rgba(55,93,251,.26)',display:'flex',alignItems:'center',justifyContent:'center',gap:7 }}>Перейти к зачётному тесту<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+                      : <div style={{ textAlign:'center',padding:'11px 0',background:'#ECFDF5',border:'1px solid #A7F3D0',borderRadius:11,fontSize:13,fontWeight:700,color:'#047857' }}>Занятие полностью завершено</div>}
+                  </div>
                 </div>
             </div>
 
             {/* Правая колонка */}
             <div style={{ display:'flex',flexDirection:'column',gap:14 }}>
-                <div style={{ borderRadius:18,overflow:'hidden',background:'#F3F4F6',height:280,flexShrink:0 }}>
+                <div style={{ borderRadius:18,overflow:'hidden',background:'#F3F4F6',height:258,flexShrink:0 }}>
                 {!e1
                     ? <img src="/отжимание.png" alt="" style={{ width:'100%',height:'100%',objectFit:'cover',display:'block' }} onError={()=>setE1(true)}/>
                     : <div style={{ width:'100%',height:'100%',background:'linear-gradient(135deg,#1a1a2e,#16213e)',display:'flex',alignItems:'center',justifyContent:'center' }}><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.3)" strokeWidth="1"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></div>
                 }
                 </div>
-                <YandexTrainingMap variant="course" height={280} />
+                <YandexTrainingMap variant="lesson" height={232} />
+                {/* Подготовка к занятию — заполняет пространство под картой */}
+                <div style={{ background:'#fff',borderRadius:18,border:'1px solid #E5E7EB',padding:'16px 18px' }}>
+                  <div style={{ fontSize:15,fontWeight:700,color:'#111',marginBottom:10,display:'flex',alignItems:'center',gap:8 }}>
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#375DFB" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                    Что взять с собой
+                  </div>
+                  {['Удостоверение курсанта','Блокнот и ручка','Форма по погоде','Вода — 1.5 литра','Перекус на день','Индивидуальная аптечка'].map((item,i,arr)=>(
+                    <div key={item} style={{ display:'flex',alignItems:'center',gap:10,padding:'8px 0',borderBottom:i<arr.length-1?'1px solid #F5F5F7':'none' }}>
+                      <span style={{ width:20,height:20,borderRadius:6,background:'#EBF1FF',border:'1px solid #C7D2FE',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#375DFB" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+                      <span style={{ fontSize:13.5,color:'#374151' }}>{item}</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ background:'#fff',borderRadius:18,border:'1px solid #E5E7EB',padding:'16px 18px',display:'flex',flexDirection:'column',gap:9,flex:1 }}>
+                  <div style={{ fontSize:15,fontWeight:700,color:'#111',marginBottom:2 }}>Связь и помощь</div>
+                  {([['Чат группы','/messages?chat=7'],['Вопрос инструктору','/messages?chat=1']] as [string,string][]).map(([l,to])=>(
+                    <button key={l} className="lp-ghost" onClick={()=>navigate(to)} style={{ display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,padding:'10px 14px',background:'#F9FAFB',border:'1px solid #E5E7EB',borderRadius:10,fontSize:13,fontWeight:600,color:'#374151',cursor:'pointer' }}>
+                      {l}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+                    </button>
+                  ))}
+                  <button className="lp-ghost" onClick={()=>{ setTab('study'); window.setTimeout(()=>document.querySelector('[data-study-anchor]')?.scrollIntoView({behavior:'smooth',block:'center'}),60); }} style={{ display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,padding:'10px 14px',background:'#F9FAFB',border:'1px solid #E5E7EB',borderRadius:10,fontSize:13,fontWeight:600,color:'#374151',cursor:'pointer' }}>
+                    Материалы к занятию<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+                  </button>
+                </div>
             </div>
             </div>
         </div>
@@ -572,7 +738,7 @@ export function LessonPage() {
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="1.5" strokeLinecap="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
                 <span style={{ fontSize:18,fontWeight:700,color:'#111' }}>План занятия</span>
               </div>
-              <button className="lp-ghost" onClick={() => downloadDemoFile('План занятия', 'PDF')} style={{ display:'flex',alignItems:'center',gap:6,padding:'7px 14px',background:'#fff',border:'1px solid #E5E7EB',borderRadius:10,fontSize:13,color:'#374151',cursor:'pointer' }}>
+              <button className="lp-ghost" onClick={() => downloadPlanPdf(TITLE)} style={{ display:'flex',alignItems:'center',gap:6,padding:'7px 14px',background:'#fff',border:'1px solid #E5E7EB',borderRadius:10,fontSize:13,color:'#374151',cursor:'pointer' }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 Скачать PDF
               </button>
@@ -617,38 +783,59 @@ export function LessonPage() {
               <div style={{ display:'flex',alignItems:'center',gap:10 }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="1.5" strokeLinecap="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
                 <span style={{ fontSize:18,fontWeight:700,color:'#111' }}>Список занятий по курсу</span>
-                <span style={{ fontSize:12,color:'#9CA3AF',background:'#F4F6FA',padding:'3px 9px',borderRadius:20,border:'1px solid #E5E7EB' }}>{LESSONS.length} занятий</span>
+                <span style={{ fontSize:12,color:'#9CA3AF',background:'#F4F6FA',padding:'3px 9px',borderRadius:20,border:'1px solid #E5E7EB' }}>{visibleLessons.length} занятий</span>
               </div>
-              <button className="lp-ghost" onClick={() => document.querySelector('.lp-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' })} style={{ display:'flex',alignItems:'center',gap:6,padding:'7px 14px',background:'#fff',border:'1px solid #E5E7EB',borderRadius:10,fontSize:13,color:'#374151',cursor:'pointer' }}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
-                Фильтры
-              </button>
+              <select aria-label="Фильтры занятий" value={lessonListFilter} onChange={e=>setLessonListFilter(e.target.value as typeof lessonListFilter)} style={{ padding:'8px 34px 8px 12px',background:'#fff',border:'1px solid #E5E7EB',borderRadius:10,fontSize:13,color:'#374151',cursor:'pointer',outline:'none' }}>
+                <option value="all">Все занятия</option>
+                <option value="available">Доступные</option>
+                <option value="viewed">Просмотренные</option>
+                <option value="unviewed">Не просмотренные</option>
+                <option value="locked">Заблокированные</option>
+              </select>
             </div>
             <div style={{ display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:18 }}>
-              {LESSONS.map((l,i)=>(
-                <div key={l.id} className={`lp-card${l.locked?' locked':''}`} onClick={()=>!l.locked?setModal(l):null}
-                  style={{ borderRadius:18,overflow:'hidden',border:'1px solid #E5E7EB',animation:`fadeUp .4s ease ${i*55}ms both`,background:'#fff' }}>
-                  <div style={{ height:200,background:'#F3F4F6',position:'relative',overflow:'hidden' }}>
-                    <img src={l.img} alt={l.title} className="lp-img" style={{ width:'100%',height:'100%',objectFit:'cover',display:'block',filter:l.locked?'brightness(.5) saturate(.7)':'none' }} onError={e=>{(e.currentTarget as HTMLImageElement).style.display='none';}}/>
+              {visibleLessons.length === 0 && <div style={{ gridColumn:'1 / -1',padding:'36px 0',textAlign:'center',fontSize:13,color:'#9CA3AF' }}>По выбранному фильтру занятий нет</div>}
+              {visibleLessons.map((l,i)=>{
+                const openLesson = () => { navigate(`/lessons/${l.id}`, { state: { courseTitle, courseSlug } }); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+                return (
+                <div key={l.id} className={`c-mil-shell lp-lesson-shell${l.locked?' locked':''}`}
+                  style={{ animation:`fadeUp .4s ease ${i*55}ms backwards` }}>
+                  <div className="c-card-wrap" data-locked={l.locked?'':undefined} onClick={()=>{ if(!l.locked) openLesson(); }} style={{ cursor:l.locked?'default':'pointer' }}>
+                  <div className="c-card-img" style={{ position:'relative',background:'#F3F4F6' }}>
+                    <img src={l.img} alt={l.title} style={{ width:'100%',height:'100%',objectFit:'cover',display:'block',filter:l.locked?'brightness(.5) saturate(.7)':'none' }} onError={e=>{(e.currentTarget as HTMLImageElement).style.display='none';}}/>
                     <div style={{ position:'absolute',inset:0,background:l.locked?'rgba(0,0,0,.15)':'linear-gradient(to top, rgba(0,0,0,.35) 0%, transparent 55%)',pointerEvents:'none' }}/>
-                    <div style={{ position:'absolute',top:10,left:10,background:'rgba(0,0,0,.55)',backdropFilter:'blur(6px)',color:'#fff',fontSize:12,fontWeight:700,padding:'3px 10px',borderRadius:8,border:'1px solid rgba(255,255,255,.15)' }}>{l.num}</div>
-                    {viewedLessons[String(l.id)]?.status === 'viewed'&&<div style={{ position:'absolute',top:10,right:10,display:'flex',alignItems:'center',gap:5,background:'rgba(16,185,129,.92)',backdropFilter:'blur(6px)',color:'#fff',fontSize:11,fontWeight:800,padding:'4px 9px',borderRadius:20,border:'1px solid rgba(255,255,255,.25)' }}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>Просмотрено</div>}
-                    {l.locked&&<div style={{ position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center' }}><IcLock/></div>}
-                    {!l.locked&&viewedLessons[String(l.id)]?.status !== 'viewed'&&<div style={{ position:'absolute',bottom:10,right:10,width:30,height:30,borderRadius:'50%',background:'rgba(55,93,251,.85)',display:'flex',alignItems:'center',justifyContent:'center' }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>}
+                    <div className="c-card-overlay" />
+                    <div style={{ position:'absolute',top:10,left:10,zIndex:3,background:'rgba(0,0,0,.55)',backdropFilter:'blur(6px)',color:'#fff',fontSize:12,fontWeight:700,padding:'3px 10px',borderRadius:8,border:'1px solid rgba(255,255,255,.15)' }}>{l.num}</div>
+                    {!l.locked&&viewedLessons[String(l.id)]?.status === 'viewed'&&<div className="lp-viewed-badge" style={{ position:'absolute',top:10,right:10,zIndex:3,height:30,display:'flex',alignItems:'center',gap:6,background:'rgba(16,185,129,.94)',backdropFilter:'blur(6px)',color:'#fff',fontSize:11,fontWeight:800,padding:'0 9px',borderRadius:20,border:'1px solid rgba(255,255,255,.25)',boxSizing:'border-box' }}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" style={{flexShrink:0}}><polyline points="20 6 9 17 4 12"/></svg><span className="lp-viewed-label">Просмотрено</span></div>}
+                    {l.locked&&<div className="c-lock-icon" style={{ position:'absolute',inset:0,zIndex:3,display:'flex',alignItems:'center',justifyContent:'center' }}><IcLock/></div>}
+                    {!l.locked&&viewedLessons[String(l.id)]?.status !== 'viewed'&&<div style={{ position:'absolute',bottom:10,right:10,zIndex:3,width:30,height:30,borderRadius:'50%',background:'rgba(55,93,251,.85)',display:'flex',alignItems:'center',justifyContent:'center' }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>}
                   </div>
                   <div style={{ padding:'12px 14px' }}>
                     <div style={{ display:'flex',justifyContent:'space-between',fontSize:11,color:'#9CA3AF',marginBottom:7 }}><span>{l.date}</span><span>{l.time}</span></div>
                     <div style={{ fontSize:14,fontWeight:700,color:l.locked?'#9CA3AF':'#111',lineHeight:1.4 }}>{l.title}</div>
                   </div>
+                  </div>
+                  <div className="c-expand-wrap">
+                    <div className="c-expand-inner">
+                      <div style={{ padding:'0 14px 14px' }}>
+                        {l.locked
+                          ? <div className="c-oi c-oi-1" style={{ background:'#F4F6FA',border:'1px solid #E5E7EB',borderRadius:10,padding:'10px 12px',display:'flex',alignItems:'flex-start',gap:8 }}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" style={{ flexShrink:0,marginTop:1 }}><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                              <div style={{ fontSize:12,color:'#6B7280',lineHeight:1.5 }}>Откроется после прохождения предыдущего занятия</div>
+                            </div>
+                          : <button className="c-oi c-oi-1 c-enroll-btn" onClick={e=>{ e.stopPropagation(); openLesson(); }} style={{ width:'100%',height:42,background:'#375DFB',border:'none',borderRadius:8,color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:7 }}>Перейти к занятию<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>}
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              ))}
+              );})}
             </div>
           </div>
         </Sec>
 
         {/* ══ 4. РАСПИСАНИЕ ══ */}
         <Sec style={{ marginBottom:20 }}>
-          <CalendarView onGo={lid=>navigate(`/lessons/${lid}`, { state: { courseTitle, courseSlug } })}/>
+          <StreamCalendar />
         </Sec>
 
         {/* ══ 5. ОДНОГРУППНИКИ + ОЦЕНКА ══ */}
@@ -660,34 +847,35 @@ export function LessonPage() {
                 <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="1.5" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                 <span style={{ fontSize:18,fontWeight:700,color:'#111' }}>Одногруппники</span>
                 <span style={{ fontSize:12,color:'#9CA3AF',background:'#F4F6FA',padding:'2px 9px',borderRadius:20,border:'1px solid #E5E7EB' }}>{MATES.length}</span>
+                <button className="lp-ghost" onClick={()=>navigate('/messages?chat=7')} style={{ marginLeft:'auto',padding:'7px 12px',background:'#fff',border:'1px solid #E5E7EB',borderRadius:10,fontSize:12,color:'#374151',cursor:'pointer',fontWeight:600 }}>Чат группы</button>
               </div>
               <div style={{ maxHeight:440,overflowY:'auto' }}>
                 {MATES.map((m,idx)=>(
                   <div key={m.id} className="lp-mate"
                     style={{ display:'flex',alignItems:'center',gap:12,padding:'13px 20px',borderBottom:idx<MATES.length-1?'1px solid #F5F5F7':'none',animation:`fadeUp .35s ease ${idx*45}ms both`,transition:'background .14s',borderRadius:8 }}>
-                    <div style={{ width:46,height:46,borderRadius:'50%',overflow:'hidden',flexShrink:0,background:'#F3F4F6',border:'2px solid #E5E7EB' }}>
+                    <div onClick={()=>navigate(userProfilePath(m.name))} title={`Открыть профиль ${m.name}`} style={{ width:46,height:46,borderRadius:'50%',overflow:'hidden',flexShrink:0,background:'#F3F4F6',border:'2px solid #E5E7EB',cursor:'pointer' }}>
                       <img src={m.img} alt={m.name} style={{ width:'100%',height:'100%',objectFit:'cover' }} onError={e=>{(e.currentTarget as HTMLImageElement).style.display='none';}}/>
                     </div>
                     <div style={{ flex:1 }}>
-                      <div style={{ fontSize:14,fontWeight:700,color:'#111',marginBottom:3 }}>{m.name}</div>
+                      <button onClick={()=>navigate(userProfilePath(m.name))} style={{ display:'block',padding:0,margin:'0 0 3px',background:'none',border:0,fontSize:14,fontWeight:700,color:'#111',cursor:'pointer' }}>{m.name}</button>
                       <div style={{ fontSize:12,color:'#9CA3AF',marginBottom:5 }}>{m.rank} · {m.spec}</div>
                       <IVDisplay index={m.index} rating={m.rating}/>
                     </div>
-                    <button className="lp-ghost" onClick={()=>navigate('/messages?chat=7')} style={{ padding:'7px 16px',background:'#fff',border:'1px solid #E5E7EB',borderRadius:10,fontSize:13,color:'#374151',cursor:'pointer',flexShrink:0 }}>Написать</button>
+                    <button className="lp-ghost" onClick={()=>navigate(`/messages?chat=${m.chatId}`)} style={{ padding:'7px 16px',background:'#fff',border:'1px solid #E5E7EB',borderRadius:10,fontSize:13,color:'#374151',cursor:'pointer',flexShrink:0 }}>Написать</button>
                   </div>
                 ))}
               </div>
             </div>
-            {/* Ваша оценка */}
+            {/* Оценка преподавателя */}
             <div style={{ background:'#fff',borderRadius:22,border:'1px solid #E5E7EB',padding:'22px 24px',display:'flex',flexDirection:'column' }}>
-              <div style={{ fontSize:18,fontWeight:700,color:'#111',marginBottom:20,textAlign:'center' }}>Ваша оценка за урок</div>
+              <div style={{ fontSize:18,fontWeight:700,color:'#111',marginBottom:16,textAlign:'center' }}>Оценка преподавателя</div>
               <div style={{ display:'flex',justifyContent:'center',gap:6,marginBottom:20 }}>
                 {[1,2,3,4,5].map(i=>(
-                  <button key={i} className="lp-star" onMouseEnter={()=>setHoverStar(i)} onMouseLeave={()=>setHoverStar(0)} onClick={()=>setStars(i)} style={{ background:'none',border:'none',cursor:'pointer',padding:2,transition:'transform .12s' }}>
-                    <svg width="38" height="38" viewBox="0 0 24 24" fill={i<=(hoverStar||stars)?'#F59E0B':'#E5E7EB'} stroke="none" style={{ transition:'fill .12s' }}>
+                  <span key={i} style={{ padding:2 }}>
+                    <svg width="38" height="38" viewBox="0 0 24 24" fill={teacherAssessment.status==='graded' && i<=(teacherAssessment.score ?? 0)?'#F59E0B':'#E5E7EB'} stroke="none" style={{ transition:'fill .2s' }}>
                       <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
                     </svg>
-                  </button>
+                  </span>
                 ))}
               </div>
               <div style={{ background:'#F9FAFB',borderRadius:14,padding:'14px 16px',marginBottom:16,border:'1px solid #E5E7EB',flex:1 }}>
@@ -695,15 +883,37 @@ export function LessonPage() {
                   <div style={{ width:40,height:40,borderRadius:'50%',overflow:'hidden',flexShrink:0,background:'#F3F4F6' }}><img src="/teacher2-main.jpg" alt="Бек" style={{ width:'100%',height:'100%',objectFit:'cover' }} onError={e=>{(e.currentTarget as HTMLImageElement).style.display='none';}}/></div>
                   <div><div style={{ fontSize:14,fontWeight:700,color:'#111' }}>Бек</div><div style={{ fontSize:12,color:'#9CA3AF' }}>Главный инструктор</div></div>
                 </div>
-                <div style={{ fontSize:13,color:'#374151',lineHeight:1.6 }}>Молодец, так держать! Жду на следующем занятии. Советую пройтись по материалам топографии.</div>
+                {teacherAssessment.status === 'pending' && (
+                  <div style={{ fontSize:13,color:'#374151',lineHeight:1.6 }}>
+                    Сначала отметьте материал изученным и сдайте зачётный тест на 80%+. После этого работу можно отправить преподавателю.
+                  </div>
+                )}
+                {teacherAssessment.status === 'reviewing' && (
+                  <div style={{ fontSize:13,color:'#374151',lineHeight:1.6 }}>
+                    Работа получена. Бек проверяет прохождение материала и результат теста. Когда оценка будет выставлена, она появится здесь и в уведомлениях.
+                  </div>
+                )}
+                {teacherAssessment.status === 'graded' && (
+                  <div style={{ fontSize:13,color:'#374151',lineHeight:1.6 }}>
+                    {teacherAssessment.comment ?? 'Работа проверена. Продолжайте обучение в том же темпе.'}
+                    {teacherAssessment.updatedAt && <div style={{ marginTop:8,fontSize:11,color:'#94A3B8' }}>Проверено {new Intl.DateTimeFormat('ru-RU', { day:'numeric',month:'long',hour:'2-digit',minute:'2-digit' }).format(new Date(teacherAssessment.updatedAt))}</div>}
+                  </div>
+                )}
               </div>
               <div style={{ display:'flex',gap:10 }}>
                 <button className="lp-ghost" onClick={()=>navigate('/messages?chat=1')} style={{ flex:1,padding:'10px 0',background:'#EBF1FF',border:'1px solid #C7D2FE',borderRadius:12,color:'#375DFB',fontSize:13,fontWeight:600,cursor:'pointer' }}>Задать вопрос</button>
-                <button className="lp-prim" onClick={submitReview} style={{ flex:1,padding:'10px 0',background:reviewSaved?'#10B981':'#375DFB',border:'none',borderRadius:12,color:'#fff',fontSize:13,fontWeight:600,cursor:'pointer',boxShadow:reviewSaved?'0 4px 14px rgba(16,185,129,.24)':'0 4px 14px rgba(55,93,251,.26)' }}>{reviewSaved ? 'Отзыв сохранён' : 'Оставить отзыв'}</button>
+                <button
+                  className={teacherAssessment.status==='pending' && isViewed && testPassed ? 'lp-prim' : ''}
+                  disabled={teacherAssessment.status!=='pending' || !isViewed || !testPassed}
+                  onClick={requestTeacherAssessment}
+                  style={{ flex:1,padding:'10px 8px',background:teacherAssessment.status==='graded'?'#10B981':teacherAssessment.status==='pending'&&isViewed&&testPassed?'#375DFB':'#E5E7EB',border:'none',borderRadius:12,color:teacherAssessment.status==='pending'&&(!isViewed||!testPassed)?'#94A3B8':'#fff',fontSize:13,fontWeight:600,cursor:teacherAssessment.status==='pending'&&isViewed&&testPassed?'pointer':'default',boxShadow:teacherAssessment.status==='pending'&&isViewed&&testPassed?'0 4px 14px rgba(55,93,251,.26)':'none' }}
+                >
+                  {teacherAssessment.status==='graded' ? `Оценка ${teacherAssessment.score ?? 0}/5` : teacherAssessment.status==='reviewing' ? 'Ожидаем оценку' : isViewed && testPassed ? 'Отправить на проверку' : 'Сначала завершите урок'}
+                </button>
               </div>
-              {reviewSaved && (
-                <div style={{ marginTop:12,background:'#ECFDF5',border:'1px solid #A7F3D0',borderRadius:12,padding:'10px 12px',fontSize:12,color:'#047857',fontWeight:700,textAlign:'center',animation:'fadeUp .18s ease both' }}>
-                  Спасибо. Оценка {stars}/5 добавлена к занятию и попадёт в статистику курса.
+              {teacherAssessment.status === 'reviewing' && (
+                <div style={{ marginTop:12,background:'#EFF6FF',border:'1px solid #BFDBFE',borderRadius:12,padding:'10px 12px',fontSize:12,color:'#1D4ED8',fontWeight:700,textAlign:'center',animation:'fadeUp .18s ease both' }}>
+                  Запрос сохранён. Результат появится только после проверки преподавателем.
                 </div>
               )}
             </div>
@@ -713,35 +923,43 @@ export function LessonPage() {
         {/* ══ 6. ДЗ / К ИЗУЧЕНИЮ ══ */}
         <Sec style={{ marginBottom:20 }}>
           <div style={{ display:'grid',gridTemplateColumns:'1fr 320px',gap:20,alignItems:'start' }}>
-            <div style={{ background:'#fff',borderRadius:22,border:'1px solid #E5E7EB',overflow:'hidden' }}>
+            <div data-study-anchor style={{ background:'#fff',borderRadius:22,border:'1px solid #E5E7EB',overflow:'hidden' }}>
               <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',borderBottom:'1px solid #F0F0F0',padding:'0 20px' }}>
                 <div style={{ display:'flex' }}>
                   {[['hw','Домашние задания'],['study','К изучению']].map(([v,l])=>(
                     <button key={v} className="lp-tab" onClick={()=>setTab(v as 'hw'|'study')} style={{ padding:'14px 16px',background:'none',border:'none',borderBottom:tab===v?'2.5px solid #375DFB':'2.5px solid transparent',color:tab===v?'#375DFB':'#6B7280',fontWeight:tab===v?700:400,fontSize:14,cursor:'pointer',marginBottom:-1 }}>{l}</button>
                   ))}
                 </div>
-                <div style={{ display:'flex',alignItems:'center',gap:5,background:'#EBF1FF',border:'1px solid #C7D2FE',borderRadius:8,padding:'4px 10px',fontSize:12,color:'#375DFB',fontWeight:600 }}>
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <div className="lp-deadline" style={{ display:'flex',alignItems:'center',gap:5,background:'#FEF3C7',border:'1px solid #FCD34D',borderRadius:8,padding:'5px 11px',fontSize:12,color:'#B45309',fontWeight:700 }}>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                   Сдать все до 9 марта
                 </div>
               </div>
               {tab==='hw'&&(
                 <div>
-                  {HW.map((hw,i)=>(
+                  {HW.map((hw,i)=>{
+                    const sub = submissions[hw.testId];
+                    const prevPassed = i===0 || !!submissions[HW[i-1].testId]?.passed;
+                    const passed = !!sub?.passed;
+                    const attempted = !!sub && !sub.passed;
+                    const status: 'done'|'retry'|'test'|'locked' = !prevPassed ? 'locked' : passed ? 'done' : attempted ? 'retry' : 'test';
+                    const go = () => navigate(`/tests/${hw.testId}`);
+                    return (
                     <div key={hw.id} className="lp-hw" style={{ display:'flex',alignItems:'center',gap:14,padding:'15px 20px',borderBottom:i<HW.length-1?'1px solid #F5F5F7':'none',transition:'background .14s' }}>
-                      <div style={{ width:34,height:34,borderRadius:'50%',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',background:hw.status==='done'?'#F0FDF4':hw.status==='locked'?'#F3F4F6':'#EBF1FF',border:`1px solid ${hw.status==='done'?'#BBF7D0':hw.status==='locked'?'#E5E7EB':'#C7D2FE'}`,fontSize:13,fontWeight:700,color:hw.status==='done'?'#10B981':hw.status==='locked'?'#D1D5DB':'#375DFB' }}>
-                        {hw.status==='done'?<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>:hw.status==='locked'?<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="1.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>:hw.num}
+                      <div style={{ width:34,height:34,borderRadius:'50%',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',background:status==='done'?'#F0FDF4':status==='locked'?'#F3F4F6':status==='retry'?'#FFFBEB':'#EBF1FF',border:`1px solid ${status==='done'?'#BBF7D0':status==='locked'?'#E5E7EB':status==='retry'?'#FDE68A':'#C7D2FE'}`,fontSize:13,fontWeight:700,color:status==='done'?'#10B981':status==='locked'?'#D1D5DB':status==='retry'?'#D97706':'#375DFB' }}>
+                        {status==='done'?<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>:status==='locked'?<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="1.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>:hw.num}
                       </div>
                       <div style={{ flex:1 }}>
-                        <div style={{ fontSize:14,fontWeight:600,color:hw.status==='locked'?'#9CA3AF':'#111',marginBottom:2 }}>{hw.title}</div>
-                        <div style={{ fontSize:12,color:'#9CA3AF' }}>{hw.sub}</div>
+                        <div style={{ fontSize:14,fontWeight:600,color:status==='locked'?'#9CA3AF':'#111',marginBottom:2 }}>{hw.title}</div>
+                        <div style={{ fontSize:12,color:status==='retry'?'#D97706':status==='done'?'#10B981':'#9CA3AF' }}>{status==='locked'?'Откроется после сдачи предыдущего теста на 80%':status==='done'?`Сдано на ${sub?.score}% · можно пересдать`:status==='retry'?`Попытка не зачтена (${sub?.score}%) — нужно ≥ 80%`:hw.sub}</div>
                       </div>
-                      {hw.status!=='done'&&hw.status!=='locked'&&hw.deadline&&<div style={{ background:hw.dc+'18',border:`1px solid ${hw.dc}30`,borderRadius:8,padding:'4px 10px',fontSize:12,color:hw.dc,fontWeight:600,flexShrink:0 }}>{hw.deadline}</div>}
-                      {hw.status==='retry'&&<button className="lp-prim" onClick={()=>navigate(`/tests/${hw.id}`)} style={{ display:'flex',alignItems:'center',gap:4,padding:'7px 12px',background:'#FEF3C7',border:'1px solid #FDE68A',borderRadius:9,fontSize:13,color:'#D97706',cursor:'pointer',flexShrink:0 }}>Пройти снова<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg></button>}
-                      {hw.status==='test'&&<button className="lp-prim" onClick={()=>navigate(`/tests/${hw.id}`)} style={{ display:'flex',alignItems:'center',gap:4,padding:'7px 12px',background:'#EBF1FF',border:'1px solid #C7D2FE',borderRadius:9,fontSize:13,fontWeight:600,color:'#375DFB',cursor:'pointer',flexShrink:0 }}>Пройти тест<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg></button>}
-                      {hw.status==='done'&&<span style={{ fontSize:12,color:'#10B981',fontWeight:600,flexShrink:0 }}>Выполнено</span>}
+                      {status==='locked'&&<div style={{ display:'flex',alignItems:'center',gap:5,background:'#F3F4F6',border:'1px solid #E5E7EB',borderRadius:9,padding:'7px 12px',fontSize:12,color:'#9CA3AF',fontWeight:600,flexShrink:0 }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Закрыто</div>}
+                      {status==='retry'&&<button className="lp-prim" onClick={go} style={{ display:'flex',alignItems:'center',gap:4,padding:'7px 12px',background:'#FEF3C7',border:'1px solid #FDE68A',borderRadius:9,fontSize:13,fontWeight:600,color:'#D97706',cursor:'pointer',flexShrink:0 }}>Пройти снова<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg></button>}
+                      {status==='test'&&<button className="lp-prim" onClick={go} style={{ display:'flex',alignItems:'center',gap:4,padding:'7px 12px',background:'#EBF1FF',border:'1px solid #C7D2FE',borderRadius:9,fontSize:13,fontWeight:600,color:'#375DFB',cursor:'pointer',flexShrink:0 }}>Пройти тест<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg></button>}
+                      {status==='done'&&<button className="lp-ghost" onClick={go} style={{ display:'flex',alignItems:'center',gap:5,padding:'7px 12px',background:'#fff',border:'1px solid #E5E7EB',borderRadius:9,fontSize:13,fontWeight:600,color:'#374151',cursor:'pointer',flexShrink:0 }}>Пересдать</button>}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
               {tab==='study'&&(
@@ -754,7 +972,10 @@ export function LessonPage() {
                           <h3 style={{ fontSize:17,fontWeight:700,color:'#111',margin:'0 0 10px' }}>{s.title}</h3>
                           {s.text.map((t,i)=><p key={i} style={{ fontSize:14,color:'#374151',lineHeight:1.75,margin:'0 0 10px' }}>{t}</p>)}
                           {s.note&&<div className="lp-note" style={{ margin:'12px 0' }}><span style={{ fontWeight:700,color:'#374151' }}>Заметка: </span><span style={{ fontSize:14,color:'#374151',lineHeight:1.65 }}>{s.note}</span></div>}
-                          {s.video&&<div style={{ borderRadius:14,overflow:'hidden',height:220,background:'#1a1a2e',position:'relative',marginTop:12,cursor:'pointer' }}><img src={s.img} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',opacity:.7 }}/><div style={{ position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center' }}><div style={{ width:50,height:50,borderRadius:'50%',background:'rgba(255,255,255,.9)',display:'flex',alignItems:'center',justifyContent:'center' }}><svg width="20" height="20" viewBox="0 0 24 24" fill="#374151" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg></div></div></div>}
+                          {s.video&&<div style={{ marginTop:14 }}>
+                            <div style={{ fontSize:13,fontWeight:700,color:'#374151',marginBottom:8,display:'flex',alignItems:'center',gap:6 }}><span style={{ width:7,height:7,borderRadius:'50%',background:'#EF4444',display:'inline-block' }} />Видео-разбор темы</div>
+                            <VoevodaPlayer src="/video/den-rossii.mp4" poster="/video/den-rossii.jpg" height={300} />
+                          </div>}
                         </div>
                       ))}
                       <div style={{ background:'#F0FDF4',borderRadius:14,border:'1px solid #BBF7D0',padding:'14px 18px',display:'flex',alignItems:'flex-start',gap:10 }}>
@@ -776,63 +997,57 @@ export function LessonPage() {
                 </div>
               )}
             </div>
-            <div style={{ background:'#fff',borderRadius:22,border:'1px solid #E5E7EB',overflow:'hidden',position:'sticky',top:16 }}>
-              <div style={{ display:'flex',borderBottom:'1px solid #F0F0F0' }}>
+            <div style={{ display:'flex',flexDirection:'column',minHeight:0,background:'#fff',borderRadius:22,border:'1px solid #E5E7EB',overflow:'hidden' }}>
+              <div style={{ display:'flex',borderBottom:'1px solid #F0F0F0',flexShrink:0 }}>
                 {[['mat','Материалы'],['comments','Комментарии']].map(([v,l])=>(
                   <button key={v} className="lp-tab" onClick={()=>setMatTab(v as 'mat'|'comments')} style={{ flex:1,padding:'13px 10px',background:'none',border:'none',borderBottom:matTab===v?'2.5px solid #375DFB':'2.5px solid transparent',color:matTab===v?'#375DFB':'#6B7280',fontWeight:matTab===v?700:400,fontSize:14,cursor:'pointer',marginBottom:-1 }}>{l}</button>
                 ))}
               </div>
-              {matTab==='mat'&&MATS.map((m,i)=>(
-                <div key={m.name} className="lp-mat" onClick={() => downloadDemoFile(m.name, m.type)} style={{ display:'flex',alignItems:'center',gap:12,padding:'13px 16px',borderBottom:i<MATS.length-1?'1px solid #F5F5F7':'none',cursor:'pointer',transition:'background .14s' }}>
-                  <div style={{ width:40,height:40,borderRadius:10,background:FC[m.type]+'18',border:`1px solid ${FC[m.type]}30`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}><span style={{ fontSize:10,fontWeight:800,color:FC[m.type] }}>{m.type}</span></div>
-                  <div style={{ flex:1 }}><div style={{ fontSize:13,fontWeight:600,color:'#111' }}>{m.name}</div><div style={{ fontSize:11,color:'#9CA3AF' }}>{m.size}</div></div>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="1.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              {matTab==='mat'&&(
+                <div style={{ display:'flex',flexDirection:'column',flex:1,overflow:'hidden' }}>
+                  <div style={{ overflowY:'auto',flex:1 }}>
+                    {MATS.map((m)=>(
+                      <div key={m.name} className="lp-mat" onClick={() => downloadDemoFile(m.name, m.type)} style={{ display:'flex',alignItems:'center',gap:12,padding:'13px 16px',borderBottom:'1px solid #F5F5F7',cursor:'pointer',transition:'background .14s' }}>
+                        <div style={{ width:40,height:40,borderRadius:10,background:FC[m.type]+'18',border:`1px solid ${FC[m.type]}30`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}><span style={{ fontSize:10,fontWeight:800,color:FC[m.type] }}>{m.type}</span></div>
+                        <div style={{ flex:1 }}><div style={{ fontSize:13,fontWeight:600,color:'#111' }}>{m.name}</div><div style={{ fontSize:11,color:'#9CA3AF' }}>{m.size}</div></div>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="1.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ padding:'14px 16px',borderTop:'1px solid #F0F0F0',flexShrink:0 }}>
+                    <button className="lp-prim" onClick={()=>{ MATS.forEach((m,idx)=>window.setTimeout(()=>downloadDemoFile(m.name,m.type),idx*120)); showNotice('Загрузка всех материалов начата'); }} style={{ width:'100%',display:'flex',alignItems:'center',justifyContent:'center',gap:8,padding:'11px 0',background:'#375DFB',border:'none',borderRadius:12,color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer',boxShadow:'0 4px 14px rgba(55,93,251,.26)' }}>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                      Скачать все материалы
+                    </button>
+                    <div style={{ marginTop:8,fontSize:11,color:'#9CA3AF',textAlign:'center' }}>3 файла · ≈ 2.5 ГБ · обновлено 24 марта</div>
+                  </div>
                 </div>
-              ))}
+              )}
               {matTab==='comments'&&(
-                <div style={{ padding:'16px' }}>
-                  <textarea value={commentText} onChange={e => { setCommentText(e.target.value); setCommentSent(false); }} placeholder="Написать комментарий..." style={{ width:'100%',minHeight:88,border:'1px solid #E5E7EB',borderRadius:12,padding:'11px 13px',fontSize:13,color:'#374151',resize:'none',outline:'none',boxSizing:'border-box',fontFamily:'inherit' }}/>
-                  <button className="lp-prim" onClick={submitComment} style={{ width:'100%',marginTop:8,padding:'9px 0',background:commentSent?'#10B981':'#375DFB',border:'none',borderRadius:12,color:'#fff',fontSize:13,fontWeight:600,cursor:'pointer' }}>{commentSent ? 'Комментарий отправлен' : 'Отправить'}</button>
-                  {commentSent && <div style={{ marginTop:8,fontSize:12,color:'#047857',fontWeight:700,textAlign:'center',animation:'fadeUp .18s ease both' }}>Инструктор увидит комментарий в карточке занятия.</div>}
+                <div style={{ padding:'16px',display:'flex',flexDirection:'column',gap:10,flex:1,overflow:'hidden' }}>
+                  <textarea value={commentText} onChange={e => { setCommentText(e.target.value); setCommentSent(false); }} placeholder="Написать комментарий к занятию..." style={{ width:'100%',flex:1,border:'1px solid #E5E7EB',borderRadius:12,padding:'12px 14px',fontSize:13,color:'#374151',resize:'none',outline:'none',boxSizing:'border-box' as const,fontFamily:'inherit',lineHeight:1.6,minHeight:0 }}/>
+                  <button className="lp-prim" onClick={submitComment} style={{ width:'100%',padding:'11px 0',background:commentSent?'#10B981':'#375DFB',border:'none',borderRadius:12,color:'#fff',fontSize:13,fontWeight:600,cursor:'pointer',flexShrink:0 }}>{commentSent ? 'Комментарий отправлен' : 'Отправить'}</button>
+                  <div style={{ fontSize:11,color:'#9CA3AF',textAlign:'center' as const,flexShrink:0 }}>{commentSent ? 'Инструктор увидит комментарий в карточке занятия.' : 'Комментарий увидят инструктор и одногруппники.'}</div>
                 </div>
               )}
             </div>
           </div>
         </Sec>
 
-        {/* ══ COUNTDOWN ══ */}
-        <Sec>
-          <div style={{ background:'#fff',borderRadius:22,border:'1px solid #E5E7EB',padding:'20px 24px',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:16 }}>
-            <div style={{ fontSize:15,fontWeight:600,color:'#111' }}>Ближайший старт группы — <span style={{ color:'#375DFB',fontWeight:800 }}>{targetLabel}</span></div>
-            <Countdown target={target}/>
-          </div>
-        </Sec>
       </div>
 
-      {/* MODAL */}
-      {modal&&(
-        <div onClick={()=>setModal(null)} style={{ position:'fixed',inset:0,background:'rgba(0,0,0,.65)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:9999,padding:20,backdropFilter:'blur(6px)',animation:'fadeIn .2s ease' }}>
-          <div onClick={e=>e.stopPropagation()} style={{ maxWidth:540,width:'100%',background:'#fff',borderRadius:22,overflow:'hidden',boxShadow:'0 28px 70px rgba(0,0,0,.22)',animation:'fadeUp .22s ease' }}>
-            <div style={{ height:260,overflow:'hidden',position:'relative',background:'#1a1a2e' }}>
-              <img src={modal.img} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',display:'block' }} onError={e=>{(e.currentTarget as HTMLImageElement).style.display='none';}}/>
-              <div style={{ position:'absolute',inset:0,background:'linear-gradient(to top, rgba(0,0,0,.75), transparent)' }}/>
-              <div style={{ position:'absolute',top:12,left:12,background:'rgba(0,0,0,.6)',backdropFilter:'blur(8px)',color:'#fff',fontSize:12,fontWeight:700,padding:'4px 12px',borderRadius:8,border:'1px solid rgba(255,255,255,.2)' }}>{modal.num}</div>
-              <button onClick={()=>setModal(null)} style={{ position:'absolute',top:10,right:10,background:'rgba(0,0,0,.4)',backdropFilter:'blur(8px)',border:'1px solid rgba(255,255,255,.15)',width:32,height:32,borderRadius:9,cursor:'pointer',color:'#fff',fontSize:20,display:'flex',alignItems:'center',justifyContent:'center' }}>×</button>
-              <div style={{ position:'absolute',bottom:16,left:18,right:18 }}><div style={{ fontSize:19,fontWeight:800,color:'#fff',lineHeight:1.25 }}>{modal.title}</div></div>
-            </div>
-            <div style={{ padding:'20px 24px' }}>
-              <div style={{ display:'flex',gap:16,fontSize:13,color:'#6B7280',marginBottom:20 }}>
-                <span style={{ display:'flex',alignItems:'center',gap:5 }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="1.5" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>{modal.date}</span>
-                <span style={{ display:'flex',alignItems:'center',gap:5 }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>{modal.time}</span>
-              </div>
-              <div style={{ display:'flex',gap:10 }}>
-                <button className="lp-prim" onClick={()=>{navigate(`/lessons/${modal.id}`, { state: { courseTitle, courseSlug } });setModal(null);}} style={{ flex:1,padding:'12px 0',background:'linear-gradient(135deg,#2F52F0,#6B8FFF)',border:'none',borderRadius:14,color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer',boxShadow:'0 5px 18px rgba(55,93,251,.32)' }}>Перейти к занятию</button>
-                <button onClick={()=>setModal(null)} style={{ flex:1,padding:'12px 0',background:'#fff',border:'1px solid #E5E7EB',borderRadius:14,color:'#374151',fontSize:14,cursor:'pointer' }}>Закрыть</button>
-              </div>
-            </div>
-          </div>
-        </div>
+      {boardOpen && <BoardModal onClose={() => setBoardOpen(false)} />}
+      {rideOpen && <RideRequestModal onClose={() => setRideOpen(false)} />}
+      {reportOpen && (
+        <ReportFormModal
+          contextTitle={TITLE}
+          onClose={() => setReportOpen(false)}
+          onSaveDraft={() => setReportStep('draft')}
+          onSubmit={submitReport}
+        />
       )}
+      {reportStatus && <StatusModal kind={reportStatus.kind} title={reportStatus.title} text={reportStatus.text} onClose={() => setReportStatus(null)} />}
+
     </div>
   );
 }

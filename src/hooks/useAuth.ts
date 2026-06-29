@@ -1,5 +1,7 @@
 ﻿import { create } from 'zustand';
 
+import { TEST_USERS } from '../api/testApi';
+
 interface User {
   name: string;
   surname: string;
@@ -18,13 +20,15 @@ interface AuthState {
   resetPassword: (phone: string, newPassword: string) => boolean;
 }
 
-export const DEMO_ACCOUNTS = [
-  { login: 'tornado', password: 'voevoda123', name: 'Александр', surname: 'Воеводов', email: 'tornado@voevoda.demo', phone: '+7 988 222 32 24', callsign: 'Торнадо' },
-  { login: 'bek', password: 'voevoda123', name: 'Бек', surname: 'Куратор', email: 'bek@voevoda.demo', phone: '+7 988 222 32 25', callsign: 'Бек' },
-  { login: 'koba', password: 'voevoda123', name: 'Коба', surname: 'Инструктор', email: 'koba@voevoda.demo', phone: '+7 988 222 32 26', callsign: 'Коба' },
-  { login: 'shooter', password: 'voevoda123', name: 'Сергей', surname: 'Стрелков', email: 'shooter@voevoda.demo', phone: '+7 988 222 32 27', callsign: 'Стрелок' },
-  { login: 'nexus', password: 'voevoda123', name: 'Никита', surname: 'Связной', email: 'nexus@voevoda.demo', phone: '+7 988 222 32 28', callsign: 'Нексус' },
-];
+export const DEMO_ACCOUNTS = TEST_USERS.map(user => ({
+  login: user.login,
+  password: 'voevoda123',
+  name: user.name,
+  surname: user.surname,
+  email: user.email,
+  phone: user.phone,
+  callsign: user.callsign,
+}));
 
 // localStorage "DB"
 function getUsers(): Record<string, { password: string; user: User }> {

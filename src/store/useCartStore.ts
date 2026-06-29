@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { useNotifStore } from './useNotifStore';
 
 export interface CartCourse {
   id: number;
@@ -39,11 +40,11 @@ interface CartState {
   addProduct: (p: Omit<CartProduct, 'isFav' | 'isSelected'>) => void;
   remove: (id: number, kind: string) => void;
   updateQty: (id: number, delta: number) => void;
-  toggleSelect: (id: number) => void;
-  selectAll: () => void;
-  deselectAll: () => void;
-  removeSelected: () => void;
-  toggleFav: (id: number) => void;
+  toggleSelect: (id: number, kind: CartItem['kind']) => void;
+  selectAll: (kind?: CartItem['kind']) => void;
+  deselectAll: (kind?: CartItem['kind']) => void;
+  removeSelected: (kind?: CartItem['kind']) => void;
+  toggleFav: (id: number, kind: CartItem['kind']) => void;
   setStream: (id: number, stream: string) => void;
   has: (id: number, kind: string) => boolean;
   selectedItems: () => CartItem[];
@@ -56,12 +57,30 @@ export const useCartStore = create<CartState>()(
     (set, get) => ({
       items: [],
       addCourse: (c) => {
-        if (get().has(c.id, 'course')) return;
-        set({ items: [...get().items, { ...c, kind: 'course', isFav: false, isSelected: true }] });
+        const existing = get().items.find(i => i.id === c.id && i.kind === 'course');
+        set({
+          items: existing
+            ? get().items.map(i => i.id === c.id && i.kind === 'course'
+              ? { ...i, ...c, kind: 'course' as const, isSelected: true }
+              : i)
+            : [...get().items, { ...c, kind: 'course', isFav: false, isSelected: true }],
+        });
+        useNotifStore.getState().add({
+          kind: 'course_enrolled',
+          title: existing ? 'Курс выбран в корзине' : 'Курс добавлен в корзину',
+          body: c.title,
+          link: `/checkout?item=course:${c.id}`,
+        });
       },
       addProduct: (p) => {
         if (get().has(p.id, 'product')) return;
         set({ items: [...get().items, { ...p, kind: 'product', isFav: false, isSelected: true }] });
+        useNotifStore.getState().add({
+          kind: 'system',
+          title: 'Товар добавлен в корзину',
+          body: p.title,
+          link: `/checkout?item=product:${p.id}`,
+        });
       },
       remove: (id, kind) =>
         set({ items: get().items.filter(i => !(i.id === id && i.kind === kind)) }),
@@ -73,16 +92,16 @@ export const useCartStore = create<CartState>()(
               : i
           ),
         }),
-      toggleSelect: (id) =>
-        set({ items: get().items.map(i => i.id === id ? { ...i, isSelected: !i.isSelected } : i) }),
-      selectAll: () =>
-        set({ items: get().items.map(i => ({ ...i, isSelected: true })) }),
-      deselectAll: () =>
-        set({ items: get().items.map(i => ({ ...i, isSelected: false })) }),
-      removeSelected: () =>
-        set({ items: get().items.filter(i => !i.isSelected) }),
-      toggleFav: (id) =>
-        set({ items: get().items.map(i => i.id === id ? { ...i, isFav: !i.isFav } : i) }),
+      toggleSelect: (id, kind) =>
+        set({ items: get().items.map(i => i.id === id && i.kind === kind ? { ...i, isSelected: !i.isSelected } : i) }),
+      selectAll: (kind) =>
+        set({ items: get().items.map(i => !kind || i.kind === kind ? { ...i, isSelected: true } : i) }),
+      deselectAll: (kind) =>
+        set({ items: get().items.map(i => !kind || i.kind === kind ? { ...i, isSelected: false } : i) }),
+      removeSelected: (kind) =>
+        set({ items: get().items.filter(i => !(i.isSelected && (!kind || i.kind === kind))) }),
+      toggleFav: (id, kind) =>
+        set({ items: get().items.map(i => i.id === id && i.kind === kind ? { ...i, isFav: !i.isFav } : i) }),
       setStream: (id, stream) =>
         set({
           items: get().items.map(i =>
@@ -100,6 +119,10 @@ export const useCartStore = create<CartState>()(
           .filter(i => i.isSelected && i.oldPrice)
           .reduce((s, i) => s + ((i.oldPrice ?? i.price) - i.price) * (i.kind === 'product' ? i.qty : 1), 0),
     }),
-    { name: 'voevoda_cart' }
+    {
+      name: 'voevoda_cart',
+      version: 3,
+      migrate: () => ({ items: [] }),
+    }
   )
 );

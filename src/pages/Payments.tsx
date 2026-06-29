@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { listPaymentOrders, type PaymentOrder } from '../api/payments';
+import { PortalBreadcrumb } from '../components/PortalBreadcrumb';
 
 const ANIM = `
 @keyframes fadeUp { from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)} }
@@ -136,13 +137,7 @@ export function Payments() {
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="1.5" strokeLinecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
             <h1 style={{ fontSize:22, fontWeight:700, color:'#111', margin:0 }}>История платежей</h1>
           </div>
-          <div style={{ display:'flex', gap:6, fontSize:12, color:'#9CA3AF', alignItems:'center' }}>
-            <span style={{ cursor:'pointer' }} onClick={() => navigate('/')}>Главная</span>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="1.5"><polyline points="9 18 15 12 9 6"/></svg>
-            <span style={{ cursor:'pointer' }} onClick={() => navigate('/wallet')}>Кошелёк</span>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="1.5"><polyline points="9 18 15 12 9 6"/></svg>
-            <span style={{ color:'#374151', fontWeight:500 }}>Платежи</span>
-          </div>
+          <PortalBreadcrumb className="compact-breadcrumb" items={[{ label:'Главная', to:'/' }, { label:'Кошелёк', to:'/wallet' }, { label:'Платежи' }]} />
         </div>
 
         {/* Stats */}

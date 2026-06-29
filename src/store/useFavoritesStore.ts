@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { useNotifStore } from './useNotifStore';
 
 export interface FavArticle {
   id: number;
@@ -12,6 +13,7 @@ export interface FavArticle {
   stats: { views: number; hearts: number; likes: number; comments?: number };
   savedDaysAgo?: number;
   available?: boolean;
+  link?: string;
 }
 
 export interface FavCourse {
@@ -60,9 +62,16 @@ export interface FavKaptorka {
 
 export type FavItem = FavArticle | FavCourse | FavMarket | FavKaptorka;
 
-const MOCK_ITEMS: FavItem[] = [
+export function getFavoriteItemLink(item: FavItem) {
+  if (item.kind === 'article') return item.link || `/journal/${item.id}`;
+  if (item.kind === 'course') return `/courses/${encodeURIComponent(item.title)}`;
+  if (item.kind === 'market') return `/market/${item.id}`;
+  return `/kaptorka/${item.id}`;
+}
+
+const LEGACY_MOCK_ITEMS: FavItem[] = [
   {
-    id: 1,
+    id: 9001,
     kind: 'article',
     title: 'Как готовиться к первому полевому занятию без лишнего риска',
     author: 'Редакция ВОЕВОДА',
@@ -74,7 +83,7 @@ const MOCK_ITEMS: FavItem[] = [
     available: true,
   },
   {
-    id: 2,
+    id: 9002,
     kind: 'article',
     title: 'Тактика малых групп: разбор маршрута и ролей внутри команды',
     author: 'Инструктор Торнадо',
@@ -86,7 +95,7 @@ const MOCK_ITEMS: FavItem[] = [
     available: true,
   },
   {
-    id: 3,
+    id: 9003,
     kind: 'article',
     title: 'Снаряжение современного бойца: что действительно нужно на занятии',
     author: 'УТЦ Воевода',
@@ -98,7 +107,7 @@ const MOCK_ITEMS: FavItem[] = [
     available: true,
   },
   {
-    id: 4,
+    id: 9004,
     kind: 'article',
     title: 'Работа с картой: как не потерять группу на маршруте',
     author: 'Коба',
@@ -255,7 +264,8 @@ interface FavoritesState {
 export const useFavoritesStore = create<FavoritesState>()(
   persist(
     (set, get) => ({
-      items: MOCK_ITEMS,
+      // Избранное заполняется только действиями пользователя из реальных карточек.
+      items: LEGACY_MOCK_ITEMS.filter(() => false),
       toggle: (item) => {
         const exists = get().items.some(i => i.id === item.id && i.kind === item.kind);
         set({
@@ -263,6 +273,14 @@ export const useFavoritesStore = create<FavoritesState>()(
             ? get().items.filter(i => !(i.id === item.id && i.kind === item.kind))
             : [item, ...get().items],
         });
+        if (!exists) {
+          useNotifStore.getState().add({
+            kind: 'like',
+            title: 'Добавлено в избранное',
+            body: item.title,
+            link: getFavoriteItemLink(item),
+          });
+        }
       },
       remove: (id, kind) => {
         set({ items: get().items.filter(i => !(i.id === id && i.kind === kind)) });
@@ -271,8 +289,8 @@ export const useFavoritesStore = create<FavoritesState>()(
     }),
     {
       name: 'voevoda_favorites',
-      version: 3,
-      migrate: () => ({ items: MOCK_ITEMS }),
+      version: 6,
+      migrate: () => ({ items: LEGACY_MOCK_ITEMS.filter(() => false) }),
     }
   )
 );

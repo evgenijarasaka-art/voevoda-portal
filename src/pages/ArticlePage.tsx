@@ -1,11 +1,16 @@
 import { useState, useRef, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useReviewsStore } from '../store/useReviewsStore';
+import { HOME_JOURNAL_ARTICLES, formatHomeArticleViews, getHomeArticleExcerpt } from '../data/homeJournalArticles';
+import { useFavoritesStore } from '../store/useFavoritesStore';
+import { useSubscriptionsStore } from '../store/useSubscriptionsStore';
+import { useAuthStore } from '../store/authStore';
 
 export const JOURNAL_SCROLL_KEY = 'voevoda_journal_scroll';
 
 interface Article {
   id: number;
-  category: 'Статьи' | 'Новости' | 'Блог' | 'Видео';
+  category: 'Статьи' | 'Новости' | 'Поток' | 'Блог' | 'Видео';
   title: string;
   excerpt: string;
   author: string;
@@ -21,6 +26,26 @@ interface Article {
   featured?: boolean;
 }
 
+const HOME_ARTICLES: Article[] = HOME_JOURNAL_ARTICLES.map((article) => ({
+  id: article.id,
+  category: article.category,
+  title: article.title,
+  excerpt: getHomeArticleExcerpt(article),
+  author: article.author,
+  authorAvatar: article.authorAvatar,
+  authorFollowers: 'Сообщество Воеводы',
+  date: article.date,
+  readTime: `${article.readTime} мин`,
+  views: formatHomeArticleViews(article.stats.views),
+  likes: article.stats.hearts,
+  comments: article.stats.jumbo,
+  image: article.image,
+  tags: [article.category, 'Воевода'],
+}));
+
+const REACTIONS = ['👍', '❤️', '🔥', '😮', '😂'] as const;
+type Reaction = typeof REACTIONS[number];
+
 interface Comment {
   id: number;
   author: string;
@@ -29,9 +54,31 @@ interface Comment {
   date: string;
   likes: number;
   liked: boolean;
+  reactions: Record<Reaction, number>;
+  myReaction: Reaction | null;
 }
 
-const ARTICLES: Article[] = [
+const mkComment = (
+  id: number,
+  author: string,
+  avatar: string,
+  text: string,
+  date: string,
+  likes: number,
+  reactions: Partial<Record<Reaction, number>> = {}
+): Comment => ({
+  id,
+  author,
+  avatar,
+  text,
+  date,
+  likes,
+  liked: false,
+  reactions: { '👍': 0, '❤️': 0, '🔥': 0, '😮': 0, '😂': 0, ...reactions },
+  myReaction: null,
+});
+
+const ORIGINAL_ARTICLES: Article[] = [
   { id: 1, category: 'Статьи', title: 'Как правильно подготовиться к курсу молодого бойца: полное руководство', excerpt: 'Курс молодого бойца — это первый и важнейший этап военной подготовки. Мы расскажем, как физически и психологически подготовиться к интенсивным нагрузкам, что взять с собой и каких ошибок избежать.', author: 'Торнадо', authorAvatar: '/teacher1-main.jpg', authorFollowers: '14,2 тыс.', date: '23 марта', readTime: '8 мин', views: '121,4 тыс', likes: 2600, comments: 432, image: '/kyrs1.png', tags: ['КМБ', 'Подготовка', 'Советы'], featured: true },
   { id: 2, category: 'Новости', title: 'Открыт набор на Курс молодого бойца V5 в Москве — старт 10 мая', excerpt: 'УТЦ «Воевода» объявляет об открытии нового потока КМБ. Места ограничены — успей записаться до 30 апреля.', author: 'Редакция Воевода', authorAvatar: '/logo.png', authorFollowers: '8,7 тыс.', date: '21 марта', readTime: '2 мин', views: '45,2 тыс', likes: 890, comments: 67, image: '/voen1.png', tags: ['КМБ', 'Набор', 'Москва'] },
   { id: 3, category: 'Блог', title: 'Мой путь в ВДВ: от гражданки до десантника за 3 месяца', excerpt: 'Личный опыт прохождения КМБ и подготовки к службе в Воздушно-десантных войсках. Что меня удивило, что было тяжелее всего и как я справился.', author: 'Бек', authorAvatar: '/teacher2-main.jpg', authorFollowers: '3,1 тыс.', date: '20 марта', readTime: '12 мин', views: '88,6 тыс', likes: 3400, comments: 215, image: '/kyrs2.png', tags: ['ВДВ', 'Личный опыт', 'КМБ'] },
@@ -42,23 +89,159 @@ const ARTICLES: Article[] = [
   { id: 8, category: 'Статьи', title: 'Физическая подготовка бойца: программа на 3 месяца до КМБ', excerpt: 'Детальная программа тренировок, которая подготовит вас к физическим нагрузкам курса. Бег, силовые, выносливость — всё по неделям.', author: 'Стрелок', authorAvatar: '/teacher2-main.jpg', authorFollowers: '5,9 тыс.', date: '14 марта', readTime: '14 мин', views: '156,7 тыс', likes: 4300, comments: 298, image: '/voen6.png', tags: ['Физподготовка', 'Программа', 'КМБ'] },
 ];
 
+const ARTICLES: Article[] = [...HOME_ARTICLES, ...ORIGINAL_ARTICLES];
+
 const INITIAL_COMMENTS: Record<number, Comment[]> = {
+  // ── home journal articles (1001-1024) ─────────────────────────────────────
+  1001: [
+    mkComment(1, 'Дозор', '/teacher1-main.jpg', 'Отличный материал! Именно такие операции показывают профессионализм наших ребят.', '3 марта', 38, { '👍': 11, '❤️': 6 }),
+    mkComment(2, 'ВДВ-Фан', '/logo.png', 'Спасибо за информацию, давно ждал такого репортажа.', '3 марта', 19, { '👍': 4 }),
+    mkComment(3, 'Курсант-11', '/teacher2-main.jpg', 'Гидрохлорид натрия — серьёзная химия, интересно как обеспечивается безопасность личного состава.', '4 марта', 25, { '😮': 3 }),
+  ],
+  1002: [
+    mkComment(1, 'Морпех', '/teacher3-main.jpg', 'Морская пехота — элита! Пётр Великий был мудрым стратегом.', '3 марта', 44, { '❤️': 14, '🔥': 7 }),
+    mkComment(2, 'Историк', '/logo.png', 'Прекрасная статья о корнях морской пехоты России. Очень познавательно.', '3 марта', 27, { '👍': 8 }),
+  ],
+  1003: [
+    mkComment(1, 'Рядовой', '/teacher1-main.jpg', 'Наши ребята везде успевают! Честь и слава псковским десантникам.', '3 марта', 51, { '❤️': 18, '🔥': 9 }),
+    mkComment(2, 'Земляк', '/logo.png', 'Псков гордится своей дивизией. Всегда на передовой.', '4 марта', 33, { '👍': 10, '❤️': 5 }),
+    mkComment(3, 'МедикВДВ', '/teacher3-main.jpg', 'Дезинфекция населённых пунктов — важнейшая гуманитарная миссия. Молодцы!', '4 марта', 22, { '👍': 7 }),
+  ],
+  1004: [
+    mkComment(1, 'Арктик', '/teacher2-main.jpg', 'Арктические учения — это совсем другой уровень выносливости. Респект!', '2 марта', 67, { '🔥': 22, '👍': 15 }),
+    mkComment(2, 'Тундра', '/logo.png', 'При -40 ещё и тактику отрабатывать... это настоящие воины.', '3 марта', 41, { '🔥': 11 }),
+  ],
+  1005: [
+    mkComment(1, 'Понтонёр', '/teacher1-main.jpg', 'Форсирование водных преград ночью — высший пилотаж! Видел на учениях — впечатляет.', '1 марта', 36, { '👍': 9, '🔥': 6 }),
+    mkComment(2, 'Сапёр-3', '/logo.png', 'Ночные переправы требуют ювелирной координации. Наши умеют.', '2 марта', 28, { '👍': 7 }),
+  ],
+  1006: [
+    mkComment(1, 'ДронКиллер', '/teacher3-main.jpg', 'Антидроновые учения — требование времени. Отлично что готовятся серьёзно.', '28 февраля', 82, { '🔥': 28, '👍': 16 }),
+    mkComment(2, 'Горный', '/teacher2-main.jpg', 'Дагестанский полигон сложный, там и без дронов непросто. Молодцы спецназ!', '29 февраля', 54, { '👍': 13 }),
+    mkComment(3, 'Техник-Р', '/logo.png', 'Какие системы РЭБ используют? Есть что-то в открытом доступе?', '1 марта', 31, { '😮': 5 }),
+  ],
+  1007: [
+    mkComment(1, 'Ратник-фан', '/teacher1-main.jpg', '«Ратник-3» — это революция в экипировке. Ждём когда поступит в войска.', '3 марта', 93, { '🔥': 35, '👍': 20 }),
+    mkComment(2, 'Снабженец', '/logo.png', 'Интересно насколько вырастет стоимость по сравнению с «Ратник-2».', '3 марта', 47, { '😮': 8 }),
+    mkComment(3, 'Боец22', '/teacher3-main.jpg', 'Хочу попасть в первый поток оснащения. Как вообще это происходит?', '4 марта', 35, { '👍': 6 }),
+  ],
+  1008: [
+    mkComment(1, 'Союзник', '/teacher2-main.jpg', 'Совместные учения с Беларусью — это важно. Союзное государство должно быть единым.', '2 марта', 58, { '❤️': 17, '👍': 12 }),
+    mkComment(2, 'Наблюдатель', '/logo.png', 'Масштаб учений будет значительным. Тактика и логистика на высоте.', '3 марта', 39, { '👍': 8 }),
+  ],
+  1009: [
+    mkComment(1, 'Гражданин', '/teacher1-main.jpg', 'Добровольная подготовка — это правильное решение. Каждый должен уметь защищать Родину.', '1 марта', 71, { '❤️': 23, '👍': 15 }),
+    mkComment(2, 'Юрист-А', '/logo.png', 'Важно чтобы «добровольность» была реальной, без административного давления.', '2 марта', 44, { '👍': 10 }),
+    mkComment(3, 'Патриот', '/teacher3-main.jpg', 'Отличная инициатива! Записался бы сам если бы был помоложе.', '2 марта', 29, { '❤️': 7 }),
+  ],
+  1010: [
+    mkComment(1, 'Авиатор', '/teacher2-main.jpg', 'Су-35С — красавец! Одна из лучших машин в мире по соотношению манёвренность/огневая мощь.', '28 февраля', 118, { '🔥': 45, '❤️': 22 }),
+    mkComment(2, 'Техник-А', '/logo.png', 'Интересно какие доработки внесены в новую партию. Авионика, двигатели?', '29 февраля', 64, { '😮': 9 }),
+    mkComment(3, 'Лётчик', '/teacher1-main.jpg', 'Летал на Су-27 — когда пересаживаешься на 35-й, разница ощущается сразу. Феноменальная машина.', '1 марта', 87, { '🔥': 28, '👍': 16 }),
+  ],
+  1011: [
+    mkComment(1, 'Доброволец', '/teacher3-main.jpg', '12 новых полигонов — серьёзные инвестиции. Где они будут расположены?', '27 февраля', 49, { '👍': 11 }),
+    mkComment(2, 'Инструктор-В', '/logo.png', 'Главное чтобы оснастили нормально, а не просто поле с флажками. Нужна реальная инфраструктура.', '28 февраля', 62, { '👍': 14, '😮': 4 }),
+  ],
+  1012: [
+    mkComment(1, 'Контрактник', '/teacher2-main.jpg', 'Давно пора было стандарты обновить. Старые нормы уже не отражают реальных потребностей.', '26 февраля', 44, { '👍': 12 }),
+    mkComment(2, 'Тренер-С', '/logo.png', 'Надеюсь учли опыт реальных боёв при составлении новых нормативов.', '27 февраля', 37, { '👍': 9, '🔥': 5 }),
+  ],
+  1013: [
+    mkComment(1, 'Ветеран КМБ', '/teacher1-main.jpg', 'Первый марш незабываем. У меня тоже ноги отказали на 12-м километре, но дошёл!', '3 марта', 56, { '❤️': 19, '🔥': 8 }),
+    mkComment(2, 'Курсант Алексей К.', '/teacher2-main.jpg', 'Спасибо за поддержку! Второй марш уже не казался таким страшным.', '4 марта', 38, { '❤️': 12 }),
+    mkComment(3, 'Будущий', '/logo.png', 'Записываюсь на следующий поток. Статья добавила решимости!', '4 марта', 27, { '🔥': 7 }),
+  ],
+  1014: [
+    mkComment(1, 'ВДВшник', '/teacher3-main.jpg', 'КМБ действительно меняет мышление. Сам прошёл — до и после небо и земля.', '2 марта', 63, { '❤️': 21, '🔥': 10 }),
+    mkComment(2, 'Курсант Михаил Д.', '/teacher2-main.jpg', 'Самое сложное — первые 3 дня. Потом организм адаптируется и становится легче.', '3 марта', 48, { '👍': 14 }),
+  ],
+  1015: [
+    mkComment(1, 'Бегун', '/teacher1-main.jpg', 'Тест Купера — классика. Молодец что отслеживаешь прогресс в цифрах!', '1 марта', 42, { '👍': 10, '🔥': 6 }),
+    mkComment(2, 'Тренер-МП', '/logo.png', 'За 2 месяца такой прогресс — отличный результат. Режим питания соблюдаешь?', '2 марта', 31, { '👍': 7 }),
+    mkComment(3, 'Курсант Дмитрий В.', '/teacher1-main.jpg', 'Да, питание перестроил полностью. Белок, сложные углеводы, минимум сахара.', '2 марта', 45, { '👍': 11, '❤️': 4 }),
+  ],
+  1016: [
+    mkComment(1, 'Стратег', '/teacher3-main.jpg', 'Умение разбирать ошибки — ключевой навык офицера. Важная статья.', '29 февраля', 54, { '👍': 13, '❤️': 6 }),
+    mkComment(2, 'Курсант Сергей Н.', '/teacher2-main.jpg', 'Проигрывать с достоинством — это значит сохранять боевой дух и делать выводы.', '1 марта', 67, { '❤️': 18, '🔥': 9 }),
+  ],
+  1017: [
+    mkComment(1, 'Снаряга', '/logo.png', 'Отличный обзор! Тоже думаю над берцами — какие в итоге выбрал?', '28 февраля', 38, { '👍': 8 }),
+    mkComment(2, 'Курсант Игорь Т.', '/teacher3-main.jpg', 'Взял Garsing 715 — разнашивал 3 недели, зашли отлично. Главное не жадничать на ногах.', '29 февраля', 51, { '👍': 13, '🔥': 5 }),
+    mkComment(3, 'Экипировщик', '/teacher1-main.jpg', 'Согласен по рюкзаку — не надо брать огромный. 30-35 литров оптимально для курса.', '1 марта', 29, { '👍': 7 }),
+  ],
+  1018: [
+    mkComment(1, 'Ветеран', '/teacher2-main.jpg', 'Страх и усталость — это нормально. Именно так рождается настоящий боец.', '27 февраля', 74, { '❤️': 25, '🔥': 12 }),
+    mkComment(2, 'Курсант Роман Ф.', '/teacher1-main.jpg', 'Спасибо за честность! Многие скрывают страх, а это не правильно.', '28 февраля', 58, { '❤️': 16, '👍': 8 }),
+  ],
+  1019: [
+    mkComment(1, 'Нутрициолог', '/logo.png', 'Правильно про углеводное окно после тренировки! Многие этим пренебрегают.', '3 марта', 67, { '👍': 19, '🔥': 7 }),
+    mkComment(2, 'Боец-А', '/teacher3-main.jpg', 'А что по суточной калорийности во время курса? Сколько нужно потреблять?', '3 марта', 41, { '😮': 4 }),
+    mkComment(3, 'Инструктор Воронов А.', '/teacher3-main.jpg', 'При интенсивных нагрузках минимум 3200-3500 ккал. Белок — 2г на кг веса.', '4 марта', 88, { '👍': 23, '🔥': 11 }),
+  ],
+  1020: [
+    mkComment(1, 'Тактик', '/teacher2-main.jpg', 'Пять принципов звучат просто, но на практике отрабатываются месяцами.', '2 марта', 55, { '👍': 14 }),
+    mkComment(2, 'Групповик', '/logo.png', 'Коммуникация внутри группы — самое сложное. Один ошибся — все страдают.', '3 марта', 72, { '🔥': 21, '👍': 13 }),
+  ],
+  1021: [
+    mkComment(1, 'Психолог-А', '/teacher1-main.jpg', 'Хладнокровие — это тренируемый навык. Статья очень грамотная с точки зрения психологии.', '1 марта', 84, { '👍': 22, '❤️': 14 }),
+    mkComment(2, 'Командир Зайцев П.', '/teacher2-main.jpg', 'Добавлю: дыхательные техники — самый быстрый способ снизить кортизол в момент стресса.', '2 марта', 97, { '🔥': 32, '👍': 18 }),
+    mkComment(3, 'Рекрут', '/logo.png', 'У меня паника на учениях — теперь знаю что делать. Спасибо!', '2 марта', 46, { '❤️': 11 }),
+  ],
+  1022: [
+    mkComment(1, 'Следопыт', '/teacher3-main.jpg', 'Азимут и звёзды — это то чему учили ещё советские разведчики. Не устареет никогда.', '29 февраля', 61, { '👍': 15, '🔥': 8 }),
+    mkComment(2, 'GPS-Off', '/logo.png', 'Сколько курсантов реально умеют ориентироваться без навигатора? Думаю меньшинство.', '1 марта', 47, { '😮': 6 }),
+  ],
+  1023: [
+    mkComment(1, 'Медик', '/teacher2-main.jpg', 'ТССС протокол — жгут, крикотиреотомия, декомпрессия. Это должен знать каждый.', '28 февраля', 78, { '👍': 22, '🔥': 13 }),
+    mkComment(2, 'Курсант-М', '/logo.png', 'Есть ли в Воеводе полноценный курс по тактмеду? Хочу записаться.', '29 февраля', 35, { '👍': 7 }),
+    mkComment(3, 'Командир Зайцев П.', '/teacher2-main.jpg', 'Да, тактмед входит в КМБ базово. Расширенный курс — отдельная программа.', '1 марта', 63, { '👍': 16, '❤️': 8 }),
+  ],
+  1024: [
+    mkComment(1, 'Атлет', '/teacher1-main.jpg', 'В поле побеждает выносливость. Сила нужна, но без «дыхалки» далеко не уйдёшь.', '27 февраля', 58, { '🔥': 18, '👍': 12 }),
+    mkComment(2, 'Инструктор Медведев С.', '/teacher1-main.jpg', 'Оптимально: 60% выносливость, 40% сила. Функциональный тренинг лучше изолированного.', '28 февраля', 74, { '👍': 19, '🔥': 10 }),
+  ],
+  // ── original articles (1-8) ───────────────────────────────────────────────
   1: [
-    { id: 1, author: 'Sergeant', avatar: '/teacher2-main.jpg', text: 'Отличная статья! Особенно полезен раздел про психологическую подготовку. Сам проходил КМБ в 2022 — всё точно описано.', date: '23 марта', likes: 48, liked: false },
-    { id: 2, author: 'Бек', avatar: '/teacher3-main.jpg', text: 'Добавлю от себя: очень важна правильная обувь. Берцы нужно разносить заранее.', date: '23 марта', likes: 31, liked: false },
-    { id: 3, author: 'Нексус', avatar: '/logo.png', text: 'Когда записываться на следующий поток? Хочу пройти именно у Торнадо.', date: '24 марта', likes: 12, liked: false },
+    mkComment(1, 'Sergeant', '/teacher2-main.jpg', 'Отличная статья! Особенно полезен раздел про психологическую подготовку. Сам проходил КМБ в 2022 — всё точно описано.', '23 марта', 48, { '👍': 12, '❤️': 8 }),
+    mkComment(2, 'Бек', '/teacher3-main.jpg', 'Добавлю от себя: очень важна правильная обувь. Берцы нужно разносить заранее.', '23 марта', 31, { '👍': 9 }),
+    mkComment(3, 'Нексус', '/logo.png', 'Когда записываться на следующий поток? Хочу пройти именно у Торнадо.', '24 марта', 12, { '🔥': 3 }),
   ],
   2: [
-    { id: 1, author: 'Волк-47', avatar: '/logo.png', text: 'Уже записался, жду старта!', date: '21 марта', likes: 22, liked: false },
-    { id: 2, author: 'Торнадо', avatar: '/teacher1-main.jpg', text: 'Ждём всех! Программа обновлена, добавили новые блоки по тактической медицине.', date: '22 марта', likes: 67, liked: false },
+    mkComment(1, 'Волк-47', '/logo.png', 'Уже записался, жду старта!', '21 марта', 22, { '❤️': 5 }),
+    mkComment(2, 'Торнадо', '/teacher1-main.jpg', 'Ждём всех! Программа обновлена, добавили новые блоки по тактической медицине.', '22 марта', 67, { '👍': 22, '🔥': 15 }),
   ],
-};
-
-const CAT_COLORS: Record<string, { bg: string; text: string }> = {
-  Статьи: { bg: '#EBF1FF', text: '#375DFB' },
-  Новости: { bg: '#FEF3C7', text: '#92400E' },
-  Блог:    { bg: '#F0FDF4', text: '#166534' },
-  Видео:   { bg: '#FEE2E2', text: '#991B1B' },
+  3: [
+    mkComment(1, 'Орёл', '/teacher1-main.jpg', 'Читал на одном дыхании. Узнал себя в каждом абзаце — тот же путь, те же сомнения.', '20 марта', 54, { '❤️': 20, '🔥': 7 }),
+    mkComment(2, 'Скаут', '/logo.png', 'Сколько в итоге времени ушло на всю подготовку? Хочу повторить твой опыт.', '21 марта', 18, { '👍': 4 }),
+    mkComment(3, 'Бек', '/teacher2-main.jpg', 'Около 3 месяцев интенсива. Главное — не пропускать тренировки, даже когда кажется что сил нет.', '21 марта', 41, { '👍': 11, '🔥': 6 }),
+  ],
+  4: [
+    mkComment(1, 'Медик-Альфа', '/logo.png', 'ТССС-протокол — это база, без которой в реальных условиях не выжить. Спасибо за разбор.', '19 марта', 73, { '👍': 18, '❤️': 9 }),
+    mkComment(2, 'Коба', '/teacher3-main.jpg', 'Практику по жгутам лучше отрабатывать вслепую — в бою темно бывает. Добавим в курс.', '19 марта', 88, { '🔥': 25, '👍': 14 }),
+    mkComment(3, 'Ромео', '/teacher2-main.jpg', 'Когда будет отдельный курс по тактмеду? Очень нужно.', '20 марта', 34, { '👍': 7 }),
+  ],
+  5: [
+    mkComment(1, 'Снайпер-22', '/logo.png', 'Наконец-то внятный разбор хвата. Гонял по этому видео всю неделю — ошибки исправились.', '18 марта', 91, { '👍': 30, '🔥': 18 }),
+    mkComment(2, 'Торнадо', '/teacher1-main.jpg', 'Отдельно выйдет разбор по позициям стрельбы. Следите за обновлениями.', '18 марта', 112, { '🔥': 42, '❤️': 17 }),
+    mkComment(3, 'Марк', '/logo.png', 'Можно ли применять эти советы для АК-12?', '19 марта', 22, { '😮': 2 }),
+    mkComment(4, 'Инструктор К', '/teacher3-main.jpg', 'В целом да — основы хвата универсальны, но есть нюансы под складной приклад.', '19 марта', 38, { '👍': 10 }),
+  ],
+  6: [
+    mkComment(1, 'Сова', '/logo.png', 'Был на соревнованиях, атмосфера невероятная! Ждём следующего этапа.', '17 марта', 29, { '❤️': 8, '🔥': 4 }),
+    mkComment(2, 'Спектр', '/teacher2-main.jpg', 'Отличная организация, маршрут сложный, но честный. Молодцы!', '17 марта', 47, { '👍': 15 }),
+  ],
+  7: [
+    mkComment(1, 'Рысь', '/logo.png', 'История вдохновляет. Сам думаю о смене профессии — теперь точно решусь.', '15 марта', 65, { '❤️': 22, '🔥': 11 }),
+    mkComment(2, 'Коба', '/teacher3-main.jpg', 'Главное — найти своих людей. Команда Воеводы дала мне именно это.', '16 марта', 78, { '❤️': 30, '🔥': 8 }),
+    mkComment(3, 'Зенит', '/teacher1-main.jpg', 'Коба, вы лучший наставник. Ваш курс изменил мою жизнь.', '16 марта', 43, { '❤️': 14 }),
+  ],
+  8: [
+    mkComment(1, 'Гром', '/logo.png', 'Программа огонь! Уже на 3-й неделе и разница чувствуется. Спасибо, Стрелок!', '14 марта', 56, { '🔥': 20, '👍': 8 }),
+    mkComment(2, 'Стрелок', '/teacher2-main.jpg', 'Главное — не форсировать нагрузку. Тело адаптируется постепенно.', '14 марта', 71, { '👍': 19, '❤️': 7 }),
+    mkComment(3, 'Ягуар', '/logo.png', 'Что посоветуете вместо бега, если проблемы с коленями?', '15 марта', 24, { '😮': 3 }),
+    mkComment(4, 'Стрелок', '/teacher2-main.jpg', 'Велосипед, плавание или эллипс — кардио без ударной нагрузки. Силовые оставляй.', '15 марта', 38, { '👍': 12 }),
+  ],
 };
 
 function IcHeart({ active = false }: { active?: boolean }) {
@@ -77,10 +260,15 @@ function IcThumb({ color = '#D1D5DB', size = 18 }: { color?: string; size?: numb
   );
 }
 
-function CommentItem({ comment, onLike }: { comment: Comment; onLike: () => void }) {
+function CommentItem({ comment, onLike, onReact }: { comment: Comment; onLike: () => void; onReact: (r: Reaction) => void }) {
+  const [juked, setJuked] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [shared, setShared] = useState(false);
+  void onReact; // reactions replaced by article-style bar
+
   return (
-    <div style={{ display: 'flex', gap: 12, padding: '14px 0', borderBottom: '1px solid #F5F5F7' }}>
-      <div style={{ width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', background: '#E5E7EB', flexShrink: 0 }}>
+    <div className="ap-comment-item" style={{ display: 'flex', gap: 12, padding: '16px 0', borderBottom: '1px solid #F0F4FA' }}>
+      <div style={{ width: 38, height: 38, borderRadius: 12, overflow: 'hidden', background: '#E5E7EB', flexShrink: 0 }}>
         <img src={comment.avatar} alt=""
           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
           onError={(e: React.SyntheticEvent<HTMLImageElement>) => { e.currentTarget.style.background = '#9CA3AF'; }} />
@@ -90,75 +278,168 @@ function CommentItem({ comment, onLike }: { comment: Comment; onLike: () => void
           <span style={{ fontSize: 13, fontWeight: 700, color: '#111' }}>{comment.author}</span>
           <span style={{ fontSize: 11, color: '#9CA3AF' }}>{comment.date}</span>
         </div>
-        <p style={{ fontSize: 14, color: '#374151', lineHeight: 1.55, margin: '0 0 8px' }}>{comment.text}</p>
-        <button onClick={onLike}
-          style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', cursor: 'pointer', color: comment.liked ? '#EF4444' : '#9CA3AF', fontSize: 12, padding: 0, transition: 'color .15s' }}>
-          <IcHeart active={comment.liked} />
-          {comment.likes + (comment.liked ? 1 : 0)}
-        </button>
+        <p style={{ fontSize: 14, color: '#374151', lineHeight: 1.55, margin: '0 0 10px' }}>{comment.text}</p>
+
+        {/* Same action bar as article, ~70% scale */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <button onClick={onLike} className="ap-action-btn"
+            style={{ minHeight: 34, display: 'flex', alignItems: 'center', gap: 6, padding: '0 14px', borderRadius: 10, border: `1.5px solid ${comment.liked ? '#EF4444' : '#E5EAF2'}`, background: comment.liked ? '#FFF1F1' : '#fff', color: comment.liked ? '#EF4444' : '#374151', fontSize: 12, fontWeight: comment.liked ? 800 : 700, cursor: 'pointer' }}>
+            <IcHeart active={comment.liked} />
+            {comment.likes + (comment.liked ? 1 : 0)}
+          </button>
+
+          <button onClick={() => setJuked(j => !j)} className="ap-action-btn"
+            style={{ minHeight: 34, display: 'flex', alignItems: 'center', gap: 6, padding: '0 14px', borderRadius: 10, border: `1.5px solid ${juked ? '#10B981' : '#E5EAF2'}`, background: juked ? '#F0FDF4' : '#fff', color: juked ? '#10B981' : '#374151', fontSize: 12, fontWeight: juked ? 800 : 700, cursor: 'pointer' }}>
+            <IcThumb color={juked ? '#10B981' : '#D1D5DB'} size={14} />
+            Полезно
+          </button>
+
+          <button onClick={() => { setSaved(s => !s); }} className="ap-action-btn"
+            style={{ minHeight: 34, display: 'flex', alignItems: 'center', gap: 6, padding: '0 14px', borderRadius: 10, border: `1.5px solid ${saved ? '#375DFB' : '#E5EAF2'}`, background: saved ? '#EBF1FF' : '#fff', color: saved ? '#375DFB' : '#374151', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill={saved ? '#375DFB' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /></svg>
+            {saved ? 'Сохранено' : 'Сохранить'}
+          </button>
+
+          <button onClick={() => { navigator.clipboard.writeText(window.location.href).catch(() => {}); setShared(true); setTimeout(() => setShared(false), 2000); }} className="ap-action-btn"
+            style={{ marginLeft: 'auto', minHeight: 34, display: 'flex', alignItems: 'center', gap: 6, padding: '0 14px', borderRadius: 10, border: `1.5px solid ${shared ? '#10B981' : '#E5EAF2'}`, background: shared ? '#F0FDF4' : '#fff', color: shared ? '#10B981' : '#374151', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+            {shared ? (
+              <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12" /></svg>Скопировано!</>
+            ) : (
+              <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" /></svg>Поделиться</>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
 const STYLES = `
-  @keyframes ap-fadeIn { from { opacity: 0; } to { opacity: 1; } }
-  @keyframes ap-fadeUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
-  .ap-hero    { animation: ap-fadeIn .5s ease; }
-  .ap-content { animation: ap-fadeUp .5s .1s ease both; }
-  .ap-back-btn { transition: all .2s ease !important; }
-  .ap-back-btn:hover { background: #EBF1FF !important; color: #375DFB !important; border-color: #C7D2FE !important; transform: translateX(-2px); }
-  .ap-action-btn { transition: all .15s ease !important; }
-  .ap-action-btn:hover { background: #F3F4F6 !important; }
+  @keyframes ap-page-in { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes ap-hero-in { from { opacity: 0; transform: translateY(20px) scale(.985); filter: blur(8px); } to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); } }
+  @keyframes ap-card-in { from { opacity: 0; transform: translateY(26px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes ap-shine { 0% { transform: translateX(-120%) skewX(-18deg); } 45%,100% { transform: translateX(260%) skewX(-18deg); } }
+  @keyframes ap-soft-pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(55,93,251,.18); } 50% { box-shadow: 0 0 0 8px rgba(55,93,251,0); } }
+  .ap-page { position: relative; overflow: hidden; background: #f4f5f8; color: #162033; font-family: "Exo 2", system-ui, sans-serif; }
+  .ap-shell { position: relative; z-index: 1; animation: ap-page-in .45s ease both; }
+  .ap-hero { animation: ap-hero-in .5s cubic-bezier(.16,1,.3,1) both; box-shadow: 0 18px 46px rgba(21,36,74,.12); }
+  .ap-content { animation: ap-card-in .42s .08s cubic-bezier(.16,1,.3,1) both; box-shadow: 0 16px 44px rgba(21,36,74,.08); }
+  .ap-author-row { border: 1px solid #e6ebf4; border-radius: 18px; background: #fff; padding: 16px; box-shadow: inset 0 1px 0 rgba(255,255,255,.8); }
+  .ap-title { letter-spacing: 0; text-wrap: balance; }
+  .ap-article-text { max-width: 860px; }
+  .ap-action-btn { transition: transform .18s ease, box-shadow .18s ease, background .18s ease, border-color .18s ease, color .18s ease !important; }
+  .ap-action-btn:hover { background: #F3F6FF !important; border-color: #c7d2fe !important; transform: translateY(-2px); box-shadow: 0 10px 24px rgba(55,93,251,.12); }
+  .ap-comments > div:first-child h3 { font-size: 24px !important; font-weight: 900 !important; color: #111827 !important; }
+  .ap-comments > div:first-child span { background: #F2F4F7 !important; color: #667085 !important; font-size: 14px !important; font-weight: 850 !important; padding: 4px 12px !important; border-radius: 999px !important; }
+  .ap-comments > div:nth-of-type(2) { gap: 14px !important; margin-bottom: 28px !important; padding: 18px !important; border: 1px solid #E3EAF6; border-radius: 18px; background: #fff; box-shadow: 0 14px 32px rgba(21,36,74,.05); }
+  .ap-comments textarea { padding: 14px 16px !important; border-color: #E5EAF2 !important; border-radius: 14px !important; background: #FBFCFF !important; font-size: 15px !important; line-height: 1.6 !important; transition: border-color .15s, box-shadow .15s !important; }
+  .ap-comments textarea:focus { box-shadow: 0 0 0 4px rgba(55,93,251,.12); }
+  .ap-comment-item { padding: 16px 0 !important; gap: 14px !important; border-bottom-color: #EDF1F7 !important; animation: ap-card-in .42s ease both; }
+  .ap-comment-item > div:first-child { width: 38px !important; height: 38px !important; border-radius: 12px !important; }
+  .ap-comment-item p { font-size: 14px !important; color: #3F4A5F !important; }
+  .ap-back-btn { position: fixed; left: 72px; z-index: 1250; display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 18px; border: 1.5px solid #E1E6F0; border-radius: 12px; background: rgba(255,255,255,.92); backdrop-filter: blur(10px); color: #374151; font-size: 14px; font-weight: 750; cursor: pointer; box-shadow: 0 8px 24px rgba(21,36,74,.10); will-change: top; }
+  .ap-back-btn:hover { background: #F8FAFC !important; color: #111827 !important; border-color: #CBD5E1 !important; transform: translateX(-3px) !important; box-shadow: 0 10px 24px rgba(21,36,74,.14) !important; }
   .ap-tag { transition: all .15s !important; cursor: pointer; }
-  .ap-tag:hover { background: rgba(55,93,251,.25) !important; transform: scale(1.05); }
+  .ap-tag:hover { background: rgba(255,255,255,.26) !important; transform: translateY(-2px); }
   .ap-sub-btn { transition: all .15s !important; }
-  .ap-sub-btn:hover { transform: scale(1.04) !important; }
-  .ap-nav-btn { transition: all .2s ease !important; }
-  .ap-nav-btn:hover { border-color: #C7D2FE !important; background: #F3F6FF !important; box-shadow: 0 4px 16px rgba(55,93,251,.12) !important; }
+  .ap-sub-btn:hover { transform: translateY(-2px) !important; box-shadow: 0 12px 28px rgba(55,93,251,.18); }
+  @media (max-width: 900px) {
+    .ap-shell { padding-left: 18px !important; padding-right: 18px !important; }
+    .ap-hero { height: 360px !important; border-radius: 22px !important; }
+    .ap-content > div { padding-left: 24px !important; padding-right: 24px !important; }
+    .ap-back-btn { top: 68px; left: 64px; }
+  }
+  @media (max-width: 640px) {
+    .ap-shell { padding-top: 18px !important; }
+    .ap-hero { height: 300px !important; }
+    .ap-content { border-radius: 20px !important; }
+    .ap-author-row { align-items: flex-start !important; }
+    .ap-back-btn { top: 64px; left: 60px; padding: 0 12px; font-size: 13px; }
+  }
 `;
 
 export function ArticlePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const commentsRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const reviews = useReviewsStore(state => state.reviews);
+  const reviewArticles: Article[] = reviews.map(review => ({
+    id: 100000 + review.id,
+    category: 'Блог' as Article['category'],
+    title: review.title,
+    excerpt: review.text,
+    author: review.name,
+    authorAvatar: review.image,
+    authorFollowers: 'Участник Воеводы',
+    date: new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(review.createdAt)),
+    readTime: `${Math.max(1, Math.ceil(review.text.length / 700))} мин`,
+    views: '0',
+    likes: 0,
+    comments: 0,
+    image: '/journal-main.jpg',
+    tags: ['Отзыв', review.city, `${review.rating} из 5`],
+  }));
+  const availableArticles = [...reviewArticles, ...ARTICLES];
 
   const articleId = Number(id);
-  const article = ARTICLES.find((a: Article) => a.id === articleId) ?? null;
-  const articleIndex = ARTICLES.findIndex((a: Article) => a.id === articleId);
-  const prevArticle: Article | null = articleIndex > 0 ? ARTICLES[articleIndex - 1] : null;
-  const nextArticle: Article | null = articleIndex < ARTICLES.length - 1 ? ARTICLES[articleIndex + 1] : null;
+  const article = availableArticles.find((a: Article) => a.id === articleId) ?? null;
 
   const [liked, setLiked] = useState(false);
   const [juked, setJuked] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const { toggle: toggleFavorite, has: hasFavorite } = useFavoritesStore();
+  const saved = article ? hasFavorite(article.id, 'article') : false;
   const [shared, setShared] = useState(false);
-  const [subscribed, setSubscribed] = useState(false);
+
+  const { subscribe, unsubscribe, isSubscribed } = useSubscriptionsStore();
+  const subscribed = article ? isSubscribed(article.author) : false;
+  const currentUser = useAuthStore(s => s.user);
+  const myAvatar = currentUser?.avatar || '/logo.png';
+  const myName = currentUser ? (currentUser.firstName || currentUser.login || 'Вы') : 'Вы';
+
   const [newComment, setNewComment] = useState('');
   const [comments, setComments] = useState<Comment[]>(
     article ? (INITIAL_COMMENTS[article.id] ?? []) : []
   );
   const [commentCount, setCommentCount] = useState<number>(article?.comments ?? 0);
 
+  const ROUTE_HEADER_H = 60; // GlobalRouteHeader height
+  const MAIN_HEADER_H  = 60; // main fixed header height
+  const BTN_TOP_LOW    = MAIN_HEADER_H + ROUTE_HEADER_H + 10; // 130px — both visible
+  const BTN_TOP_HIGH   = MAIN_HEADER_H + 12;                  //  72px — route header scrolled away
+
+  const [btnTop, setBtnTop] = useState(BTN_TOP_LOW);
+
+  useEffect(() => {
+    const onScroll = () => {
+      const progress = Math.min(window.scrollY / ROUTE_HEADER_H, 1);
+      setBtnTop(BTN_TOP_LOW - progress * (BTN_TOP_LOW - BTN_TOP_HIGH));
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
   useEffect(() => { window.scrollTo({ top: 0 }); }, [id]);
 
   if (!article) {
     return (
-      <div style={{ marginTop: 60, marginLeft: 56, minHeight: 'calc(100vh - 60px)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F4F5F8' }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 48, marginBottom: 12 }}>404</div>
-          <div style={{ fontSize: 16, color: '#6B7280', marginBottom: 20 }}>Статья не найдена</div>
-          <button onClick={() => navigate('/journal')}
-            style={{ padding: '10px 24px', background: '#375DFB', border: 'none', borderRadius: 12, color: '#fff', fontWeight: 600, cursor: 'pointer' }}>
-            ← В журнал
-          </button>
+      <>
+        <style>{STYLES}</style>
+        <div className="ap-page" style={{ minHeight: 'calc(100vh - 120px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>404</div>
+            <div style={{ fontSize: 16, color: '#6B7280', marginBottom: 20 }}>Статья не найдена</div>
+            <button onClick={() => navigate('/journal')}
+              style={{ padding: '10px 24px', background: '#375DFB', border: 'none', borderRadius: 12, color: '#fff', fontWeight: 600, cursor: 'pointer' }}>
+              ← В журнал
+            </button>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
-
-  const cat = CAT_COLORS[article.category] ?? { bg: '#F3F4F6', text: '#374151' };
 
   const handleShare = () => {
     navigator.clipboard?.writeText(window.location.href).catch(() => {});
@@ -169,7 +450,17 @@ export function ArticlePage() {
   const handleSubmitComment = () => {
     const text = newComment.trim();
     if (!text) return;
-    const next: Comment = { id: Date.now(), author: 'Вы', avatar: '/logo.png', text, date: 'Только что', likes: 0, liked: false };
+    const next: Comment = {
+      id: Date.now(),
+      author: myName,
+      avatar: myAvatar,
+      text,
+      date: 'Только что',
+      likes: 0,
+      liked: false,
+      reactions: { '👍': 0, '❤️': 0, '🔥': 0, '😮': 0, '😂': 0 },
+      myReaction: null,
+    };
     setComments((prev: Comment[]) => [...prev, next]);
     setCommentCount((prev: number) => prev + 1);
     setNewComment('');
@@ -181,107 +472,180 @@ export function ArticlePage() {
     );
   };
 
+  const handleReact = (cid: number, reaction: Reaction) => {
+    setComments((prev: Comment[]) =>
+      prev.map((x: Comment) => {
+        if (x.id !== cid) return x;
+        const prevReaction = x.myReaction;
+        const newReactions = { ...x.reactions };
+        if (prevReaction) newReactions[prevReaction] = Math.max(0, newReactions[prevReaction] - 1);
+        const isToggle = prevReaction === reaction;
+        if (!isToggle) newReactions[reaction] = newReactions[reaction] + 1;
+        return { ...x, reactions: newReactions, myReaction: isToggle ? null : reaction };
+      })
+    );
+  };
+
+  const goBack = () => {
+    const returnTo = (location.state as { returnTo?: string } | null)?.returnTo;
+    if (returnTo) navigate(-1);
+    else navigate('/journal');
+  };
+
+  const handleFavorite = () => {
+    if (!article) return;
+    toggleFavorite({
+      id: article.id,
+      kind: 'article',
+      title: article.title,
+      author: article.author,
+      date: article.date,
+      image: article.image,
+      category: article.category,
+      stats: {
+        views: Number.parseInt(article.views.replace(/\D/g, ''), 10) || 0,
+        hearts: article.likes,
+        likes: article.likes,
+        comments: article.comments,
+      },
+      available: true,
+    });
+  };
+
+  const handleSubscribe = () => {
+    if (subscribed) unsubscribe(article.author);
+    else subscribe(article.author);
+  };
+
   return (
     <>
       <style>{STYLES}</style>
-      <div style={{ marginTop: 60, marginLeft: 56, minHeight: 'calc(100vh - 60px)', background: '#F4F5F8', fontFamily: 'Inter, system-ui, sans-serif' }}>
-        <div style={{ maxWidth: 820, margin: '0 auto', padding: '28px 24px 80px' }}>
 
-          {/* Breadcrumb */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24 }}>
-            <button onClick={() => navigate('/journal')} className="ap-back-btn"
-              style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '8px 16px', border: '1.5px solid #E5E7EB', borderRadius: 10, background: '#fff', color: '#374151', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
-              Назад в журнал
-            </button>
-            <span style={{ fontSize: 12, color: '#D1D5DB' }}>/</span>
-            <span style={{ background: cat.bg, color: cat.text, fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 20 }}>
+      {/* Fixed back button — smart scroll */}
+      <button onClick={goBack} className="ap-back-btn" style={{ top: btnTop, transition: 'top 0.18s cubic-bezier(0.4,0,0.2,1)' }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+          <polyline points="15 18 9 12 15 6" />
+        </svg>
+        Назад
+      </button>
+
+      <div className="ap-page" style={{ minHeight: 'calc(100vh - 120px)' }}>
+        <div className="ap-shell" style={{ maxWidth: 1120, margin: '0 auto', padding: '16px 32px 96px' }}>
+
+          {/* Category badge */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+            <span style={{ background: '#fff', color: '#667085', fontSize: 12, fontWeight: 850, padding: '7px 14px', border: '1px solid #E1E6F0', borderRadius: 999, boxShadow: '0 8px 18px rgba(21,36,74,.05)' }}>
               {article.category}
             </span>
+            <span style={{ fontSize: 12, color: '#9CA3AF' }}>{article.date} · {article.readTime} чтения · {article.views} просмотров</span>
           </div>
 
           {/* Hero */}
-          <div className="ap-hero" style={{ height: 380, borderRadius: 20, overflow: 'hidden', position: 'relative', marginBottom: 32 }}>
+          <div className="ap-hero" style={{ height: 430, borderRadius: 24, overflow: 'hidden', position: 'relative', marginBottom: 24, border: '1px solid rgba(203,213,225,.85)', background: '#dbe3ef' }}>
             <img src={article.image} alt={article.title}
-              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+              style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', display: 'block' }}
               onError={(e: React.SyntheticEvent<HTMLImageElement>) => { e.currentTarget.style.background = '#E5E7EB'; }} />
-            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(0deg, rgba(0,0,0,.45) 0%, transparent 55%)' }} />
-            <div style={{ position: 'absolute', bottom: 24, left: 28, right: 28, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {article.tags.map((tag: string) => (
-                <span key={tag} className="ap-tag"
-                  style={{ background: 'rgba(255,255,255,.15)', backdropFilter: 'blur(8px)', color: '#fff', fontSize: 11, fontWeight: 600, padding: '4px 12px', borderRadius: 20, border: '1px solid rgba(255,255,255,.2)' }}>
-                  #{tag}
-                </span>
-              ))}
-            </div>
+            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(0deg, rgba(8,18,42,.14) 0%, rgba(8,18,42,0) 46%)' }} />
           </div>
 
           {/* Content */}
-          <div className="ap-content" style={{ background: '#fff', borderRadius: 20, border: '1px solid #E5E7EB', overflow: 'hidden' }}>
-            <div style={{ padding: '32px 40px 0' }}>
+          <div className="ap-content" style={{ maxWidth: 1120, margin: '0 auto', background: '#fff', borderRadius: 24, border: '1px solid #E1E7F0', overflow: 'hidden', position: 'relative', zIndex: 4 }}>
+            <div style={{ padding: '42px 52px 0' }}>
 
               {/* Author row */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24 }}>
-                <div style={{ width: 50, height: 50, borderRadius: '50%', overflow: 'hidden', background: '#E5E7EB', flexShrink: 0, border: '2px solid #EBF1FF' }}>
+              <div className="ap-author-row" style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 30 }}>
+                <div
+                  onClick={() => navigate(`/users/${encodeURIComponent(article.author)}`)}
+                  style={{ width: 58, height: 58, borderRadius: 16, overflow: 'hidden', background: '#E5E7EB', flexShrink: 0, border: '2px solid #EBF1FF', boxShadow: '0 12px 24px rgba(55,93,251,.12)', cursor: 'pointer' }}
+                >
                   <img src={article.authorAvatar} alt=""
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     onError={(e: React.SyntheticEvent<HTMLImageElement>) => { e.currentTarget.style.background = '#9CA3AF'; }} />
                 </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: '#111' }}>{article.author}</div>
-                  <div style={{ fontSize: 12, color: '#9CA3AF' }}>
-                    {article.authorFollowers} подписчиков · {article.date} · {article.readTime} чтения
+                <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => navigate(`/users/${encodeURIComponent(article.author)}`)}>
+                  <div style={{ fontSize: 18, fontWeight: 850, color: '#111827' }}>{article.author}</div>
+                  <div style={{ fontSize: 13, color: '#8792A6', marginTop: 3 }}>
+                    {article.authorFollowers} подписчиков
                   </div>
                 </div>
-                <button onClick={() => setSubscribed(!subscribed)} className="ap-sub-btn"
-                  style={{ padding: '9px 22px', borderRadius: 22, border: `1.5px solid ${subscribed ? '#E5E7EB' : '#375DFB'}`, background: subscribed ? '#F3F4F6' : '#375DFB', color: subscribed ? '#6B7280' : '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                <button onClick={handleSubscribe} className="ap-sub-btn"
+                  style={{ minHeight: 48, padding: '0 28px', borderRadius: 13, border: `1.5px solid ${subscribed ? '#E5E7EB' : '#375DFB'}`, background: subscribed ? '#F3F4F6' : '#375DFB', color: subscribed ? '#6B7280' : '#fff', fontSize: 15, fontWeight: 850, cursor: 'pointer', boxShadow: subscribed ? 'none' : '0 14px 30px rgba(55,93,251,.22)' }}>
                   {subscribed ? '✓ Подписан' : 'Подписаться'}
                 </button>
               </div>
 
-              <h1 style={{ fontSize: 28, fontWeight: 800, color: '#111', marginBottom: 18, lineHeight: 1.3 }}>
+              <h1 className="ap-title" style={{ display: 'block', maxWidth: 900, fontSize: 42, fontWeight: 900, color: '#111827', margin: '0 0 20px', lineHeight: 1.12 }}>
                 {article.title}
               </h1>
-              <p style={{ fontSize: 16, color: '#374151', lineHeight: 1.78, marginBottom: 20 }}>{article.excerpt}</p>
-              <p style={{ fontSize: 16, color: '#374151', lineHeight: 1.78, marginBottom: 20 }}>
-                Военная подготовка требует комплексного подхода. Физическая форма, тактическое мышление,
-                медицинские знания — всё это необходимо для успешного прохождения курса. Начинать готовиться
-                следует минимум за 3 месяца до начала обучения.
-              </p>
-              <p style={{ fontSize: 16, color: '#374151', lineHeight: 1.78, marginBottom: 32 }}>
-                Рекомендуется развить базовые физические показатели: пробегать 3 км за 14 минут,
-                подтягиваться 10 раз, отжиматься 30 раз. Психологическая устойчивость не менее важна —
-                умение действовать в условиях стресса и неопределённости.
-              </p>
+              <p className="ap-article-text" style={{ fontSize: 20, color: '#1F2937', lineHeight: 1.74, margin: '0 0 24px', fontWeight: 600 }}>{article.excerpt}</p>
+              {(() => {
+                const bodies: Record<string, [string, string, string]> = {
+                  'Статьи': [
+                    'Военная подготовка требует комплексного подхода. Физическая форма, тактическое мышление, медицинские знания — всё это необходимо для успешного прохождения курса. Начинать готовиться следует минимум за три месяца до начала обучения.',
+                    'Особое внимание стоит уделить ориентированию на местности и действиям в составе малой группы. Эти навыки формируют базу, без которой невозможно двигаться к более сложным дисциплинам — снайперскому делу, тактической медицине или разведывательной подготовке.',
+                    'Рекомендуется развить базовые физические показатели: пробегать 3 км за 14 минут, подтягиваться 10 раз, отжиматься 30 раз. Психологическая устойчивость не менее важна — умение действовать в условиях стресса и неопределённости формируется только в реальных полевых условиях.',
+                  ],
+                  'Новости': [
+                    'Событие получило широкий отклик в сообществе. Эксперты отмечают, что подобные инициативы существенно повышают уровень готовности гражданского резерва и создают прочную основу для взаимодействия между профессиональными военными и добровольцами.',
+                    'По словам организаторов, ключевым приоритетом остаётся качество подготовки, а не её массовость. Каждый участник проходит индивидуальное тестирование и получает персональный план развития, составленный с учётом уровня физической подготовки и предыдущего опыта.',
+                    'Ожидается, что в ближайшие месяцы программа охватит дополнительные регионы страны. Подробная информация о расписании и порядке записи будет опубликована на официальных ресурсах организации.',
+                  ],
+                  'Поток': [
+                    'Первые занятия дались непросто — физические нагрузки оказались значительно выше того, к чему я привык на гражданке. Но уже через две недели тело начало адаптироваться, и то, что казалось невозможным, стало рабочим ритмом.',
+                    'Сильнее всего меня впечатлил подход инструкторов к разбору ошибок. Никакого давления — только конструктивный анализ: что произошло, почему, как избежать в следующий раз. Такой формат позволяет учиться быстро и без страха совершить промах снова.',
+                    'Если вы думаете о том, чтобы записаться, — не откладывайте. Сложно только первые несколько занятий. Потом начинаешь замечать, как меняется не только физическая форма, но и способность принимать решения под давлением. Это трудно описать словами — это нужно прожить.',
+                  ],
+                  'Блог': [
+                    'За годы практики я убедился: самые распространённые ошибки совершаются не от незнания, а от спешки. Когда есть время на подготовку, большинство бойцов справляются с задачей. Настоящая проверка — действие в условиях дефицита времени и информации.',
+                    'Хорошей точкой старта служит работа над базовыми рефлексами: занятие позиции, проверка снаряжения, оценка местности. Эти действия должны выполняться автоматически, чтобы голова оставалась свободной для тактических решений.',
+                    'Помните: физическая подготовка — лишь один из компонентов боеспособности. Не менее важны навыки командной работы, понимание тактики малых групп и способность сохранять спокойствие, когда план перестаёт работать. Именно на это направлены программы Воеводы.',
+                  ],
+                };
+                const key = article.category as string;
+                const paras = bodies[key] ?? bodies['Статьи'];
+                return paras.map((text, i) => (
+                  <p key={i} className="ap-article-text" style={{ fontSize: 18, color: '#3F4A5F', lineHeight: 1.86, marginBottom: i < paras.length - 1 ? 22 : 38 }}>{text}</p>
+                ));
+              })()}
+
+              {/* Tags */}
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 30 }}>
+                {article.tags.map((tag: string) => (
+                  <span key={tag} className="ap-tag"
+                    style={{ background: '#F3F6FF', color: '#375DFB', fontSize: 12, fontWeight: 700, padding: '6px 13px', borderRadius: 999, border: '1px solid #C7D2FE' }}>
+                    #{tag}
+                  </span>
+                ))}
+              </div>
 
               {/* Action bar */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 20, paddingBottom: 24, borderTop: '1px solid #F0F0F0', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingTop: 26, paddingBottom: 30, borderTop: '1px solid #EDF1F7', flexWrap: 'wrap' }}>
                 <button onClick={() => setLiked(!liked)} className="ap-action-btn"
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', borderRadius: 24, border: `1.5px solid ${liked ? '#EF4444' : '#E5E7EB'}`, background: liked ? '#FFF1F1' : '#fff', color: liked ? '#EF4444' : '#374151', fontSize: 14, fontWeight: liked ? 600 : 400, cursor: 'pointer' }}>
+                  style={{ minHeight: 46, display: 'flex', alignItems: 'center', gap: 8, padding: '0 20px', borderRadius: 14, border: `1.5px solid ${liked ? '#EF4444' : '#E5EAF2'}`, background: liked ? '#FFF1F1' : '#fff', color: liked ? '#EF4444' : '#374151', fontSize: 14, fontWeight: liked ? 800 : 700, cursor: 'pointer' }}>
                   <IcHeart active={liked} />
                   {(article.likes + (liked ? 1 : 0)).toLocaleString('ru')}
                 </button>
 
                 <button onClick={() => setJuked(!juked)} className="ap-action-btn"
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', borderRadius: 24, border: `1.5px solid ${juked ? '#10B981' : '#E5E7EB'}`, background: juked ? '#F0FDF4' : '#fff', color: juked ? '#10B981' : '#374151', fontSize: 14, fontWeight: juked ? 600 : 400, cursor: 'pointer' }}>
+                  style={{ minHeight: 46, display: 'flex', alignItems: 'center', gap: 8, padding: '0 20px', borderRadius: 14, border: `1.5px solid ${juked ? '#10B981' : '#E5EAF2'}`, background: juked ? '#F0FDF4' : '#fff', color: juked ? '#10B981' : '#374151', fontSize: 14, fontWeight: juked ? 800 : 700, cursor: 'pointer' }}>
                   <IcThumb color={juked ? '#10B981' : '#D1D5DB'} />
                   Полезно
                 </button>
 
                 <button onClick={() => commentsRef.current?.scrollIntoView({ behavior: 'smooth' })} className="ap-action-btn"
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', borderRadius: 24, border: '1.5px solid #E5E7EB', background: '#fff', color: '#374151', fontSize: 14, cursor: 'pointer' }}>
+                  style={{ minHeight: 46, display: 'flex', alignItems: 'center', gap: 8, padding: '0 20px', borderRadius: 14, border: '1.5px solid #E5EAF2', background: '#fff', color: '#374151', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
                   {commentCount}
                 </button>
 
-                <button onClick={() => setSaved(!saved)} className="ap-action-btn"
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', borderRadius: 24, border: `1.5px solid ${saved ? '#375DFB' : '#E5E7EB'}`, background: saved ? '#EBF1FF' : '#fff', color: saved ? '#375DFB' : '#374151', fontSize: 14, cursor: 'pointer' }}>
+                <button onClick={handleFavorite} className="ap-action-btn"
+                  style={{ minHeight: 46, display: 'flex', alignItems: 'center', gap: 8, padding: '0 20px', borderRadius: 14, border: `1.5px solid ${saved ? '#375DFB' : '#E5EAF2'}`, background: saved ? '#EBF1FF' : '#fff', color: saved ? '#375DFB' : '#374151', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
                   <svg width="15" height="15" viewBox="0 0 24 24" fill={saved ? '#375DFB' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /></svg>
                   {saved ? 'Сохранено' : 'Сохранить'}
                 </button>
 
                 <button onClick={handleShare} className="ap-action-btn"
-                  style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', borderRadius: 24, border: `1.5px solid ${shared ? '#10B981' : '#E5E7EB'}`, background: shared ? '#F0FDF4' : '#fff', color: shared ? '#10B981' : '#374151', fontSize: 14, cursor: 'pointer' }}>
+                  style={{ marginLeft: 'auto', minHeight: 46, display: 'flex', alignItems: 'center', gap: 8, padding: '0 20px', borderRadius: 14, border: `1.5px solid ${shared ? '#10B981' : '#E5EAF2'}`, background: shared ? '#F0FDF4' : '#fff', color: shared ? '#10B981' : '#374151', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
                   {shared ? (
                     <>
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12" /></svg>
@@ -301,18 +665,18 @@ export function ArticlePage() {
             </div>
 
             {/* Comments section */}
-            <div ref={commentsRef} style={{ padding: '28px 40px 40px', borderTop: '1px solid #F0F0F0' }}>
+            <div ref={commentsRef} className="ap-comments" style={{ padding: '34px 52px 52px', borderTop: '1px solid #EDF1F7', background: 'linear-gradient(180deg,#fbfcff,#fff)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 22 }}>
                 <h3 style={{ fontSize: 18, fontWeight: 700, color: '#111', margin: 0 }}>Комментарии</h3>
                 <span style={{ background: '#F3F4F6', color: '#6B7280', fontSize: 13, fontWeight: 600, padding: '2px 10px', borderRadius: 20 }}>{commentCount}</span>
               </div>
 
               {/* New comment input */}
-              <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
-                <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#EBF1FF', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#375DFB" strokeWidth="1.5">
-                    <circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
-                  </svg>
+              <div style={{ display: 'flex', gap: 12, marginBottom: 28, background: '#fff', border: '1px solid #E3EAF6', borderRadius: 18, padding: 18, boxShadow: '0 14px 32px rgba(21,36,74,.05)' }}>
+                <div style={{ width: 44, height: 44, borderRadius: 14, background: '#EBF1FF', flexShrink: 0, overflow: 'hidden' }}>
+                  <img src={myAvatar} alt={myName}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    onError={(e: React.SyntheticEvent<HTMLImageElement>) => { e.currentTarget.style.display = 'none'; }} />
                 </div>
                 <div style={{ flex: 1 }}>
                   <textarea
@@ -343,46 +707,16 @@ export function ArticlePage() {
 
               {comments.length > 0
                 ? comments.map((c: Comment) => (
-                    <CommentItem key={c.id} comment={c} onLike={() => toggleCommentLike(c.id)} />
+                    <CommentItem
+                      key={c.id}
+                      comment={c}
+                      onLike={() => toggleCommentLike(c.id)}
+                      onReact={(r) => handleReact(c.id, r)}
+                    />
                   ))
                 : <div style={{ textAlign: 'center', padding: '32px 0', color: '#9CA3AF', fontSize: 14 }}>Будьте первым, кто оставит комментарий</div>}
             </div>
           </div>
-
-          {/* ─── Prev / Next navigation — FIXED ─── */}
-          {(prevArticle || nextArticle) && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 24 }}>
-              {prevArticle ? (
-                <button onClick={() => navigate(`/journal/${prevArticle.id}`)} className="ap-nav-btn"
-                  style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 20px', background: '#fff', border: '1.5px solid #E5E7EB', borderRadius: 16, cursor: 'pointer', textAlign: 'left', overflow: 'hidden', minWidth: 0 }}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#375DFB" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}>
-                    <polyline points="15 18 9 12 15 6" />
-                  </svg>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 11, color: '#9CA3AF', marginBottom: 4, fontWeight: 500 }}>Предыдущая</div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {prevArticle.title}
-                    </div>
-                  </div>
-                </button>
-              ) : <div />}
-
-              {nextArticle ? (
-                <button onClick={() => navigate(`/journal/${nextArticle.id}`)} className="ap-nav-btn"
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 14, padding: '16px 20px', background: '#fff', border: '1.5px solid #E5E7EB', borderRadius: 16, cursor: 'pointer', textAlign: 'right', overflow: 'hidden', minWidth: 0 }}>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 11, color: '#9CA3AF', marginBottom: 4, fontWeight: 500 }}>Следующая</div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#111', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {nextArticle.title}
-                    </div>
-                  </div>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#375DFB" strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}>
-                    <polyline points="9 18 15 12 9 6" />
-                  </svg>
-                </button>
-              ) : <div />}
-            </div>
-          )}
 
         </div>
       </div>

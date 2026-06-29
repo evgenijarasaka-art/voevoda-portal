@@ -77,3 +77,13 @@ export async function createWalletTopupPayment(payload: WalletTopupPayload) {
   const { data } = await apiClient.post<CreatePaymentResponse>('/payments/wallet/topup/', payload);
   return data;
 }
+
+export interface CardBindingPayload {
+  email: string;
+  return_url: string;
+}
+
+export async function createCardBindingPayment(payload: CardBindingPayload) {
+  const { data } = await apiClient.post<CreatePaymentResponse>('/payments/card/bind/', payload);
+  return data;
+}

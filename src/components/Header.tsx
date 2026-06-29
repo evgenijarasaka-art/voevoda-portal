@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useNotifStore } from '../store/useNotifStore';
@@ -39,6 +39,8 @@ function injectA11yStyles() {
       -webkit-text-stroke: 1.2px currentColor !important;
       text-shadow: 0 0 1px currentColor, 0 0 2px currentColor !important;
     }
+    @keyframes headerBellRing { 0%,100%{transform:rotate(0)}20%{transform:rotate(13deg)}40%{transform:rotate(-11deg)}60%{transform:rotate(7deg)}80%{transform:rotate(-4deg)} }
+    @keyframes headerBadgePop { 0%{transform:scale(.55)}55%{transform:scale(1.28)}100%{transform:scale(1)} }
   `;
   document.head.appendChild(s);
 }
@@ -49,6 +51,8 @@ export function Header() {
   const isHome = pathname === '/';
   const { isAuthenticated, user, logout } = useAuth();
   const unreadCount = useNotifStore(s => s.unreadCount());
+  const previousUnread = useRef(unreadCount);
+  const [bellPulse, setBellPulse] = useState(false);
   const cartCount = useCartStore(s => s.items.length);
   const [city, setCity] = useState('Москва');
   const [showCityDrop, setShowCityDrop] = useState(false);
@@ -57,6 +61,15 @@ export function Header() {
   const [contrast, setContrast] = useState<'normal' | 'high'>('normal');
 
   useEffect(() => { injectA11yStyles(); }, []);
+  useEffect(() => {
+    if (unreadCount > previousUnread.current) {
+      setBellPulse(true);
+      const timer = window.setTimeout(() => setBellPulse(false), 900);
+      previousUnread.current = unreadCount;
+      return () => window.clearTimeout(timer);
+    }
+    previousUnread.current = unreadCount;
+  }, [unreadCount]);
 
   const applyFont = (size: 'normal' | 'large' | 'xl') => {
     setFontSize(size);
@@ -86,7 +99,7 @@ export function Header() {
 
   return (
     <>
-      <header style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 200, height: 60, background: '#fff', borderBottom: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', padding: '0 20px', gap: 16 }}>
+      <header style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 3000, height: 60, background: '#fff', borderBottom: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', padding: '0 20px', gap: 16 }}>
 
         {/* Логотип — скрыт на главной */}
         {!isHome && (
@@ -194,10 +207,10 @@ export function Header() {
           </div>
 
           {/* Уведомления */}
-          <button onClick={() => navigate('/notifications')} style={{ position: 'relative', background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', color: '#6B7280' }}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>
+          <button aria-label={`Уведомления: ${unreadCount} непрочитанных`} onClick={() => navigate('/notifications')} style={{ position: 'relative', background: bellPulse?'#EEF3FF':'none', border: 'none', borderRadius:9, cursor: 'pointer', padding: 6, display: 'flex', color: bellPulse?'#375DFB':'#6B7280', transition:'background .2s ease,color .2s ease' }}>
+            <svg style={{ animation:bellPulse?'headerBellRing .75s ease':'none', transformOrigin:'50% 15%' }} width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>
             {unreadCount > 0 && (
-              <div style={{ position: 'absolute', top: 0, right: 0, width: 18, height: 18, borderRadius: '50%', background: '#375DFB', color: '#fff', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #fff' }}>
+              <div style={{ position: 'absolute', top: 0, right: 0, width: 18, height: 18, borderRadius: '50%', background: '#375DFB', color: '#fff', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #fff', animation:bellPulse?'headerBadgePop .42s ease':'none' }}>
                 {unreadCount > 9 ? '9+' : unreadCount}
               </div>
             )}
@@ -245,7 +258,7 @@ export function Header() {
       </header>
 
       {(showA11y || showCityDrop) && (
-        <div onClick={() => { setShowA11y(false); setShowCityDrop(false); }} style={{ position: 'fixed', inset: 0, zIndex: 199 }} />
+        <div onClick={() => { setShowA11y(false); setShowCityDrop(false); }} style={{ position: 'fixed', inset: 0, zIndex: 2999 }} />
       )}
     </>
   );

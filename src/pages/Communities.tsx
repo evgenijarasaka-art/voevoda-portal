@@ -1,454 +1,395 @@
-import { useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import './feature-pages.css';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useCommunitiesStore, type Community } from '../store/useCommunitiesStore';
+import { userProfilePath } from '../api/testApi';
+import { IVDisplay } from '../components/PeopleSection';
+import { shareOrCopy } from '../utils/share';
+import './communities-social.css';
 
-type Community = {
-  id: number; name: string; type: string; city: string;
-  members: number; active: number; posts: number; photos: number;
-  image: string; imagePosition: string; joined: boolean; desc: string;
-};
-
-type Comment = { id: number; author: string; text: string; time: string; };
-
-type Post = {
-  id: number; author: string; text: string;
-  image?: string; imagePosition?: string;
-  time: string; likes: number; comments: number;
-};
-
-const TYPES = ['Все', 'Клубы Воевод', 'Патриотические', 'Ветеранские', 'Спортивные', 'Учебные'];
-
-const MEMBER_PHOTOS: Record<string, string> = {
-  'Торнадо': '/sold1.png',
-  'Бек': '/teacher1-main.jpg',
-  'Коба': '/sold2.png',
-  'Вы': '/teacher2-main.jpg',
-};
-
-const INITIAL_COMMUNITIES: Community[] = [
-  { id: 1, name: 'Боевое братство Воеводы', type: 'Клубы Воевод', city: 'Москва', members: 7640, active: 521, posts: 312, photos: 1850, image: '/voendelo1.png', imagePosition: 'center 42%', joined: true, desc: 'Главное сообщество выпускников и курсантов. Обсуждаем тренировки, встречи, соревнования и взаимопомощь.' },
-  { id: 2, name: 'Снайперы России', type: 'Спортивные', city: 'Санкт-Петербург', members: 1280, active: 84, posts: 91, photos: 430, image: '/voendelo3.png', imagePosition: 'center 45%', joined: false, desc: 'Практика точной стрельбы, разбор соревнований, подготовка к полевым занятиям и командным стартам.' },
-  { id: 3, name: 'Юнармия. Южный рубеж', type: 'Патриотические', city: 'Краснодар', members: 2310, active: 176, posts: 144, photos: 920, image: '/sorev1.png', imagePosition: 'center 38%', joined: false, desc: 'Региональные сборы, наставники, городские мероприятия и волонтерские выезды.' },
-  { id: 4, name: 'Ветераны наставники', type: 'Ветеранские', city: 'Москва', members: 940, active: 63, posts: 76, photos: 310, image: '/voendelo5.png', imagePosition: 'center 45%', joined: false, desc: 'Встречи с наставниками, исторические лекции и помощь в подготовке молодых бойцов.' },
-  { id: 5, name: 'Тактическая медицина', type: 'Учебные', city: 'Казань', members: 1540, active: 112, posts: 88, photos: 560, image: '/медицина1.png', imagePosition: 'center 42%', joined: false, desc: 'Учебные материалы, расписание семинаров, чек-листы и разбор практических занятий.' },
-  { id: 6, name: 'Полигон выходного дня', type: 'Учебные', city: 'Новосибирск', members: 870, active: 45, posts: 39, photos: 260, image: '/specpred1.png', imagePosition: 'center 40%', joined: false, desc: 'Анонсы тренировок, команды на выезд, отчеты и обмен экипировкой перед занятиями.' },
+const TYPES = ['Все', 'Клубы Воевод', 'ВП-клубы / отряды', 'Центры ВП', 'Ветеранские', 'ДОСААФ', 'Юнармия', 'УВЦ', 'Военные ВУЗы', 'Спортивные', 'Другое'];
+const PATRIOT_INTERESTS = [
+  { label: 'Снайперы', query: 'Снайперы', mark: 'СН' },
+  { label: 'Экипажи БПЛА', query: 'БПЛА', mark: 'БП' },
+  { label: 'Сапёры', query: 'Сап', mark: 'СП' },
+  { label: 'Связисты', query: 'Связисты', mark: 'СВ' },
 ];
 
-const INITIAL_POSTS: Post[] = [
-  { id: 1, author: 'Торнадо', text: 'В субботу проводим открытую тренировку по тактическому перемещению. Сбор в 09:30, форма полевая, вода обязательно.', image: '/voendelo4.png', imagePosition: 'top', time: '2 часа назад', likes: 47, comments: 12 },
-  { id: 2, author: 'Бек', text: 'Загрузили фото с последнего занятия. Отдельно отметили группу, которая лучше всех прошла эвакуацию условно раненого.', image: '/медицина2.png', imagePosition: 'center 42%', time: 'Вчера', likes: 31, comments: 8 },
-  { id: 3, author: 'Коба', text: 'Напоминаю: заявки на командные соревнования принимаем до пятницы. Капитаны, проверьте составы.', time: '2 дня назад', likes: 58, comments: 19 },
+type CommunityPost = { id: number; author: string; avatar: string; time: string; text: string; image?: string; likes: number; jumbo: number; comments: number; shares: number };
+type CommunityComment = { id: number; author: string; avatar: string; text: string; time: string };
+
+const POSTS: CommunityPost[] = [
+  { id: 1, author: 'Торнадо', avatar: '/teacher1-main.jpg', time: '2 часа назад', text: 'В субботу проводим открытую тренировку по тактическому перемещению. Сбор в 09:30, форма полевая, вода обязательно.', image: '/voendelo4.png', likes: 47, jumbo: 16, comments: 12, shares: 4 },
+  { id: 2, author: 'Бек', avatar: '/teacher2-main.jpg', time: 'Вчера', text: 'Загрузили фото с последнего занятия. Отдельно отметили группу, которая лучше всех прошла эвакуацию условно раненого.', image: '/медицина2.png', likes: 31, jumbo: 9, comments: 8, shares: 7 },
+  { id: 3, author: 'Коба', avatar: '/teacher3-main.jpg', time: '2 дня назад', text: 'Заявки на командные соревнования принимаем до пятницы. Капитаны, проверьте составы.', likes: 58, jumbo: 21, comments: 19, shares: 5 },
 ];
 
-const SEED_COMMENTS: Record<number, Comment[]> = {
-  1: [
-    { id: 101, author: 'Коба', text: 'Буду. Берём тройку с собой.', time: '1 час назад' },
-    { id: 102, author: 'Бек', text: 'Что по снаряжению — разгрузки нужны?', time: '45 мин назад' },
-  ],
-  2: [
-    { id: 201, author: 'Торнадо', text: 'Хорошая работа, группа молодцы!', time: 'Вчера' },
-  ],
-  3: [
-    { id: 301, author: 'Бек', text: 'Состав отправил на почту.', time: '1 день назад' },
-    { id: 302, author: 'Торнадо', text: 'У нас 4 человека, капитан — Рысь.', time: '1 день назад' },
-    { id: 303, author: 'Коба', text: 'Принял, добавил в таблицу.', time: '22 часа назад' },
-  ],
+const SEED_COMMENTS: Record<number, CommunityComment[]> = {
+  1: [{ id: 101, author: 'Бек', avatar: '/teacher2-main.jpg', text: 'Буду. Форму и аптечку подготовил.', time: '1 час назад' }],
+  2: [{ id: 201, author: 'Коба', avatar: '/teacher3-main.jpg', text: 'Группа сработала собранно. Продолжаем в том же темпе.', time: 'Вчера' }],
 };
 
-function Avatar({ name, size = 42 }: { name: string; size?: number }) {
-  const [err, setErr] = useState(false);
-  const photo = MEMBER_PHOTOS[name];
+const COMMUNITY_AVATARS = ['/logo.png', '/soobsh2.png', '/soobsh3.png', '/soobsh4.png', '/soobsh1.png', '/logo.png'];
+const communityAvatar = (id: number) => COMMUNITY_AVATARS[(id - 1) % COMMUNITY_AVATARS.length];
+
+function UsersIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M8.5 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M20 21v-2a4 4 0 0 0-3-3.8M15.5 3.2a4 4 0 0 1 0 7.6" /></svg>;
+}
+
+function CommunityCard({ item, index, onOpen, onJoin, onAwards }: { item: Community; index: number; onOpen: () => void; onJoin: () => void; onAwards: () => void }) {
+  const ref = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting) { setTimeout(() => el.classList.add('visible'), index * 60); obs.disconnect(); }
+    }, { threshold: 0.04 });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [index]);
+
   return (
-    <div style={{ width: size, height: size, borderRadius: '50%', flexShrink: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#1a2744' }}>
-      {photo && !err
-        ? <img src={photo} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }} onError={() => setErr(true)} />
-        : <span style={{ fontSize: size * 0.38, fontWeight: 700, color: '#f5a623' }}>{name[0]}</span>
-      }
-    </div>
+    <article ref={ref} className={`community-unit-card${index === 0 ? ' featured' : ''}`}>
+      <div className="community-cover" onClick={onOpen} onKeyDown={event => { if (event.key === 'Enter') onOpen(); }} role="button" tabIndex={0} aria-label={`Открыть ${item.name}`}>
+        <img src={item.image} alt="" style={{ objectPosition: item.imagePosition }} />
+        <span className="community-cover-shade" />
+        <span className="community-type">{item.type}</span>
+        {item.joined && <span className="community-formation"><i /> В строю</span>}
+      </div>
+      <div className="community-card-body">
+        <div className="community-avatar"><img src={communityAvatar(item.id)} alt={`Аватар сообщества ${item.name}`} /></div>
+        <div className="community-card-title-row">
+          <div>
+            <h2 onClick={onOpen}>{item.name}</h2>
+            <p>{item.city} · создано {item.createdAt}</p>
+          </div>
+          <span className="community-active" title="Активны сейчас">{item.active}</span>
+        </div>
+        <p className="community-description">{item.desc}</p>
+        <div className="community-metrics">
+          <button onClick={onOpen}><b>{item.active.toLocaleString()}</b> в строю</button>
+          <button onClick={onOpen}><b>{item.members.toLocaleString()}</b> участников</button>
+          <button onClick={onAwards}><b>{item.awards}</b> наград</button>
+          <button onClick={onOpen}><b>{item.posts}</b> статей</button>
+          <button onClick={onOpen}><b>{item.photos}</b> фото</button>
+        </div>
+      </div>
+      <div className="community-card-actions">
+        <button className="community-button" onClick={onOpen}>Подробнее</button>
+        <button className={`community-button${item.joined ? ' joined' : ' primary'}`} onClick={onJoin}>{item.joined ? 'В строю' : 'Подать заявку'}</button>
+      </div>
+    </article>
   );
 }
 
-// Фото поста — натуральное соотношение сторон, без жёсткой обрезки
-function PostImage({ src, position }: { src: string; position?: string }) {
-  const [err, setErr] = useState(false);
-  if (err) return null;
+function CommunityDetail({ community, onBack, onJoin }: { community: Community; onBack: () => void; onJoin: () => void }) {
+  const navigate = useNavigate();
+  const [draft, setDraft] = useState('');
+  const [posts, setPosts] = useState(POSTS);
+  const [liked, setLiked] = useState<number[]>([]);
+  const [jumboed, setJumboed] = useState<number[]>([]);
+  const [shared, setShared] = useState<number[]>([]);
+  const [openComments, setOpenComments] = useState<number[]>([]);
+  const [comments, setComments] = useState<Record<number, CommunityComment[]>>(SEED_COMMENTS);
+  const [commentInputs, setCommentInputs] = useState<Record<number, string>>({});
+  const [toast, setToast] = useState('');
+  const feedRef = useRef<HTMLDivElement>(null);
+  const sideRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const column = sideRef.current;
+    const feedList = feedRef.current;
+    if (!column || !feedList) return;
+
+    let lastScrollY = window.scrollY;
+    let frame = 0;
+
+    const feedStart = () => feedList.getBoundingClientRect().top + window.scrollY - 82;
+    const clampColumnScroll = (value: number) => Math.max(0, Math.min(value, column.scrollHeight - column.clientHeight));
+    const updateEdgeFades = () => {
+      const maxScroll = Math.max(0, column.scrollHeight - column.clientHeight);
+      column.dataset.fadeTop = column.scrollTop > 2 ? 'true' : 'false';
+      column.dataset.fadeBottom = column.scrollTop < maxScroll - 2 ? 'true' : 'false';
+    };
+
+    const syncColumn = (initialize = false) => {
+      if (window.innerWidth <= 1050) {
+        column.scrollTop = 0;
+        updateEdgeFades();
+        lastScrollY = window.scrollY;
+        return;
+      }
+      const currentScrollY = window.scrollY;
+      const trigger = feedStart();
+      if (initialize) {
+        column.scrollTop = clampColumnScroll(Math.max(0, currentScrollY - trigger));
+      } else if (currentScrollY <= trigger) {
+        column.scrollTop = 0;
+      } else {
+        const currentActiveScroll = Math.max(0, currentScrollY - trigger);
+        const previousActiveScroll = Math.max(0, lastScrollY - trigger);
+        column.scrollTop = clampColumnScroll(column.scrollTop + currentActiveScroll - previousActiveScroll);
+      }
+      updateEdgeFades();
+      lastScrollY = currentScrollY;
+    };
+
+    const handleScroll = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => syncColumn());
+    };
+    const handleResize = () => {
+      column.scrollTop = clampColumnScroll(column.scrollTop);
+      updateEdgeFades();
+      lastScrollY = window.scrollY;
+    };
+
+    syncColumn(true);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('resize', handleResize);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [posts.length, openComments]);
+
+  const publish = () => {
+    const text = draft.trim();
+    if (!text) return;
+    setPosts(current => [{ id: Date.now(), author: 'Вы', avatar: '/teacher2-main.jpg', time: 'Только что', text, likes: 0, jumbo: 0, comments: 0, shares: 0 }, ...current]);
+    setDraft('');
+  };
+
+  const addComment = (postId: number) => {
+    const text = (commentInputs[postId] ?? '').trim();
+    if (!text) return;
+    const next: CommunityComment = { id: Date.now(), author: 'Вы', avatar: '/teacher2-main.jpg', text, time: 'Только что' };
+    setComments(current => ({ ...current, [postId]: [...(current[postId] ?? []), next] }));
+    setCommentInputs(current => ({ ...current, [postId]: '' }));
+    setOpenComments(current => current.includes(postId) ? current : [...current, postId]);
+  };
+
+  const sharePost = async (post: CommunityPost) => {
+    const result = await shareOrCopy({
+      title: `${community.name} — публикация`,
+      text: `${post.author}: ${post.text}`,
+      url: `${window.location.origin}/communities?community=${community.id}&post=${post.id}`,
+    });
+    if (result === 'cancelled') return;
+    setShared(current => current.includes(post.id) ? current : [...current, post.id]);
+    setToast(result === 'shared' ? 'Публикация отправлена' : 'Ссылка скопирована');
+    window.setTimeout(() => setToast(''), 2200);
+  };
+
   return (
-    <div style={{ padding: '0 14px', marginBottom: 4 }}>
-      <div style={{ borderRadius: 12, overflow: 'hidden', background: '#f3f4f6', lineHeight: 0 }}>
-        <img
-          src={src}
-          alt=""
-          onError={() => setErr(true)}
-          style={{
-            width: '100%',
-            height: 'auto',
-            maxHeight: 420,
-            objectFit: 'cover',
-            objectPosition: position ?? 'center top',
-            display: 'block',
-          }}
-        />
+    <main className="communities-page community-detail-page">
+      <div className="communities-shell">
+        {toast && <div className="community-toast" role="status">{toast}</div>}
+
+        <section className="community-detail-hero">
+          <img src={community.image} alt="" style={{ objectPosition: community.imagePosition }} />
+          <div className="community-detail-overlay" />
+          <button className="community-back-hero" onClick={onBack}>← Все сообщества</button>
+          <div className="community-detail-badges"><span>{community.type}</span><span>{community.city}</span></div>
+          <div className="community-detail-avatar"><img src={communityAvatar(community.id)} alt={`Аватар ${community.name}`} /></div>
+          <div className="community-detail-copy">
+            <h1>{community.name}</h1>
+            <p>{community.desc}</p>
+            <div className="community-detail-actions">
+              <button className={`community-button${community.joined ? ' joined' : ' primary'}`} onClick={onJoin}>{community.joined ? 'Вы в строю' : 'Вступить в сообщество'}</button>
+              <button className="community-button light" onClick={() => navigate('/messages')}>Написать сообщение</button>
+            </div>
+          </div>
+          <div className="community-detail-rank"><b>#{community.id}</b><span>в строю портала</span></div>
+        </section>
+
+        <div className="community-detail-layout">
+          <section className="community-posts" ref={feedRef}>
+            <div className="community-composer">
+              <img src="/teacher2-main.jpg" alt="" />
+              <div>
+                <textarea value={draft} onChange={event => setDraft(event.target.value.slice(0, 600))} placeholder="Сообщение для участников, отчёт с тренировки или важный анонс" />
+                <footer><span>{draft.length}/600</span><button className="community-button primary" disabled={!draft.trim()} onClick={publish}>Опубликовать</button></footer>
+              </div>
+            </div>
+
+            {posts.map((post, index) => {
+              const isLiked = liked.includes(post.id);
+              const isJumbo = jumboed.includes(post.id);
+              const isShared = shared.includes(post.id);
+              const isCommentsOpen = openComments.includes(post.id);
+              const postComments = comments[post.id] ?? [];
+              const commentText = commentInputs[post.id] ?? '';
+              return (
+                <article className="community-post" key={post.id} style={{ '--delay': `${index * 70}ms` } as React.CSSProperties}>
+                  <header>
+                    <img src={post.avatar} alt="" onClick={() => navigate(userProfilePath(post.author))} />
+                    <div><b onClick={() => navigate(userProfilePath(post.author))}>{post.author}</b><span>{post.time}</span></div>
+                    <em>Запись сообщества</em>
+                  </header>
+                  <p>{post.text}</p>
+                  {post.image && <img className="community-post-image" src={post.image} alt="" />}
+                  <footer>
+                    <button className={isLiked ? 'active like' : ''} onClick={() => setLiked(items => isLiked ? items.filter(id => id !== post.id) : [...items, post.id])}>♡ Лайк {post.likes + (isLiked ? 1 : 0)}</button>
+                    <button className={isJumbo ? 'active jumbo' : ''} onClick={() => setJumboed(items => isJumbo ? items.filter(id => id !== post.id) : [...items, post.id])}>✦ Джамбо {post.jumbo + (isJumbo ? 1 : 0)}</button>
+                    <button className={isCommentsOpen ? 'active' : ''} onClick={() => setOpenComments(items => isCommentsOpen ? items.filter(id => id !== post.id) : [...items, post.id])}>Комментарий {post.comments + postComments.filter(comment => comment.author === 'Вы').length}</button>
+                    <button className={isShared ? 'active' : ''} onClick={() => sharePost(post)}>Поделиться {post.shares + (isShared ? 1 : 0)}</button>
+                  </footer>
+                  {isCommentsOpen && (
+                    <div className="community-comments">
+                      <div className="community-comments-title">
+                        <b>Комментарии</b>
+                        <span>{post.comments + postComments.filter(comment => comment.author === 'Вы').length}</span>
+                      </div>
+                      {postComments.map(comment => (
+                        <div className="community-comment" key={comment.id}>
+                          <img src={comment.avatar} alt="" />
+                          <div><header><b>{comment.author}</b><span>{comment.time}</span></header><p>{comment.text}</p></div>
+                        </div>
+                      ))}
+                      <div className="community-comment-form">
+                        <img src="/teacher2-main.jpg" alt="" />
+                        <input value={commentText} onChange={event => setCommentInputs(current => ({ ...current, [post.id]: event.target.value }))} onKeyDown={event => { if (event.key === 'Enter') addComment(post.id); }} placeholder="Написать комментарий" />
+                        <button disabled={!commentText.trim()} onClick={() => addComment(post.id)} aria-label="Отправить комментарий">→</button>
+                      </div>
+                    </div>
+                  )}
+                </article>
+              );
+            })}
+          </section>
+
+          <aside className="community-detail-side" ref={sideRef}>
+            <section className="community-info-panel">
+              <div className="community-info-heading"><span>Сводка подразделения</span><UsersIcon /></div>
+              <div className="community-info-grid">
+                <div><b>{community.active}</b><span>в строю</span></div>
+                <div><b>{community.members.toLocaleString()}</b><span>участников</span></div>
+                <div><b>{community.posts + posts.length}</b><span>статей</span></div>
+                <div><b>{community.photos}</b><span>фотографий</span></div>
+                <div><b>{community.awards}</b><span>наград</span></div>
+                <div><b>{community.createdAt}</b><span>дата создания</span></div>
+              </div>
+            </section>
+            <section className="community-info-panel">
+              <div className="community-info-heading"><span>Командный состав</span><span className="community-count-badge">3 бойца</span></div>
+              {[
+                { name: 'Торнадо', role: 'Командир', image: '/teacher1-main.jpg', index: 2463, rating: 5.0 },
+                { name: 'Бек', role: 'Инструктор', image: '/teacher2-main.jpg', index: 1980, rating: 4.9 },
+                { name: 'Коба', role: 'Наставник', image: '/teacher3-main.jpg', index: 1840, rating: 4.8 },
+              ].map(({ name, role, image, index, rating }) => (
+                <div className="community-member" key={name}>
+                  <img src={image} alt="" onClick={() => navigate(userProfilePath(name))} />
+                  <span className="community-member-id" onClick={() => navigate(userProfilePath(name))}><b>{name}</b><small>{role}</small></span>
+                  <span className="community-member-iv" onClick={event => event.stopPropagation()}><IVDisplay index={index} rating={rating} /></span>
+                </div>
+              ))}
+            </section>
+            <section className="community-info-panel">
+              <div className="community-info-heading"><span>Фотографии</span><span className="community-count-badge">{community.photos}</span></div>
+              <div className="community-photo-grid">
+                {[community.image, '/voendelo2.png', '/sorev1.png', '/медицина2.png'].map((image, index) => (
+                  <button key={`${image}-${index}`} onClick={() => window.open(image, '_blank', 'noopener,noreferrer')} aria-label={`Открыть фотографию ${index + 1}`}>
+                    <img src={image} alt="" />
+                  </button>
+                ))}
+              </div>
+            </section>
+            <button className="community-honor-link" onClick={() => navigate('/achievements?view=board')}>
+              <span>✦</span><div><b>Наградная доска</b><small>Достижения участников сообщества</small></div><i>→</i>
+            </button>
+          </aside>
+        </div>
       </div>
-    </div>
+    </main>
   );
 }
 
 export function Communities() {
   const navigate = useNavigate();
-  const [communities, setCommunities] = useState(INITIAL_COMMUNITIES);
-  const [selected, setSelected] = useState<Community | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const communities = useCommunitiesStore(state => state.communities);
+  const toggleJoin = useCommunitiesStore(state => state.toggleJoin);
+  const addCommunity = useCommunitiesStore(state => state.addCommunity);
   const [type, setType] = useState('Все');
   const [query, setQuery] = useState('');
-  const [posts, setPosts] = useState(INITIAL_POSTS);
-  const [postText, setPostText] = useState('');
-  const [liked, setLiked] = useState<number[]>([]);
   const [showCreate, setShowCreate] = useState(false);
-  const [toast, setToast] = useState('');
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [form, setForm] = useState({ name: '', type: 'Клубы Воевод', city: 'Москва', desc: '' });
-
-  // Комментарии
-  const [allComments, setAllComments] = useState<Record<number, Comment[]>>(SEED_COMMENTS);
-  const [openComments, setOpenComments] = useState<number[]>([]);
-  const [commentInputs, setCommentInputs] = useState<Record<number, string>>({});
-
-  const notify = (text: string) => {
-    if (timer.current) clearTimeout(timer.current);
-    setToast(text);
-    timer.current = setTimeout(() => setToast(''), 2200);
-  };
+  const selected = communities.find(item => item.id === Number(searchParams.get('community')));
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return communities.filter(item => {
-      const typeOk = type === 'Все' || item.type === type;
-      const queryOk = !q || `${item.name} ${item.city} ${item.type}`.toLowerCase().includes(q);
-      return typeOk && queryOk;
-    });
+    const needle = query.trim().toLowerCase();
+    return communities.filter(item => (type === 'Все' || item.type === type) && (!needle || `${item.name} ${item.city} ${item.type}`.toLowerCase().includes(needle)));
   }, [communities, query, type]);
 
-  const toggleJoin = (id: number) => {
-    setCommunities(prev => prev.map(item =>
-      item.id === id ? { ...item, joined: !item.joined, members: item.joined ? item.members - 1 : item.members + 1 } : item
-    ));
-    if (selected?.id === id) {
-      setSelected(prev => prev ? { ...prev, joined: !prev.joined, members: prev.joined ? prev.members - 1 : prev.members + 1 } : prev);
-    }
-    notify('Статус участия обновлен');
-  };
-
-  const publishPost = () => {
-    if (!postText.trim()) { notify('Напишите текст поста'); return; }
-    const id = Date.now();
-    setPosts(prev => [{ id, author: 'Вы', text: postText, time: 'Только что', likes: 0, comments: 0 }, ...prev]);
-    setAllComments(prev => ({ ...prev, [id]: [] }));
-    setPostText('');
-    notify('Пост опубликован');
-  };
-
-  const toggleComments = (postId: number) => {
-    setOpenComments(prev =>
-      prev.includes(postId) ? prev.filter(id => id !== postId) : [...prev, postId]
-    );
-  };
-
-  const submitComment = (postId: number) => {
-    const text = (commentInputs[postId] ?? '').trim();
-    if (!text) return;
-    const newComment: Comment = { id: Date.now(), author: 'Вы', text, time: 'Только что' };
-    setAllComments(prev => ({ ...prev, [postId]: [...(prev[postId] ?? []), newComment] }));
-    setPosts(prev => prev.map(p => p.id === postId ? { ...p, comments: p.comments + 1 } : p));
-    setCommentInputs(prev => ({ ...prev, [postId]: '' }));
-  };
-
   const createCommunity = () => {
-    if (!form.name.trim()) { notify('Введите название сообщества'); return; }
-    const next: Community = {
-      id: Date.now(), name: form.name, type: form.type, city: form.city,
-      members: 1, active: 1, posts: 0, photos: 0,
-      image: '/voendelo1.png', imagePosition: 'center 42%',
-      joined: true, desc: form.desc || 'Новое сообщество портала «Воевода».',
+    if (!form.name.trim()) return;
+    const community: Community = {
+      id: Date.now(), name: form.name.trim(), type: form.type, city: form.city.trim() || 'Москва',
+      members: 1, active: 1, posts: 0, photos: 0, awards: 0, createdAt: 'сегодня', image: '/voendelo1.png', imagePosition: 'center 42%', joined: true,
+      desc: form.desc.trim() || 'Новое сообщество портала «Воевода».',
     };
-    setCommunities(prev => [next, ...prev]);
-    setSelected(next);
+    addCommunity(community);
     setShowCreate(false);
-    setForm({ name: '', type: 'Клубы Воевод', city: 'Москва', desc: '' });
-    notify('Сообщество создано');
+    setSearchParams({ community: String(community.id) });
   };
 
-  if (selected) {
-    const current = communities.find(item => item.id === selected.id) ?? selected;
-    return (
-      <main className="portal-page">
-        <div className="portal-shell">
-          {toast && <div className="portal-toast">{toast}</div>}
-
-          <div className="portal-breadcrumb">
-            <button onClick={() => setSelected(null)}>Сообщества</button>
-            <span>/</span>
-            <span>{current.name}</span>
-          </div>
-
-          {/* Hero: квадратное фото слева + инфо справа */}
-          <section style={{ marginBottom: 18, borderRadius: 16, overflow: 'hidden', border: '1px solid #e5e7eb', background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,.06)', display: 'flex', gap: 0 }}>
-            <div style={{ width: 160, flexShrink: 0, overflow: 'hidden' }}>
-              <img src={current.image} alt={current.name} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: `${current.imagePosition.split(' ')[0]} top`, display: 'block' }} />
-            </div>
-            <div style={{ flex: 1, padding: '20px 24px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 10 }}>
-              <div>
-                <h1 style={{ margin: '0 0 5px', color: '#1a2744', fontFamily: '"Russo One", sans-serif', fontSize: 22, lineHeight: 1.1 }}>{current.name}</h1>
-                <div className="portal-meta">{current.city} / {current.type} / активны сейчас {current.active}</div>
-              </div>
-              <div className="portal-actions">
-                <button className="portal-btn" onClick={() => navigate('/messages')}>Написать участникам</button>
-                <button className={`portal-btn ${current.joined ? '' : 'primary'}`} onClick={() => toggleJoin(current.id)}>
-                  {current.joined ? 'В строю' : 'Вступить'}
-                </button>
-              </div>
-            </div>
-          </section>
-
-          <div className="portal-split">
-            <section>
-              <div className="portal-panel" style={{ marginBottom: 14 }}>
-                <label className="portal-label">Новая запись</label>
-                <textarea className="portal-textarea" value={postText} onChange={e => setPostText(e.target.value)} placeholder="Поделитесь новостью, анонсом или отчетом" />
-                <div className="portal-actions" style={{ justifyContent: 'flex-end', marginTop: 10 }}>
-                  <button className="portal-btn primary" onClick={publishPost}>Опубликовать</button>
-                </div>
-              </div>
-
-              {posts.map(post => {
-                const isLiked = liked.includes(post.id);
-                const isOpen = openComments.includes(post.id);
-                const comments = allComments[post.id] ?? [];
-                const commentText = commentInputs[post.id] ?? '';
-                return (
-                  <article className="portal-card" style={{ marginBottom: 14 }} key={post.id}>
-                    {/* Шапка + текст */}
-                    <div className="portal-body" style={{ paddingBottom: 12 }}>
-                      <div className="portal-row" style={{ marginBottom: 10 }}>
-                        <Avatar name={post.author} size={40} />
-                        <div>
-                          <b>{post.author}</b>
-                          <div className="portal-meta">{post.time}</div>
-                        </div>
-                      </div>
-                      <p style={{ color: '#4b5563', lineHeight: 1.7, margin: 0 }}>{post.text}</p>
-                    </div>
-
-                    {/* Фото — натуральные пропорции */}
-                    {post.image && <PostImage src={post.image} position={post.imagePosition} />}
-
-                    {/* Кнопки лайк / комментарии */}
-                    <div className="portal-card-actions" style={{ paddingTop: 12 }}>
-                      <button
-                        className="portal-btn"
-                        style={{ color: isLiked ? '#ef4444' : undefined, borderColor: isLiked ? '#fecaca' : undefined }}
-                        onClick={() => setLiked(prev => isLiked ? prev.filter(id => id !== post.id) : [...prev, post.id])}
-                      >
-                        {isLiked ? '❤️' : '🤍'} Нравится {post.likes + (isLiked ? 1 : 0)}
-                      </button>
-                      <button
-                        className="portal-btn"
-                        style={{ color: isOpen ? '#375dfb' : undefined, borderColor: isOpen ? '#c7d2fe' : undefined }}
-                        onClick={() => toggleComments(post.id)}
-                      >
-                        💬 Комментарии {post.comments + comments.filter(c => c.author === 'Вы').length}
-                      </button>
-                    </div>
-
-                    {/* Раздел комментариев */}
-                    {isOpen && (
-                      <div style={{ padding: '0 14px 14px', borderTop: '1px solid #f0f0f0', marginTop: 4 }}>
-                        {/* Список комментариев */}
-                        {comments.length > 0 && (
-                          <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                            {comments.map(c => (
-                              <div key={c.id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                                <Avatar name={c.author} size={32} />
-                                <div style={{ flex: 1, background: '#f9fafb', borderRadius: 10, padding: '8px 12px', border: '1px solid #f0f0f0' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
-                                    <span style={{ fontWeight: 700, fontSize: 13, color: '#1a2744' }}>{c.author}</span>
-                                    <span style={{ fontSize: 11, color: '#9ca3af' }}>{c.time}</span>
-                                  </div>
-                                  <p style={{ margin: 0, fontSize: 13, color: '#4b5563', lineHeight: 1.55 }}>{c.text}</p>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        {comments.length === 0 && (
-                          <div style={{ marginTop: 12, fontSize: 13, color: '#9ca3af', textAlign: 'center', padding: '8px 0' }}>
-                            Комментариев пока нет — будьте первым
-                          </div>
-                        )}
-
-                        {/* Ввод нового комментария */}
-                        <div style={{ display: 'flex', gap: 8, marginTop: 12, alignItems: 'flex-end' }}>
-                          <Avatar name="Вы" size={32} />
-                          <div style={{ flex: 1, position: 'relative' }}>
-                            <input
-                              className="portal-input"
-                              style={{ paddingRight: 44, height: 38 }}
-                              placeholder="Написать комментарий..."
-                              value={commentText}
-                              onChange={e => setCommentInputs(prev => ({ ...prev, [post.id]: e.target.value }))}
-                              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitComment(post.id); } }}
-                            />
-                            <button
-                              onClick={() => submitComment(post.id)}
-                              disabled={!commentText.trim()}
-                              style={{
-                                position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)',
-                                background: commentText.trim() ? 'linear-gradient(to right, #2F52F0, #5B7FFF)' : '#e5e7eb',
-                                border: 'none', borderRadius: 6, width: 28, height: 28,
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                cursor: commentText.trim() ? 'pointer' : 'default',
-                                transition: 'background .2s',
-                              }}
-                            >
-                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={commentText.trim() ? '#fff' : '#9ca3af'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
-                              </svg>
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </article>
-                );
-              })}
-            </section>
-
-            <aside className="portal-panel">
-              <h2 className="portal-name">О сообществе</h2>
-              <p style={{ color: '#6b7280', lineHeight: 1.7 }}>{current.desc}</p>
-              <div className="portal-form-grid" style={{ marginTop: 14 }}>
-                {[
-                  ['Участники', current.members.toLocaleString()],
-                  ['Посты', String(current.posts + posts.length)],
-                  ['Фото', current.photos.toLocaleString()],
-                  ['Активные', String(current.active)],
-                ].map(([label, value]) => (
-                  <div className="portal-panel" key={label} style={{ padding: 12, textAlign: 'center' }}>
-                    <div className="portal-price" style={{ fontSize: 18, margin: 0 }}>{value}</div>
-                    <div className="portal-meta" style={{ justifyContent: 'center' }}>{label}</div>
-                  </div>
-                ))}
-              </div>
-
-              <h2 className="portal-name" style={{ marginTop: 18 }}>Участники</h2>
-              {(['Торнадо', 'Бек', 'Коба'] as const).map((name, index) => (
-                <div key={name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <Avatar name={name} size={42} />
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: 14, color: '#1a2744' }}>{name}</div>
-                      <div style={{ fontSize: 12, color: '#9ca3af' }}>Участник</div>
-                    </div>
-                  </div>
-                  <button className="portal-btn" onClick={() => navigate(`/messages?chat=${index + 1}`)}>Написать</button>
-                </div>
-              ))}
-            </aside>
-          </div>
-        </div>
-      </main>
-    );
-  }
+  if (selected) return <CommunityDetail community={selected} onBack={() => setSearchParams({})} onJoin={() => toggleJoin(selected.id)} />;
 
   return (
-    <main className="portal-page">
-      <div className="portal-shell">
-        {toast && <div className="portal-toast">{toast}</div>}
-
-        <div className="portal-breadcrumb">
-          <button onClick={() => navigate('/')}>Главная</button>
-          <span>/</span>
-          <span>Сообщества</span>
-        </div>
-
-        <div className="portal-head">
-          <div>
-            <h1 className="portal-title">Сообщества</h1>
-            <div className="portal-subtitle">Клубы, команды, наставники и учебные группы портала</div>
+    <main className="communities-page">
+      <div className="communities-shell">
+        <section className="patriot-network">
+          <div className="patriot-network-head">
+            <div><span>Модуль 2</span><h2>Соцсеть «ПАТРИОТ»</h2></div>
+            <p>Профессиональные группы, прямые эфиры, наставники и система достижений в одном строю.</p>
           </div>
-          <button className="portal-btn primary" onClick={() => setShowCreate(true)}>Создать сообщество</button>
-        </div>
-
-        <section className="portal-toolbar">
-          <input className="portal-input" value={query} onChange={e => setQuery(e.target.value)} placeholder="Поиск по названию, городу или типу" />
-          <select className="portal-select" value={type} onChange={e => setType(e.target.value)}>
-            {TYPES.map(item => <option key={item}>{item}</option>)}
-          </select>
-          <button className="portal-btn" onClick={() => { setQuery(''); setType('Все'); }}>Сбросить</button>
+          <div className="patriot-network-grid">
+            <div className="patriot-interest-card">
+              <strong>Группы по интересам</strong>
+              <div>
+                {PATRIOT_INTERESTS.map(interest => (
+                  <button key={interest.label} onClick={() => { setType('Все'); setQuery(interest.query); }}>
+                    <span>{interest.mark}</span>{interest.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <button className="patriot-module-card mentor" onClick={() => navigate('/teachers')}><span>01</span><b>Наставничество</b><small>Найти наставника и попасть «под крыло»</small></button>
+            <button className="patriot-module-card live" onClick={() => navigate('/microblog')}><span>LIVE</span><b>Прямые Q&amp;A</b><small>Эфиры с инструкторами и командирами</small></button>
+            <button className="patriot-module-card honor" onClick={() => navigate('/achievements?view=board')}><span>✦</span><b>Доска почёта</b><small>Ранги, ачивки и лучшие бойцы недели</small></button>
+          </div>
         </section>
 
-        <div className="portal-pills">
-          {TYPES.map(item => (
-            <button key={item} className={`portal-pill ${type === item ? 'active' : ''}`} onClick={() => setType(item)}>
-              {item}
-            </button>
-          ))}
+        <section className="communities-command-bar">
+          <label><span>⌕</span><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Поиск по названию, городу или направлению" /></label>
+          <button onClick={() => { setQuery(''); setType('Все'); }}>Сбросить</button>
+        </section>
+
+        <div className="community-type-tabs">
+          {TYPES.map(item => <button key={item} className={type === item ? 'active' : ''} onClick={() => setType(item)}>{item}</button>)}
+          <button className="community-button primary create community-create-tab" onClick={() => setShowCreate(true)}>+ Создать</button>
         </div>
 
-        <div className="portal-grid">
-          {filtered.map(item => (
-            <article className="portal-card clickable" key={item.id} onClick={() => setSelected(item)}>
-              <div className="portal-img community-card-photo">
-                <img src={item.image} alt={item.name} style={{ objectPosition: item.imagePosition }} />
-              </div>
-              <div className="portal-body">
-                <div className="portal-row" style={{ marginBottom: 8 }}>
-                  <span className="portal-badge">{item.type}</span>
-                  {item.joined && <span className="portal-badge green">В строю</span>}
-                </div>
-                <h2 className="portal-name">{item.name}</h2>
-                <div className="portal-meta">{item.city} / {item.members.toLocaleString()} участников / активны {item.active}</div>
-              </div>
-              <div className="portal-card-actions" onClick={e => e.stopPropagation()}>
-                <button className={`portal-btn ${item.joined ? '' : 'primary'}`} onClick={() => toggleJoin(item.id)}>
-                  {item.joined ? 'В строю' : 'Вступить'}
-                </button>
-                <button className="portal-btn" onClick={() => setSelected(item)}>Открыть</button>
-              </div>
-            </article>
-          ))}
+        <div className="communities-result-line">
+          <span>Найдено подразделений</span><b>{filtered.length}</b>
         </div>
+        <section className="communities-grid">
+          {filtered.map((item, index) => <CommunityCard key={item.id} item={item} index={index} onOpen={() => setSearchParams({ community: String(item.id) })} onJoin={() => toggleJoin(item.id)} onAwards={() => navigate('/achievements?view=board')} />)}
+        </section>
       </div>
 
       {showCreate && (
-        <div className="portal-modal-backdrop" onClick={() => setShowCreate(false)}>
-          <section className="portal-modal" onClick={e => e.stopPropagation()}>
-            <div className="portal-modal-head">
-              <h2 className="portal-name" style={{ fontSize: 22 }}>Новое сообщество</h2>
-              <button className="portal-btn" onClick={() => setShowCreate(false)}>Закрыть</button>
+        <div className="community-modal-backdrop" onClick={() => setShowCreate(false)}>
+          <section className="community-modal" onClick={event => event.stopPropagation()}>
+            <header><div><span>Новое подразделение</span><h2>Создать сообщество</h2></div><button onClick={() => setShowCreate(false)}>×</button></header>
+            <label>Название<input value={form.name} onChange={event => setForm(current => ({ ...current, name: event.target.value }))} autoFocus /></label>
+            <div className="community-form-row">
+              <label>Тип<select value={form.type} onChange={event => setForm(current => ({ ...current, type: event.target.value }))}>{TYPES.slice(1).map(item => <option key={item}>{item}</option>)}</select></label>
+              <label>Город<input value={form.city} onChange={event => setForm(current => ({ ...current, city: event.target.value }))} /></label>
             </div>
-            <div className="portal-modal-body portal-form-grid">
-              <div className="full">
-                <label className="portal-label" htmlFor="community-name">Название</label>
-                <input id="community-name" className="portal-input" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} />
-              </div>
-              <div>
-                <label className="portal-label" htmlFor="community-type">Тип</label>
-                <select id="community-type" className="portal-select" value={form.type} onChange={e => setForm(p => ({ ...p, type: e.target.value }))}>
-                  {TYPES.filter(item => item !== 'Все').map(item => <option key={item}>{item}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="portal-label" htmlFor="community-city">Город</label>
-                <input id="community-city" className="portal-input" value={form.city} onChange={e => setForm(p => ({ ...p, city: e.target.value }))} />
-              </div>
-              <div className="full">
-                <label className="portal-label" htmlFor="community-desc">Описание</label>
-                <textarea id="community-desc" className="portal-textarea" value={form.desc} onChange={e => setForm(p => ({ ...p, desc: e.target.value }))} />
-              </div>
-              <div className="full portal-actions" style={{ justifyContent: 'flex-end' }}>
-                <button className="portal-btn" onClick={() => setShowCreate(false)}>Отмена</button>
-                <button className="portal-btn primary" onClick={createCommunity}>Создать</button>
-              </div>
-            </div>
+            <label>Описание<textarea value={form.desc} onChange={event => setForm(current => ({ ...current, desc: event.target.value }))} /></label>
+            <footer><button className="community-button" onClick={() => setShowCreate(false)}>Отмена</button><button className="community-button primary" onClick={createCommunity}>Создать</button></footer>
           </section>
         </div>
       )}

@@ -5,6 +5,7 @@ import { Controller, useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import apiClient from "../api/client";
+import { PortalBreadcrumb } from "../components/PortalBreadcrumb";
 
 /* ─── Schema ─── */
 const schema = z.object({
@@ -424,13 +425,8 @@ export function EditProfile() {
             </button>
           </div>
 
-          {/* Breadcrumb */}
-          <div style={{ position: "relative", zIndex: 1, padding: "10px 32px", borderTop: "1px solid rgba(229,231,235,.6)", display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#9CA3AF" }}>
-            <span style={{ color: "#375DFB", cursor: "pointer" }} onClick={() => navigate("/")}>Главная</span>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
-            <span style={{ color: "#375DFB", cursor: "pointer" }} onClick={() => navigate("/profile")}>Профиль</span>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
-            <span>Редактирование</span>
+          <div style={{ position:"relative", zIndex:1, padding:"10px 32px", borderTop:"1px solid rgba(229,231,235,.6)" }}>
+            <PortalBreadcrumb className="embedded-breadcrumb" items={[{ label:"Главная", to:"/" }, { label:"Профиль", to:"/profile" }, { label:"Редактирование" }]} />
           </div>
         </div>
 

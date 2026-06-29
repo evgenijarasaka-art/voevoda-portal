@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
-const icons: Record<string, React.ReactNode> = {
+export const SIDEBAR_ICONS: Record<string, React.ReactNode> = {
   home: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
   profile: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
   military: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>,
@@ -23,6 +23,8 @@ const icons: Record<string, React.ReactNode> = {
   dialogs: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,
   company: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>,
   ads: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>,
+  exercises: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="1" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="1" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="23" y2="12"/></svg>,
+  competitions: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="5"/><path d="M8.8 12 7 22l5-3 5 3-1.8-10"/><path d="m9.5 8 1.5 1.5L14.5 6"/></svg>,
 
   // ── Submenu icons ──────────────────────────────────────────────────────────
   personal: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
@@ -49,6 +51,8 @@ const NAV = [
   { key: 'home', label: 'Главная', path: '/' },
   { key: 'profile', label: 'Мой профиль', path: '/profile', hasSub: true },
   { key: 'military', label: 'Военная подготовка', path: '/courses' },
+  { key: 'exercises', label: 'Учения', path: '/exercises' },
+  { key: 'competitions', label: 'Соревнования', path: '/competitions' },
   { key: 'professional', label: 'Профессиональная подготовка', path: '/professional' },
   { key: 'path', label: 'Путь Воеводы', path: '/my-path' },
   { key: 'communities', label: 'Сообщества', path: '/communities' },
@@ -69,6 +73,7 @@ const SUBMENU = [
   { label: 'Достижения',           path: '/achievements',  iconKey: 'achievements' },
   { label: 'Блог',            path: '/microblog',     iconKey: 'microblog_sm' },
   { label: 'Курсы',                path: '/my-courses',    iconKey: 'courses', activePaths: ['/my-courses', '/lessons', '/tests', '/homework'] },
+  { label: 'Учебные группы',       path: '/study-groups',  iconKey: 'subscribers', activePaths: ['/study-groups'] },
   { label: 'Корзина',              path: '/cart',          iconKey: 'cart' },
   { label: 'Избранное',            path: '/favorites',     iconKey: 'favorites' },
   { label: 'Подписки',             path: '/subscriptions', iconKey: 'subscriptions' },
@@ -110,10 +115,19 @@ export function Sidebar() {
     closeTimer.current = setTimeout(() => { setExpanded(false); setSubOpen(false); }, 180);
   };
 
-  const isActive = (path: string) =>
-    path === '/'
+  const PROFILE_SUB_PATHS = ['/achievements', '/all-achievements', '/wallet', '/payments', '/subscriptions', '/subscribers', '/settings', '/edit-profile', '/microblog', '/my-courses', '/favorites', '/referral'];
+
+  const isActive = (path: string) => {
+    if (location.pathname.startsWith('/city/')) {
+      const track = new URLSearchParams(location.search).get('track');
+      if (path === '/professional') return track === 'professional';
+      if (path === '/courses') return track !== 'professional';
+    }
+    if (path === '/profile') return location.pathname === '/profile' || PROFILE_SUB_PATHS.some(p => location.pathname === p || location.pathname.startsWith(p + '/'));
+    return path === '/'
       ? location.pathname === '/'
       : location.pathname === path || location.pathname.startsWith(path + '/');
+  };
 
   const isSubActive = (item: typeof SUBMENU[0]) => {
     if (item.activePaths) {
@@ -126,7 +140,7 @@ export function Sidebar() {
     <aside
       onMouseEnter={handleAsideEnter}
       onMouseLeave={handleAsideLeave}
-      style={{ position: 'fixed', top: 60, left: 0, bottom: 0, zIndex: 150, display: 'flex', flexDirection: 'row' }}
+      style={{ position: 'fixed', top: 60, left: 0, bottom: 0, zIndex: 2500, display: 'flex', flexDirection: 'row' }}
     >
       {/* Основная колонка */}
       <div style={{ width: expanded ? 240 : 56, background: '#fff', borderRight: subOpen ? 'none' : '1px solid #E5E7EB', display: 'flex', flexDirection: 'column', transition: 'width .22s cubic-bezier(.4,0,.2,1)', overflow: 'hidden', height: '100%' }}>
@@ -135,12 +149,12 @@ export function Sidebar() {
             const active = isActive(item.path);
             return (
               <div key={item.key}
-                onClick={() => { if (!item.hasSub) go(item.path); }}
+                onClick={() => go(item.path)}
                 onMouseEnter={() => { if (item.hasSub) setSubOpen(true); }}
                 style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 18px', cursor: 'pointer', whiteSpace: 'nowrap', background: active ? '#EBF1FF' : 'transparent', color: active ? '#375DFB' : '#374151', borderLeft: `3px solid ${active ? '#375DFB' : 'transparent'}`, transition: 'background .15s' }}
                 onMouseOver={e => { if (!active) e.currentTarget.style.background = '#F9FAFB'; }}
                 onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#EBF1FF' : 'transparent'; }}>
-                <span style={{ flexShrink: 0, color: active ? '#375DFB' : '#6B7280' }}>{icons[item.key]}</span>
+                <span style={{ flexShrink: 0, color: active ? '#375DFB' : '#6B7280' }}>{SIDEBAR_ICONS[item.key]}</span>
                 {expanded && (
                   <>
                     <span style={{ fontSize: 13, fontWeight: active ? 600 : 400, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.label}</span>
@@ -165,7 +179,7 @@ export function Sidebar() {
                 style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 18px', cursor: 'pointer', whiteSpace: 'nowrap', background: active ? '#EBF1FF' : 'transparent', color: active ? '#375DFB' : '#374151', borderLeft: `3px solid ${active ? '#375DFB' : 'transparent'}`, transition: 'background .15s' }}
                 onMouseOver={e => { if (!active) e.currentTarget.style.background = '#F9FAFB'; }}
                 onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#EBF1FF' : 'transparent'; }}>
-                <span style={{ flexShrink: 0, color: active ? '#375DFB' : '#6B7280' }}>{icons[item.key]}</span>
+                <span style={{ flexShrink: 0, color: active ? '#375DFB' : '#6B7280' }}>{SIDEBAR_ICONS[item.key]}</span>
                 {expanded && <span style={{ fontSize: 13, fontWeight: active ? 600 : 400 }}>{item.label}</span>}
               </div>
             );
@@ -217,7 +231,7 @@ export function Sidebar() {
                   style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 20px', cursor: 'pointer', background: active ? '#EBF1FF' : 'transparent', color: active ? '#375DFB' : '#374151', transition: 'background .15s' }}
                   onMouseOver={e => { if (!active) e.currentTarget.style.background = '#F9FAFB'; }}
                   onMouseOut={e => { if (!active) e.currentTarget.style.background = active ? '#EBF1FF' : 'transparent'; }}>
-                  <span style={{ color: active ? '#375DFB' : '#9CA3AF', flexShrink: 0 }}>{icons[s.iconKey]}</span>
+                  <span style={{ color: active ? '#375DFB' : '#9CA3AF', flexShrink: 0 }}>{SIDEBAR_ICONS[s.iconKey]}</span>
                   <span style={{ fontSize: 13, fontWeight: active ? 600 : 400 }}>{s.label}</span>
                 </div>
               );

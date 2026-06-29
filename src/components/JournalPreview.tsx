@@ -1,11 +1,14 @@
 ﻿import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useMediaQuery } from '../useMediaQuery';
 import { useFavoritesStore } from '../store/useFavoritesStore';
 import { useNotifStore } from '../store/useNotifStore';
-import { ElitaBadge, BadgeBox, IVDisplay, PEOPLE, PeopleModal } from './PeopleSection';
+import { BADGE_TOOLTIPS, ElitaBadge, BadgeBox, IVDisplay, PEOPLE, PeopleModal } from './PeopleSection';
 import type { ModalMode } from './PeopleSection';
 import { JOURNAL_SCROLL_KEY } from '../pages/ArticlePage';
+import { useReviewsStore } from '../store/useReviewsStore';
+import { HOME_JOURNAL_ARTICLES, getHomeArticleExcerpt, type HomeJournalArticle } from '../data/homeJournalArticles';
 
 if (typeof document !== 'undefined' && !document.getElementById('jp-styles')) {
   const s = document.createElement('style');
@@ -14,55 +17,41 @@ if (typeof document !== 'undefined' && !document.getElementById('jp-styles')) {
     @keyframes jpCardIn  { from{opacity:0;transform:translateY(18px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
     @keyframes jpFadeIn  { from{opacity:0} to{opacity:1} }
     @keyframes jpSlideUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
-    .jp-row-hover { transition:background .13s; border-radius:8px; }
-    .jp-row-hover:hover { background:#FAFBFF !important; }
+    @keyframes jpHeartPop { 0%{transform:scale(1)} 40%{transform:scale(1.55)} 70%{transform:scale(.9)} 100%{transform:scale(1)} }
+    @keyframes jpNumPop  { 0%{transform:translateY(0)} 50%{transform:translateY(-3px)} 100%{transform:translateY(0)} }
+    .jp-row-hover { transition:background .13s, transform .16s ease; border-radius:8px; }
+    .jp-row-hover:hover { background:#FAFBFF !important; transform:translateX(2px); }
     .jp-scroll-btn { transition:all .18s ease; }
-    .jp-scroll-btn:hover:not(:disabled) { background:#F3F4F6 !important; border-color:#D1D5DB !important; }
+    .jp-scroll-btn:hover:not(:disabled) { background:#EBF1FF !important; border-color:#C7D2FE !important; color:#375DFB !important; transform:scale(1.08); }
+    .jp-tab-btn { position:relative; transition:color .18s, background .18s; }
+    .jp-tab-btn::after { content:''; position:absolute; bottom:0; left:50%; right:50%; height:2px; background:#375DFB; border-radius:2px; transition:left .22s ease, right .22s ease; }
+    .jp-tab-btn.active::after { left:8px; right:8px; }
+    .jp-num-badge { transition:background .18s, color .18s, transform .18s; }
+    .jp-num-badge:hover { transform:scale(1.12); }
+    .jp-avatar-ring { transition:box-shadow .18s, transform .18s; }
+    .jp-avatar-ring:hover { box-shadow:0 0 0 2px #375DFB; transform:scale(1.1); }
+    .jp-heart-pop { animation:jpHeartPop .38s cubic-bezier(.34,1.56,.64,1) both; }
+    .jp-card-wrap { transition:box-shadow .22s ease, transform .22s ease; }
+    .jp-card-wrap:hover { box-shadow:0 8px 28px rgba(55,93,251,.12) !important; transform:translateY(-2px); }
   `;
   document.head.appendChild(s);
 }
 
-interface Article {
-  id: number;
-  title: string;
-  author: string;
-  authorAvatar: string;
-  date: string;
-  image: string;
-  category: 'Статьи' | 'Новости' | 'Поток' | 'Блог';
-  readTime: number;
-  stats: { views: number; hearts: number; jumbo: number };
-}
+type Article = HomeJournalArticle;
 
-const ARTICLES: Article[] = [
-  { id: 1, title: 'Дороги обработали раствором гидрохлорида натрия с помощью трёх авторазливочных станций нового типа', author: 'ВДВ СКОВ', authorAvatar: '/teacher1-main.jpg', date: '3 марта, 2024', image: '/journal-main.jpg', category: 'Статьи', readTime: 4, stats: { views: 179, hearts: 224, jumbo: 244 } },
-  { id: 2, title: 'Создание морской пехоты неразрывно связано с именем Петра Великого', author: 'ВДВ СКОВ', authorAvatar: '/teacher2-main.jpg', date: '3 марта, 2024', image: '/military-course.jpg', category: 'Статьи', readTime: 3, stats: { views: 179, hearts: 224, jumbo: 244 } },
-  { id: 3, title: 'Военнослужащие псковской дивизии ВДВ помогают дезинфекции населённых пунктов', author: 'ВДВ СКОВ', authorAvatar: '/teacher3-main.jpg', date: '3 марта, 2024', image: '/banner.jpg', category: 'Статьи', readTime: 5, stats: { views: 179, hearts: 224, jumbo: 244 } },
-  { id: 4, title: 'Десантники провели учения в условиях арктического холода на полигоне Мулино', author: 'ВДВ СКОВ', authorAvatar: '/teacher1-main.jpg', date: '2 марта, 2024', image: '/flag-bg.jpg', category: 'Статьи', readTime: 6, stats: { views: 142, hearts: 188, jumbo: 201 } },
-  { id: 5, title: 'Подразделения ЦВО отработали форсирование водных преград в ночных условиях', author: 'ВДВ СКОВ', authorAvatar: '/teacher2-main.jpg', date: '1 марта, 2024', image: '/journal-main.jpg', category: 'Статьи', readTime: 4, stats: { views: 98, hearts: 134, jumbo: 156 } },
-  { id: 6, title: 'Бойцы спецназа ЮВО провели антидроновые учения на горном полигоне в Дагестане', author: 'ВДВ СКОВ', authorAvatar: '/teacher3-main.jpg', date: '28 февраля, 2024', image: '/banner.jpg', category: 'Статьи', readTime: 3, stats: { views: 211, hearts: 289, jumbo: 267 } },
-  { id: 7, title: 'Минобороны сообщило об успешных испытаниях новой боевой экипировки «Ратник-3»', author: 'Военный вестник', authorAvatar: '/teacher1-main.jpg', date: '3 марта, 2024', image: '/register-slide-1.jpg', category: 'Новости', readTime: 3, stats: { views: 312, hearts: 445, jumbo: 389 } },
-  { id: 8, title: 'Россия и Беларусь проведут совместные учения «Союзная решимость» в мае 2024 года', author: 'Военный вестник', authorAvatar: '/teacher2-main.jpg', date: '2 марта, 2024', image: '/banner.jpg', category: 'Новости', readTime: 4, stats: { views: 267, hearts: 321, jumbo: 298 } },
-  { id: 9, title: 'Государственная Дума приняла поправки о добровольной военной подготовке граждан', author: 'Военный вестник', authorAvatar: '/teacher3-main.jpg', date: '1 марта, 2024', image: '/flag-bg.jpg', category: 'Новости', readTime: 5, stats: { views: 198, hearts: 276, jumbo: 241 } },
-  { id: 10, title: 'ВКС России получили первую партию обновлённых истребителей Су-35С', author: 'Военный вестник', authorAvatar: '/teacher1-main.jpg', date: '28 февраля, 2024', image: '/journal-main.jpg', category: 'Новости', readTime: 3, stats: { views: 421, hearts: 512, jumbo: 467 } },
-  { id: 11, title: 'В России откроют 12 новых учебно-тренировочных полигонов для добровольцев', author: 'Военный вестник', authorAvatar: '/teacher2-main.jpg', date: '27 февраля, 2024', image: '/military-course.jpg', category: 'Новости', readTime: 4, stats: { views: 189, hearts: 234, jumbo: 212 } },
-  { id: 12, title: 'Новые стандарты физподготовки введут для всех контрактников с апреля 2024 года', author: 'Военный вестник', authorAvatar: '/teacher3-main.jpg', date: '26 февраля, 2024', image: '/banner.jpg', category: 'Новости', readTime: 3, stats: { views: 156, hearts: 198, jumbo: 174 } },
-  { id: 13, title: 'Как прошёл мой первый тактический марш: личный опыт курсанта «Воеводы»', author: 'Курсант Алексей К.', authorAvatar: '/teacher2-main.jpg', date: '3 марта, 2024', image: '/register-slide-2.jpg', category: 'Поток', readTime: 7, stats: { views: 89, hearts: 143, jumbo: 127 } },
-  { id: 14, title: 'Отчёт о прохождении КМБ — три недели, которые изменили моё мышление', author: 'Курсант Михаил Д.', authorAvatar: '/teacher3-main.jpg', date: '2 марта, 2024', image: '/military-course.jpg', category: 'Поток', readTime: 8, stats: { views: 76, hearts: 118, jumbo: 102 } },
-  { id: 15, title: 'Мои тренировки по Тесту Купера: прогресс за 2 месяца в цифрах и графиках', author: 'Курсант Дмитрий В.', authorAvatar: '/teacher1-main.jpg', date: '1 марта, 2024', image: '/flag-bg.jpg', category: 'Поток', readTime: 5, stats: { views: 112, hearts: 167, jumbo: 144 } },
-  { id: 16, title: 'Разбор ошибок на учениях: почему важно уметь проигрывать с достоинством', author: 'Курсант Сергей Н.', authorAvatar: '/teacher2-main.jpg', date: '29 февраля, 2024', image: '/journal-main.jpg', category: 'Поток', readTime: 6, stats: { views: 94, hearts: 131, jumbo: 119 } },
-  { id: 17, title: 'Снаряжение для первого курса: что купил, что пригодилось, от чего отказался', author: 'Курсант Игорь Т.', authorAvatar: '/teacher3-main.jpg', date: '28 февраля, 2024', image: '/banner.jpg', category: 'Поток', readTime: 5, stats: { views: 134, hearts: 178, jumbo: 156 } },
-  { id: 18, title: 'День на полигоне глазами новобранца: страх, усталость и настоящая гордость', author: 'Курсант Роман Ф.', authorAvatar: '/teacher1-main.jpg', date: '27 февраля, 2024', image: '/military-course.jpg', category: 'Поток', readTime: 6, stats: { views: 103, hearts: 149, jumbo: 133 } },
-  { id: 19, title: 'Правильное питание бойца: что есть до и после интенсивных физических нагрузок', author: 'Инструктор Воронов А.', authorAvatar: '/teacher3-main.jpg', date: '3 марта, 2024', image: '/military-course.jpg', category: 'Блог', readTime: 6, stats: { views: 234, hearts: 312, jumbo: 287 } },
-  { id: 20, title: 'Тактика малых групп: пять принципов, которые работают в любой ситуации', author: 'Инструктор Медведев С.', authorAvatar: '/teacher1-main.jpg', date: '2 марта, 2024', image: '/banner.jpg', category: 'Блог', readTime: 9, stats: { views: 189, hearts: 267, jumbo: 243 } },
-  { id: 21, title: 'Психологическая устойчивость: как сохранять хладнокровие в условиях стресса', author: 'Командир Зайцев П.', authorAvatar: '/teacher2-main.jpg', date: '1 марта, 2024', image: '/flag-bg.jpg', category: 'Блог', readTime: 7, stats: { views: 321, hearts: 398, jumbo: 356 } },
-  { id: 22, title: 'Основы ориентирования на местности без GPS: старые методы в новых реалиях', author: 'Инструктор Воронов А.', authorAvatar: '/teacher3-main.jpg', date: '29 февраля, 2024', image: '/journal-main.jpg', category: 'Блог', readTime: 5, stats: { views: 276, hearts: 334, jumbo: 301 } },
-  { id: 23, title: 'Первая помощь в полевых условиях: что нужно знать каждому курсанту', author: 'Командир Зайцев П.', authorAvatar: '/teacher2-main.jpg', date: '28 февраля, 2024', image: '/military-course.jpg', category: 'Блог', readTime: 8, stats: { views: 198, hearts: 245, jumbo: 219 } },
-  { id: 24, title: 'Выносливость против силы: что важнее для современного бойца в поле', author: 'Инструктор Медведев С.', authorAvatar: '/teacher1-main.jpg', date: '27 февраля, 2024', image: '/banner.jpg', category: 'Блог', readTime: 7, stats: { views: 167, hearts: 213, jumbo: 191 } },
-];
+const ARTICLES: Article[] = HOME_JOURNAL_ARTICLES;
+
 
 const LEADER_PERSON_ID = 1;
 const TABS = ['Поток', 'Статьи', 'Новости', 'Блог'] as const;
+
+// Каждая вкладка журнала показывает свою главную обложку, чтобы фото менялось при переключении
+const TAB_HERO: Record<typeof TABS[number], string> = {
+  'Поток': '/register-slide-2.jpg',
+  'Статьи': '/journal-main.jpg',
+  'Новости': '/register-slide-1.jpg',
+  'Блог': '/military-course.jpg',
+};
 
 const LEADER_PHOTO_H = 340;
 const LEADER_BADGE_COL_W = 100;
@@ -103,21 +92,20 @@ function MainArticle({ article }: { article: Article }) {
 
   const openArticle = () => {
     sessionStorage.setItem(JOURNAL_SCROLL_KEY, String(window.scrollY));
-    navigate(`/journal/${article.id}`);
+    navigate(`/journal/${article.id}`, { state: { returnTo: '/' } });
   };
 
   const handleLike = () => {
     setLiked(l => !l);
-    if (!liked) addNotif({ kind: 'like', title: 'Вам понравилась статья', body: article.title.slice(0, 60), link: '/journal' });
+    if (!liked) addNotif({ kind: 'like', title: 'Вам понравилась статья', body: article.title.slice(0, 60), link: `/journal/${article.id}` });
   };
   const handleFav = () => {
     toggle({ id: article.id, kind: 'article', title: article.title, author: article.author, date: article.date, image: article.image, stats: { views: article.stats.views, hearts: article.stats.hearts, likes: article.stats.jumbo } });
-    if (!faved) addNotif({ kind: 'like', title: 'Добавлено в избранное', body: article.title.slice(0, 60), link: '/favorites' });
   };
 
   return (
-    <div style={{ animation: 'jpSlideUp .4s ease' }}>
-      <div onClick={openArticle} style={{ borderRadius: 14, overflow: 'hidden', height: 300, background: '#F3F4F6', cursor: 'pointer', marginBottom: 14 }}>
+    <div style={{ animation: 'jpSlideUp .4s ease', display: 'flex', flexDirection: 'column', width: '100%' }}>
+      <div onClick={openArticle} style={{ borderRadius: 14, overflow: 'hidden', height: 'clamp(260px, 27vw, 350px)', flexShrink: 0, background: '#F3F4F6', cursor: 'pointer', marginBottom: 14 }}>
         {!imgErr
           ? <img src={article.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform .5s cubic-bezier(.4,0,.2,1)' }} onError={() => setImgErr(true)}
               onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.04)')}
@@ -125,25 +113,37 @@ function MainArticle({ article }: { article: Article }) {
           : <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg,#EBF1FF,#DFE8FF)' }} />
         }
       </div>
-      <h3 onClick={openArticle} style={{ fontSize: 16, fontWeight: 700, color: '#111', lineHeight: 1.45, marginBottom: 10, cursor: 'pointer', transition: 'color .15s' }}
-        onMouseEnter={e => (e.currentTarget.style.color = '#375DFB')}
-        onMouseLeave={e => (e.currentTarget.style.color = '#111')}>
+      <h3 onClick={openArticle} style={{ fontSize: 16, fontWeight: 700, color: '#111', lineHeight: 1.45, margin: '0 0 8px', cursor: 'pointer', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
         {article.title}
       </h3>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <span style={{ fontSize: 13, fontWeight: 500, color: '#374151' }}>{article.author}</span>
-        <span style={{ fontSize: 13, color: '#9CA3AF' }}>{article.date}</span>
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-        <button onClick={handleLike} style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 13, color: liked ? '#EF4444' : '#9CA3AF', transition: 'color .15s' }}>
+      {(() => { const ex = article.excerpt || getHomeArticleExcerpt(article as HomeJournalArticle); return ex ? <p style={{ fontSize: 13, color: '#6B7280', lineHeight: 1.55, margin: '0 0 10px', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' } as React.CSSProperties}>{ex}</p> : null; })()}
+      {/* Author row with reactions inline */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div onClick={e => { e.stopPropagation(); navigate(`/users/${encodeURIComponent(article.author)}`); }}
+          className="jp-avatar-ring"
+          style={{ width: 26, height: 26, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, border: '1px solid #E5E7EB', background: '#F3F4F6', cursor: 'pointer' }}>
+          <img src={article.authorAvatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            onError={(e: React.SyntheticEvent<HTMLImageElement>) => { e.currentTarget.style.opacity = '0'; }} />
+        </div>
+        <span onClick={e => { e.stopPropagation(); navigate(`/users/${encodeURIComponent(article.author)}`); }}
+          style={{ fontSize: 13, fontWeight: 600, color: '#374151', cursor: 'pointer', flexShrink: 0 }}>{article.author}</span>
+        <button onClick={e => { e.stopPropagation(); handleLike(); }}
+          style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 13, color: liked ? '#EF4444' : '#9CA3AF', transition: 'color .15s, transform .2s' }}
+          onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.15)')}
+          onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}>
           <IcHeart active={liked} />{article.stats.hearts + (liked ? 1 : 0)}
         </button>
-        <button onClick={() => setJuked(j => !j)} style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 13, color: juked ? '#10B981' : '#9CA3AF', transition: 'color .15s' }}>
+        <button onClick={e => { e.stopPropagation(); setJuked(j => !j); }}
+          style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 13, color: juked ? '#10B981' : '#9CA3AF', transition: 'color .15s, transform .2s' }}
+          onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.15)')}
+          onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}>
           <IcThumb color={juked ? '#10B981' : '#D1D5DB'} />{article.stats.jumbo + (juked ? 1 : 0)}
         </button>
-        <button onClick={e => { e.stopPropagation(); handleFav(); }} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex', transition: 'transform .15s' }}
-          onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.2)')}
-          onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}>
+        <span style={{ fontSize: 12, color: '#C4C9D4', marginLeft: 'auto', flexShrink: 0 }}>{article.date}</span>
+        <button onClick={e => { e.stopPropagation(); handleFav(); }}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, display: 'flex', flexShrink: 0, transition: 'transform .18s' }}
+          onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.25) rotate(-5deg)')}
+          onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1) rotate(0deg)')}>
           <IcBookmark active={faved} />
         </button>
       </div>
@@ -155,11 +155,19 @@ function SideArticleRow({ article, index, isLast }: { article: Article; index: n
   const navigate = useNavigate();
   const { toggle, has } = useFavoritesStore();
   const [liked, setLiked] = useState(false);
+  const [heartPop, setHeartPop] = useState(false);
   const faved = has(article.id, 'article');
 
   const openArticle = () => {
     sessionStorage.setItem(JOURNAL_SCROLL_KEY, String(window.scrollY));
-    navigate(`/journal/${article.id}`);
+    navigate(`/journal/${article.id}`, { state: { returnTo: '/' } });
+  };
+
+  const handleLike = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setLiked(l => !l);
+    setHeartPop(true);
+    setTimeout(() => setHeartPop(false), 380);
   };
 
   const handleFav = (e: React.MouseEvent) => {
@@ -167,29 +175,38 @@ function SideArticleRow({ article, index, isLast }: { article: Article; index: n
     toggle({ id: article.id, kind: 'article', title: article.title, author: article.author, date: article.date, image: article.image, stats: { views: article.stats.views, hearts: article.stats.hearts, likes: article.stats.jumbo } });
   };
 
+  const goToProfile = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigate(`/users/${encodeURIComponent(article.author)}`);
+  };
+
   return (
     <div onClick={openArticle} className="jp-row-hover" style={{ display: 'flex', gap: 10, padding: '11px 0', borderBottom: isLast ? 'none' : '1px solid #F3F4F6', cursor: 'pointer' }}>
-      <div style={{ flexShrink: 0, width: 20, height: 20, borderRadius: 6, background: index < 3 ? '#EBF1FF' : '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: index < 3 ? '#375DFB' : '#9CA3AF', marginTop: 1 }}>
+      <div className="jp-num-badge" style={{ flexShrink: 0, width: 20, height: 20, borderRadius: 6, background: index < 3 ? '#EBF1FF' : '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: index < 3 ? '#375DFB' : '#9CA3AF', marginTop: 1 }}>
         {index + 1}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ fontSize: 13, fontWeight: 600, color: '#111', lineHeight: 1.4, margin: '0 0 5px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' } as React.CSSProperties}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: '#111', lineHeight: 1.4, margin: '0 0 6px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' } as React.CSSProperties}>
           {article.title}
         </p>
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <span style={{ fontSize: 11, color: '#9CA3AF', flexShrink: 0 }}>{article.author}</span>
-          <span style={{ fontSize: 11, color: '#E5E7EB', margin: '0 6px' }}>·</span>
-          <span style={{ fontSize: 11, color: '#9CA3AF', flexShrink: 0 }}>{article.date}</span>
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-            <button onClick={e => { e.stopPropagation(); setLiked(l => !l); }} style={{ display: 'flex', alignItems: 'center', gap: 3, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 11, color: liked ? '#EF4444' : '#9CA3AF' }}>
-              <IcHeart active={liked} />{article.stats.hearts + (liked ? 1 : 0)}
-            </button>
-            <button onClick={handleFav} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 1, display: 'flex', transition: 'transform .15s' }}
-              onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.2)')}
-              onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}>
-              <IcBookmark active={faved} />
-            </button>
+        {/* Meta row: avatar · name · ♥ · bookmark  ···  date */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'nowrap', minWidth: 0 }}>
+          <div onClick={goToProfile} className="jp-avatar-ring" style={{ width: 18, height: 18, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, cursor: 'pointer', border: '1px solid #E5E7EB', background: '#F3F4F6' }}>
+            <img src={article.authorAvatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              onError={(e: React.SyntheticEvent<HTMLImageElement>) => { e.currentTarget.style.background = '#9CA3AF'; }} />
           </div>
+          <span onClick={goToProfile} style={{ fontSize: 11, color: '#6B7280', cursor: 'pointer', fontWeight: 600, flexShrink: 0, maxWidth: 72, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{article.author}</span>
+          <button onClick={handleLike}
+            className={heartPop ? 'jp-heart-pop' : ''}
+            style={{ display: 'flex', alignItems: 'center', gap: 3, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 11, color: liked ? '#EF4444' : '#9CA3AF', transition: 'color .15s', flexShrink: 0 }}>
+            <IcHeart active={liked} />{article.stats.hearts + (liked ? 1 : 0)}
+          </button>
+          <button onClick={handleFav} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 1, display: 'flex', transition: 'transform .18s', flexShrink: 0 }}
+            onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.25) rotate(-5deg)')}
+            onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1) rotate(0deg)')}>
+            <IcBookmark active={faved} />
+          </button>
+          <span style={{ fontSize: 11, color: '#C4C9D4', marginLeft: 'auto', flexShrink: 0 }}>{article.date}</span>
         </div>
       </div>
     </div>
@@ -268,10 +285,10 @@ function ScrollColumn({ articles }: { articles: Article[] }) {
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 28, background: 'linear-gradient(to top, #fff 0%, transparent 100%)', zIndex: 2, pointerEvents: 'none', opacity: atBottom ? 0 : 1, transition: 'opacity .2s' }} />
       </div>
       <div style={{ padding: '8px 18px 14px', flexShrink: 0 }}>
-        <button onClick={() => navigate('/journal')}
-          style={{ width: '100%', padding: '9px 0', border: '1px solid #E5E7EB', borderRadius: 7 , background: '#F9FAFB', color: '#6B7280', fontSize: 12, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, transition: 'all .15s' }}
-          onMouseEnter={e => { e.currentTarget.style.background = '#EBF1FF'; e.currentTarget.style.borderColor = '#C7D2FE'; e.currentTarget.style.color = '#375DFB'; }}
-          onMouseLeave={e => { e.currentTarget.style.background = '#F9FAFB'; e.currentTarget.style.borderColor = '#E5E7EB'; e.currentTarget.style.color = '#6B7280'; }}>
+        <button className="voevoda-view-all voevoda-view-all--inverse" onClick={() => navigate('/journal')}
+          style={{ width: '100%', padding: '9px 0', border: 'none', borderRadius: 7, background: '#375DFB', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, transition: 'all .15s', boxShadow: '0 2px 8px rgba(55,93,251,.28)' }}
+          onMouseEnter={e => { e.currentTarget.style.background = '#2D4FE0'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(55,93,251,.45)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = '#375DFB'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(55,93,251,.28)'; }}>
           Все материалы
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
             <polyline points="9,18 15,12 9,6" />
@@ -286,6 +303,7 @@ function ScrollColumn({ articles }: { articles: Article[] }) {
 function LeaderCard({ onOpenModal, onOpenAll }: { onOpenModal: () => void; onOpenAll: () => void }) {
   const navigate = useNavigate();
   const leader = PEOPLE.find(p => p.id === LEADER_PERSON_ID) ?? PEOPLE[0];
+
   const [mErr, setMErr] = useState(false);
   const [rErr, setRErr] = useState(false);
   const [hovered, setHovered] = useState(false);
@@ -294,122 +312,224 @@ function LeaderCard({ onOpenModal, onOpenAll }: { onOpenModal: () => void; onOpe
 
   const goToZnaki = (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigate('/my-path');
-    setTimeout(() => document.getElementById('znaki-section')?.scrollIntoView({ behavior: 'auto', block: 'start' }), 300);
+    navigate('/achievements');
+  };
+
+  const goToChat = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigate(`/messages?chat=${leader.id}`);
   };
 
   return (
     <div
+      onClick={onOpenModal}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
         flex: 1,
+        cursor: 'pointer',
         background: '#fff',
         borderRadius: 22,
-        overflow: 'hidden',
         border: `1.5px solid ${hovered ? '#B8CAFE' : '#EAECF0'}`,
         boxShadow: hovered
           ? '0 22px 60px rgba(55,93,251,.16), 0 6px 20px rgba(0,0,0,.07)'
           : '0 2px 16px rgba(0,0,0,.07)',
         transform: hovered ? 'translateY(-7px)' : 'translateY(0)',
-        transition: 'transform .45s cubic-bezier(.22,1,.36,1), box-shadow .4s ease, border-color .25s ease',
+        transition:
+          'transform .45s cubic-bezier(.22,1,.36,1), box-shadow .4s ease, border-color .25s ease',
         animation: 'jpCardIn .55s ease backwards',
         display: 'flex',
         flexDirection: 'column',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px 16px 12px' }}>
+      {/* Заголовок */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '15px 16px 12px',
+        }}
+      >
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4B5563" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#4B5563"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
           </svg>
-          <span style={{ fontSize: 15, fontWeight: 700, color: '#111' }}>Лидеры</span>
+          <span style={{ fontSize: 15, fontWeight: 700, color: '#111' }}>
+            Лидеры
+          </span>
         </div>
+
         <button
-          onClick={onOpenAll}
+          className="voevoda-view-all voevoda-view-all--inverse"
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpenAll();
+          }}
           onMouseEnter={() => setBtnHovered(true)}
           onMouseLeave={() => setBtnHovered(false)}
           style={{
-            display: 'flex', alignItems: 'center', gap: 4, padding: '5px 13px',
-            background: btnHovered ? '#EBF1FF' : '#F4F6FA',
-            border: `1.5px solid ${btnHovered ? '#375DFB' : '#E5E7EB'}`,
-            borderRadius: 20, fontSize: 12, fontWeight: 600,
-            color: btnHovered ? '#375DFB' : '#6B7280',
-            cursor: 'pointer', transition: 'all .25s ease',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            padding: '5px 13px',
+            background: btnHovered ? '#2D4FE0' : '#375DFB',
+            border: 'none',
+            borderRadius: 8,
+            fontSize: 12,
+            fontWeight: 600,
+            color: '#fff',
+            cursor: 'pointer',
+            transition: 'all .25s ease',
+            boxShadow: btnHovered ? '0 4px 14px rgba(55,93,251,.45)' : '0 2px 8px rgba(55,93,251,.28)',
           }}
         >
-          Все{' '}
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          Все
+          <svg
+            width="11"
+            height="11"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <polyline points="9,18 15,12 9,6" />
           </svg>
         </button>
       </div>
 
+      {/* Фото + знаки */}
       <div style={{ display: 'flex', gap: 10, padding: '0 14px', marginBottom: 15 }}>
         <div style={{ flex: 1, height: LEADER_PHOTO_H, position: 'relative' }}>
-          <div style={{ position: 'absolute', inset: 0, borderRadius: 16, overflow: 'hidden', background: '#EFF1F5' }}>
-            {!mErr
-              ? <img
-                  src={leader.mainImage}
-                  alt={leader.name}
-                  style={{
-                    width: '100%', height: '100%', objectFit: 'cover', display: 'block',
-                    objectPosition: leader.photoPosition ?? 'center center',
-                    transform: hovered ? 'scale(1.06)' : 'scale(1)',
-                    transition: 'transform .7s cubic-bezier(.4,0,.2,1)',
-                  }}
-                  onError={() => setMErr(true)}
-                />
-              : <div style={{ width: '100%', height: '100%', background: '#F3F4F6' }} />
-            }
-            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(8,10,20,.7) 0%, rgba(8,10,20,.12) 45%, transparent 75%)', pointerEvents: 'none' }} />
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              borderRadius: 16,
+              overflow: 'hidden',
+              background: '#EFF1F5',
+            }}
+          >
+            {!mErr ? (
+              <img
+                src={leader.mainImage}
+                alt={leader.name}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  display: 'block',
+                  objectPosition: leader.photoPosition ?? 'center center',
+                  transform: hovered ? 'scale(1.06)' : 'scale(1)',
+                  transition: 'transform .7s cubic-bezier(.4,0,.2,1)',
+                }}
+                onError={() => setMErr(true)}
+              />
+            ) : (
+              <div style={{ width: '100%', height: '100%', background: '#F3F4F6' }} />
+            )}
+
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                background:
+                  'linear-gradient(to top, rgba(8,10,20,.7) 0%, rgba(8,10,20,.12) 45%, transparent 75%)',
+                pointerEvents: 'none',
+              }}
+            />
           </div>
+
           {!rErr && (
-            <div style={{
-              position: 'absolute', bottom: -8, right: -28,
-              width: 60, height: 60, zIndex: 4,
-              transform: hovered ? 'scale(1.56)' : 'scale(1.5)',
-              transition: 'transform .7s cubic-bezier(.4,0,.2,1)',
-              transformOrigin: 'bottom right',
-            }}>
-              <img src={leader.rankImage} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', filter: 'drop-shadow(0 3px 10px rgba(0,0,0,.55))' }} onError={() => setRErr(true)} />
+            <div
+              style={{
+                position: 'absolute',
+                bottom: -8,
+                right: -28,
+                width: 60,
+                height: 60,
+                zIndex: 4,
+                transform: hovered ? 'scale(1.56)' : 'scale(1.5)',
+                transition: 'transform .7s cubic-bezier(.4,0,.2,1)',
+                transformOrigin: 'bottom right',
+              }}
+            >
+              <img
+                src={leader.rankImage}
+                alt=""
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'contain',
+                  filter: 'drop-shadow(0 3px 10px rgba(0,0,0,.55))',
+                }}
+                onError={() => setRErr(true)}
+              />
             </div>
           )}
         </div>
 
-        <div style={{
-          width: LEADER_BADGE_COL_W,
-          flexShrink: 0,
-          alignSelf: 'flex-start',
-          position: 'relative',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: 8,
-          paddingTop: 10,
-        }}>
-          <div style={{ position: 'absolute', top: 0, right: 0, zIndex: 10, pointerEvents: 'none' }}>
-            <ElitaBadge animate />
-          </div>
+        <div
+          style={{
+            width: LEADER_BADGE_COL_W,
+            flexShrink: 0,
+            alignSelf: 'flex-start',
+            position: 'relative',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 8,
+            paddingTop: 10,
+          }}
+        >
           {leader.smallImages.slice(0, 3).map((src, i) => (
-            <BadgeBox key={i} src={src} size={LEADER_BADGE_SIZE} tooltip={i === 0 ? 'Шеврон «ВОЕВОДА»' : undefined} />
+            <BadgeBox
+              key={i}
+              src={src}
+              size={LEADER_BADGE_SIZE}
+              tooltip={BADGE_TOOLTIPS[i]}
+              topRight={i === 0 ? <ElitaBadge animate /> : undefined}
+            />
           ))}
+
           {leader.extraCount > 0 && (
             <div
               onClick={goToZnaki}
+              onMouseEnter={(e) => {
+                setExtraHov(true);
+                e.currentTarget.style.transform = 'scale(1.06)';
+              }}
+              onMouseLeave={(e) => {
+                setExtraHov(false);
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
               style={{
-                width: LEADER_BADGE_SIZE, height: LEADER_BADGE_SIZE, borderRadius: 12,
+                width: LEADER_BADGE_SIZE,
+                height: LEADER_BADGE_SIZE,
+                borderRadius: 12,
                 background: extraHov ? 'linear-gradient(135deg,#375DFB,#7B9FFF)' : '#EBF1FF',
                 border: `1.5px solid ${extraHov ? 'transparent' : '#C7D2FE'}`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 13, fontWeight: 800,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 13,
+                fontWeight: 800,
                 color: extraHov ? '#fff' : '#375DFB',
                 cursor: 'pointer',
                 transition: 'all .3s ease',
-                boxShadow: hovered ? '0 6px 20px rgba(55,93,251,.38)' : 'none',
+                boxShadow: 'none',
               }}
-              onMouseEnter={e => { setExtraHov(true); e.currentTarget.style.transform = 'scale(1.06)'; }}
-              onMouseLeave={e => { setExtraHov(false); e.currentTarget.style.transform = 'scale(1)'; }}
             >
               +{leader.extraCount}
             </div>
@@ -417,36 +537,109 @@ function LeaderCard({ onOpenModal, onOpenAll }: { onOpenModal: () => void; onOpe
         </div>
       </div>
 
+      {/* Инфо */}
       <div style={{ padding: '0 16px', flex: 1, marginBottom: 14 }}>
-        <div style={{ fontSize: 10, color: '#9CA3AF', marginBottom: 4, textTransform: 'uppercase' as const, letterSpacing: '.7px', fontWeight: 600 }}>{leader.rank}</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+        <div
+          style={{
+            fontSize: 10,
+            color: '#9CA3AF',
+            marginBottom: 4,
+            textTransform: 'uppercase' as const,
+            letterSpacing: '.7px',
+            fontWeight: 600,
+          }}
+        >
+          {leader.rank}
+        </div>
+
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: 6,
+            flexWrap: 'wrap',
+          }}
+        >
           <span
-            style={{ fontSize: 19, fontWeight: 800, color: '#0D0F14', cursor: 'pointer', letterSpacing: '-.3px', transition: 'color .18s' }}
-            onClick={onOpenModal}
-            onMouseEnter={e => (e.currentTarget.style.color = '#375DFB')}
-            onMouseLeave={e => (e.currentTarget.style.color = '#0D0F14')}
+            style={{
+              fontSize: 19,
+              fontWeight: 800,
+              color: '#0D0F14',
+              cursor: 'pointer',
+              letterSpacing: '-.3px',
+              transition: 'color .18s',
+            }}
           >
             {leader.name}
           </span>
+
           <IVDisplay index={leader.index} rating={leader.rating} />
         </div>
-        <p style={{ fontSize: 12, color: '#6B7280', lineHeight: 1.55, margin: 0 }}>{leader.position}</p>
+
+        <p style={{ fontSize: 12, color: '#6B7280', lineHeight: 1.55, margin: 0 }}>
+          {leader.position}
+        </p>
       </div>
 
+      {/* Кнопки */}
       <div style={{ display: 'flex', gap: 9, padding: '0 14px 15px' }}>
         <button
-          onClick={onOpenModal}
-          style={{ flex: 1, background: 'linear-gradient(to right, #2F52F0 0%, #5B7FFF 60%, #7B9FFF 100%)', border: 'none', borderRadius: 8, padding: '12px 0', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', boxShadow: '0 5px 18px rgba(55,93,251,.32)', transition: 'transform .22s ease, box-shadow .22s ease' }}
-          onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 26px rgba(55,93,251,.46)'; }}
-          onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 5px 18px rgba(55,93,251,.32)'; }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpenModal();
+          }}
+          style={{
+            flex: 1,
+            background: '#375DFB',
+            border: 'none',
+            borderRadius: 8,
+            padding: '12px 0',
+            color: '#fff',
+            fontSize: 13,
+            fontWeight: 700,
+            cursor: 'pointer',
+            boxShadow: '0 5px 18px rgba(55,93,251,.32)',
+            transition: 'transform .22s ease, box-shadow .22s ease, background .22s ease',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-2px)';
+            e.currentTarget.style.boxShadow = '0 8px 26px rgba(55,93,251,.46)';
+            e.currentTarget.style.background = '#1E3F9F';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 5px 18px rgba(55,93,251,.32)';
+            e.currentTarget.style.background = '#375DFB';
+          }}
         >
           Личное дело
         </button>
+
         <button
-          onClick={() => navigate('/messages?chat=7')}
-          style={{ flex: 1, background: '#F8F9FC', border: '1.5px solid #E5E7EB', borderRadius: 8, padding: '12px 0', color: '#374151', fontSize: 13, fontWeight: 500, cursor: 'pointer', transition: 'all .22s ease' }}
-          onMouseEnter={e => { e.currentTarget.style.borderColor = '#C7D2FE'; e.currentTarget.style.color = '#375DFB'; e.currentTarget.style.background = '#EEF3FF'; }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = '#E5E7EB'; e.currentTarget.style.color = '#374151'; e.currentTarget.style.background = '#F8F9FC'; }}
+          onClick={goToChat}
+          style={{
+            flex: 1,
+            background: '#F8F9FC',
+            border: '1.5px solid #E5E7EB',
+            borderRadius: 8,
+            padding: '12px 0',
+            color: '#374151',
+            fontSize: 13,
+            fontWeight: 500,
+            cursor: 'pointer',
+            transition: 'all .22s ease',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = '#C7D2FE';
+            e.currentTarget.style.color = '#375DFB';
+            e.currentTarget.style.background = '#EEF3FF';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = '#E5E7EB';
+            e.currentTarget.style.color = '#374151';
+            e.currentTarget.style.background = '#F8F9FC';
+          }}
         >
           Написать в чат
         </button>
@@ -461,12 +654,26 @@ export function JournalPreview() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<typeof TABS[number]>('Поток');
   const [modal, setModal] = useState<{ mode: ModalMode } | null>(null);
+  const reviews = useReviewsStore((state) => state.reviews);
+  const reviewArticles: Article[] = reviews.map((review) => ({
+    id: 100000 + review.id,
+    title: review.title,
+    author: review.name,
+    authorAvatar: review.image,
+    date: new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(review.createdAt)),
+    image: '/journal-main.jpg',
+    category: 'Поток' as const,
+    readTime: Math.max(1, Math.ceil(review.text.length / 700)),
+    stats: { views: 0, hearts: 0, jumbo: review.rating },
+    excerpt: review.text.length > 20 ? (review.text.length > 220 ? review.text.slice(0, 220) + '…' : review.text) : undefined,
+  }));
+  const allArticles = [...reviewArticles, ...ARTICLES];
 
-  const filtered = ARTICLES.filter(a => a.category === activeTab);
+  const filtered = allArticles.filter(a => a.category === activeTab);
   const main = filtered[0];
   const sides = [
     ...filtered.slice(1),
-    ...ARTICLES.filter(a => a.category !== activeTab).slice(0, 12),
+    ...allArticles.filter(a => a.category !== activeTab).slice(0, 12),
   ];
 
   return (
@@ -475,7 +682,7 @@ export function JournalPreview() {
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr', gap: 20 }}>
 
           {/* ── ЖУРНАЛ ── */}
-          <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #E5E7EB', overflow: 'hidden', display: 'flex', flexDirection: 'column', animation: 'jpCardIn .5s ease' }}>
+          <div className="jp-card-wrap" style={{ background: '#fff', borderRadius: 20, border: '1px solid #E5E7EB', overflow: 'hidden', display: 'flex', flexDirection: 'column', animation: 'jpCardIn .5s ease' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', flexWrap: 'wrap', gap: 8, flexShrink: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="1.5" strokeLinecap="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" /></svg>
@@ -485,26 +692,32 @@ export function JournalPreview() {
                 <div style={{ display: 'flex', border: '1px solid #E5E7EB', borderRadius: 10, overflow: 'hidden' }}>
                   {TABS.map((tab, i) => (
                     <button key={tab} onClick={() => setActiveTab(tab)}
-                      style={{ padding: '7px 16px', background: activeTab === tab ? '#F3F6FF' : '#fff', border: 'none', borderRight: i < TABS.length - 1 ? '1px solid #E5E7EB' : 'none', color: activeTab === tab ? '#375DFB' : '#6B7280', fontWeight: activeTab === tab ? 600 : 400, fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all .15s' }}>
+                      className={`jp-tab-btn${activeTab === tab ? ' active' : ''}`}
+                      style={{ padding: '7px 16px', background: activeTab === tab ? '#F3F6FF' : '#fff', border: 'none', borderRight: i < TABS.length - 1 ? '1px solid #E5E7EB' : 'none', color: activeTab === tab ? '#375DFB' : '#6B7280', fontWeight: activeTab === tab ? 600 : 400, fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap' }}>
                       {tab}
                     </button>
                   ))}
                 </div>
-                <button onClick={() => navigate('/journal')}
-                  style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '7px 13px', border: '1px solid #E5E7EB', borderRadius: 10, fontSize: 13, fontWeight: 500, color: '#111', background: '#fff', cursor: 'pointer', transition: 'background .12s' }}
-                  onMouseEnter={e => { e.currentTarget.style.background = '#F9FAFB'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = '#fff'; }}>
+                <button className="voevoda-view-all voevoda-view-all--inverse" onClick={() => navigate('/journal')}
+                  style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '7px 13px', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 600, color: '#fff', background: '#375DFB', cursor: 'pointer', transition: 'all .15s', boxShadow: '0 2px 8px rgba(55,93,251,.28)' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#2D4FE0'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(55,93,251,.45)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = '#375DFB'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(55,93,251,.28)'; }}>
                   Все <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9,18 15,12 9,6" /></svg>
                 </button>
               </div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 1fr', flex: 1, minHeight: 0 }}>
-              <div style={{ padding: '20px', borderRight: isMobile ? 'none' : '1px solid #F0F0F0', overflowY: 'auto' }}>
-                {main && <MainArticle article={main} />}
+              <div style={{ padding: '0 20px 20px', borderRight: isMobile ? 'none' : '1px solid #F0F0F0', display: 'flex', overflow: 'hidden' }}>
+                {main && <MainArticle article={{ ...main, image: TAB_HERO[activeTab] ?? main.image }} />}
               </div>
               {!isMobile && (
-                <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0, maxHeight: 480 }}>
-                  <ScrollColumn articles={sides} />
+                // Правая колонка позиционируется абсолютно, чтобы её высоту задавала
+                // левая колонка (статья), а список новостей заполнял её ровно до низа —
+                // без лишнего пространства под кнопкой «Все материалы».
+                <div style={{ position: 'relative', minHeight: 0 }}>
+                  <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column' }}>
+                    <ScrollColumn articles={sides} />
+                  </div>
                 </div>
               )}
             </div>
@@ -521,7 +734,14 @@ export function JournalPreview() {
         </div>
       </section>
 
-      {modal && <PeopleModal people={PEOPLE} mode={modal.mode} onClose={() => setModal(null)} />}
+      {modal && createPortal(
+        <PeopleModal
+          people={PEOPLE}
+          mode={modal.mode}
+          onClose={() => setModal(null)}
+        />,
+        document.body
+      )}
     </>
   );
 }

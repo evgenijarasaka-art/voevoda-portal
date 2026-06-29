@@ -1,35 +1,75 @@
 ﻿import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { PortalBreadcrumb } from '../components/PortalBreadcrumb';
 
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap');
-  :root{--accent:#1A56DB;--accent-2:#2563EB;--accent-light:#EBF2FF;--accent-mid:#C7D9FA;--navy-900:#07111F;--navy-800:#0D1B2A;--navy-700:#102236;--navy-600:#1A3A5C;--surface:#F4F6FB;--surface-2:#EEF1F8;--border:#DDE3EE;--border-2:#C8D0E2;--text-primary:#0D1B2A;--text-secondary:#4A5568;--text-muted:#8A96A8;--success:#1A8A57;--success-bg:#E8F7EE;--warn:#C07A10;--warn-bg:#FEF3DC;--radius:14px;--radius-lg:20px;--radius-xl:28px;--shadow:0 4px 16px rgba(13,27,42,.09);--shadow-lg:0 12px 36px rgba(13,27,42,.14);--font:'Montserrat',sans-serif;}
+  :root{--accent:#375DFB;--accent-2:#2148D8;--accent-3:#7EA2FF;--accent-light:#EDF3FF;--accent-mid:#C9D8FF;--navy-900:#2148D8;--navy-800:#2B55E7;--navy-700:#416AF2;--navy-600:#6E91FA;--surface:#F5F8FF;--surface-2:#EDF2FC;--border:#DCE5F7;--border-2:#C5D2ED;--text-primary:#13234A;--text-secondary:#4C608A;--text-muted:#8290AD;--success:#1A8A57;--success-bg:#E8F7EE;--warn:#C07A10;--warn-bg:#FEF3DC;--radius:14px;--radius-lg:20px;--radius-xl:28px;--shadow:0 10px 30px rgba(45,83,181,.10);--shadow-lg:0 24px 70px rgba(35,70,160,.18);--font:'Montserrat',sans-serif;}
   *{box-sizing:border-box;margin:0;padding:0;}
-  .co-root{font-family:var(--font);}
+  .co-root{font-family:var(--font);background:radial-gradient(circle at 82% 4%,rgba(55,93,251,.09),transparent 27%),var(--surface)!important;}
   @keyframes co-up{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
   @keyframes co-fade{from{opacity:0}to{opacity:1}}
   @keyframes co-hero-line{from{width:0;opacity:0}to{width:56px;opacity:1}}
   @keyframes co-count{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:none}}
   @keyframes co-modal{from{opacity:0;transform:scale(.95) translateY(10px)}to{opacity:1;transform:none}}
+  @keyframes co-float{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(0,-9px,0)}}
   .co-s1{animation:co-up .42s ease both;}
   .co-s2{animation:co-up .42s .07s ease both;}
   .co-s3{animation:co-up .42s .14s ease both;}
   .co-s4{animation:co-up .42s .21s ease both;}
-  .co-stat{transition:transform .2s,box-shadow .2s!important;}
-  .co-stat:hover{transform:translateY(-3px)!important;box-shadow:var(--shadow)!important;}
+  .co-hero{background:linear-gradient(125deg,#FFFFFF 0%,#EDF4FF 52%,#D8E6FF 100%)!important;box-shadow:0 24px 65px rgba(55,93,251,.14);border:1px solid #C9D8FF;}
+  .co-hero::before{content:'';position:absolute;inset:0;background:linear-gradient(115deg,rgba(55,93,251,.045),transparent 38%),repeating-linear-gradient(90deg,transparent 0 54px,rgba(55,93,251,.04) 55px);pointer-events:none;}
+  .co-hero::after{content:'';position:absolute;width:280px;height:280px;border:54px solid rgba(55,93,251,.075);border-radius:50%;right:-76px;top:-105px;animation:co-float 7s ease-in-out infinite;pointer-events:none;}
+  .co-hero-metric{transition:transform .22s ease,background .22s ease,border-color .22s ease;}
+  .co-hero-metric:hover{transform:translateX(-5px);background:#fff!important;border-color:#9DB7FF!important;box-shadow:0 10px 24px rgba(55,93,251,.12);}
+  .co-primary-cta{position:relative;isolation:isolate;overflow:hidden;transition:transform .2s ease,box-shadow .2s ease,background .2s ease!important;box-shadow:0 10px 24px rgba(55,93,251,.28)!important;}
+  .co-primary-cta::after{content:'';position:absolute;inset:-2px;background:linear-gradient(110deg,transparent 20%,rgba(255,255,255,.42) 46%,transparent 70%);transform:translateX(-120%);transition:transform .55s ease;z-index:-1;}
+  .co-primary-cta:hover{background:#2148D8!important;transform:translateY(-3px)!important;box-shadow:0 16px 34px rgba(55,93,251,.38)!important;}
+  .co-primary-cta:hover::after{transform:translateX(120%);}
+  .co-secondary-cta{transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease!important;}
+  .co-secondary-cta:hover{transform:translateY(-3px)!important;border-color:#9DB7FF!important;box-shadow:0 12px 28px rgba(55,93,251,.14)!important;}
+  .co-stat{transition:transform .25s,box-shadow .25s,border-color .25s!important;box-shadow:0 8px 24px rgba(50,79,145,.055);}
+  .co-stat:hover{transform:translateY(-5px)!important;box-shadow:0 18px 40px rgba(55,93,251,.14)!important;border-color:var(--accent-mid)!important;}
   .co-member{cursor:pointer;transition:box-shadow .2s,transform .18s!important;}
-  .co-member:hover{box-shadow:0 8px 28px rgba(13,27,42,.11)!important;transform:translateY(-2px)!important;}
+  .co-member:hover{box-shadow:0 16px 36px rgba(55,93,251,.14)!important;transform:translateY(-4px)!important;border-color:var(--accent-mid)!important;}
   .co-member:hover .co-member-img{transform:scale(1.04);}
   .co-member-img{transition:transform .35s;}
   .co-nav-btn{display:flex;align-items:center;gap:10px;width:100%;padding:12px 18px;border:none;background:transparent;cursor:pointer;text-align:left;font-family:var(--font);transition:background .13s;border-left:3px solid transparent;}
-  .co-nav-btn:hover{background:var(--surface);}
-  .co-nav-btn.active{background:var(--accent-light)!important;border-left-color:var(--accent)!important;color:var(--accent)!important;}
+  .co-nav-btn:hover{background:var(--accent-light);color:var(--accent)!important;transform:translateX(2px);}
+  .co-nav-btn.active{background:linear-gradient(90deg,var(--accent-light),#fff)!important;border-left-color:var(--accent)!important;color:var(--accent)!important;font-weight:700!important;}
   .co-doc-row{display:flex;align-items:center;justify-content:space-between;padding:14px 22px;border-bottom:1px solid var(--border);transition:background .13s;}
   .co-doc-row:last-child{border-bottom:none;}
   .co-doc-row:hover{background:var(--surface);}
   .co-milestone{display:flex;gap:18px;position:relative;}
   .co-contact-field{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:14px;color:var(--text-primary);outline:none;font-family:var(--font);background:#fff;transition:border-color .15s;}
   .co-contact-field:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(26,86,219,.09);}
+  .co-card{box-shadow:0 10px 32px rgba(46,72,132,.055);transition:border-color .22s ease,box-shadow .22s ease;}
+  .co-card:hover{border-color:var(--accent-mid)!important;box-shadow:0 16px 44px rgba(46,79,166,.09);}
+  .co-left-nav{box-shadow:0 12px 34px rgba(46,72,132,.07);}
+  @media(max-width:1050px){
+    .co-hero-inner{grid-template-columns:1fr 270px!important;gap:28px!important;}
+    .co-stats-grid{grid-template-columns:repeat(2,1fr)!important;}
+    .co-main-grid{grid-template-columns:190px minmax(0,1fr)!important;}
+  }
+  @media(max-width:760px){
+    .co-root{margin-left:40px!important;padding-top:58px!important;}
+    .co-page{padding:16px 14px 42px!important;}
+    .co-hero{border-radius:20px!important;}
+    .co-hero-inner{grid-template-columns:1fr!important;padding:28px 22px!important;gap:24px!important;}
+    .co-hero-title{font-size:23px!important;overflow-wrap:anywhere;}
+    .co-hero-actions{flex-wrap:wrap!important;}
+    .co-hero-actions button{flex:1;min-width:0;padding-left:10px!important;padding-right:10px!important;}
+    .co-stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important;}
+    .co-stat{padding:16px!important;}
+    .co-main-grid{display:block!important;}
+    .co-left-nav{position:static!important;display:flex;overflow-x:auto;margin-bottom:14px;border-radius:14px!important;padding:6px;gap:4px;scrollbar-width:none;}
+    .co-left-nav::-webkit-scrollbar{display:none;}
+    .co-nav-btn{width:auto!important;min-width:max-content;border-left:0!important;border-bottom:3px solid transparent;padding:10px 13px!important;border-radius:10px;}
+    .co-nav-btn.active{border-bottom-color:var(--accent)!important;}
+    .co-two-grid,.co-team-grid,.co-directions-grid,.co-contacts-grid{grid-template-columns:1fr!important;}
+    .co-doc-row{align-items:flex-start;gap:12px;padding:14px!important;}
+  }
+  @media(max-width:430px){.co-hero-title br{display:none}.co-hero-metrics{gap:7px!important}}
   ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:4px}
 `;
 
@@ -75,14 +115,27 @@ function Ico({d,size=18,stroke='currentColor',sw=1.6}:{d:string;size?:number;str
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={stroke} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">{d.split('M').slice(1).map((seg,i)=><path key={i} d={'M'+seg}/>)}</svg>;
 }
 
+function Card({children,style}:{children:React.ReactNode;style?:React.CSSProperties}){
+  return <div className="co-card" style={{background:'#fff',borderRadius:20,border:'1px solid var(--border)',overflow:'hidden',marginBottom:16,...style}}>{children}</div>;
+}
+
+function SHeader({icon,title}:{icon:string;title:string}){
+  return (
+    <div style={{display:'flex',alignItems:'center',gap:10,padding:'18px 22px',borderBottom:'1px solid var(--border)'}}>
+      <div style={{width:36,height:36,borderRadius:10,background:'var(--surface-2)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+        <Ico d={icon} size={18} stroke="var(--text-secondary)"/>
+      </div>
+      <span style={{fontSize:17,fontWeight:700,color:'var(--text-primary)'}}>{title}</span>
+    </div>
+  );
+}
+
 export function Company(){
   const navigate=useNavigate();
   const [active,setActive]=useState<Section>('about');
   const [selectedMember,setSelectedMember]=useState<typeof TEAM[0]|null>(null);
   const [contactForm,setContactForm]=useState({name:'',phone:'',email:'',msg:''});
   const [contactSent,setContactSent]=useState(false);
-  const [partnerForm,setPartnerForm]=useState({org:'',name:'',phone:'',request:''});
-  const [partnerSent,setPartnerSent]=useState(false);
 
   const NAV:Array<{id:Section;label:string;icon:string}> = [
     {id:'about',label:'О центре',icon:'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'},
@@ -94,53 +147,31 @@ export function Company(){
     {id:'contacts',label:'Контакты',icon:'M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z'},
   ];
 
-  const Card=({children,style}:{children:React.ReactNode;style?:React.CSSProperties})=>(
-    <div style={{background:'#fff',borderRadius:20,border:'1px solid var(--border)',overflow:'hidden',marginBottom:16,...style}}>{children}</div>
-  );
-
-  const SHeader=({icon,title}:{icon:string;title:string})=>(
-    <div style={{display:'flex',alignItems:'center',gap:10,padding:'18px 22px',borderBottom:'1px solid var(--border)'}}>
-      <div style={{width:36,height:36,borderRadius:10,background:'var(--surface-2)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-        <Ico d={icon} size={18} stroke="var(--text-secondary)"/>
-      </div>
-      <span style={{fontSize:17,fontWeight:700,color:'var(--text-primary)'}}>{title}</span>
-    </div>
-  );
-
   return(
     <div className="co-root" style={{paddingTop:60,marginLeft:56,minHeight:'100vh',background:'var(--surface)'}}>
       <style>{CSS}</style>
 
-      <div style={{padding:'20px 24px 60px'}}>
-        {/* Breadcrumb */}
-        <div style={{display:'flex',gap:6,fontSize:12,color:'var(--text-muted)',marginBottom:20}}>
-          <span onClick={()=>navigate('/')} style={{cursor:'pointer'}}>Главная</span><span>/</span>
-          <span style={{color:'var(--text-primary)',fontWeight:500}}>О компании</span>
-        </div>
+      <div className="co-page" style={{padding:'20px 24px 60px'}}>
+        <PortalBreadcrumb items={[{ label:'Главная', to:'/' }, { label:'О компании' }]} />
 
         {/* Hero */}
-        <div className="co-s1" style={{background:'linear-gradient(138deg,var(--navy-900) 0%,var(--navy-700) 55%,var(--navy-600) 100%)',borderRadius:24,position:'relative',overflow:'hidden',marginBottom:16}}>
-          <div style={{position:'absolute',inset:0,backgroundImage:'repeating-linear-gradient(0deg,transparent,transparent 39px,rgba(255,255,255,.02) 40px),repeating-linear-gradient(90deg,transparent,transparent 39px,rgba(255,255,255,.02) 40px)'}}/>
-          <div style={{position:'absolute',top:-80,right:-80,width:380,height:380,borderRadius:'50%',background:'radial-gradient(circle,rgba(26,86,219,.18) 0%,transparent 70%)'}}/>
-          <div style={{position:'relative',zIndex:1,padding:'36px 44px',display:'grid',gridTemplateColumns:'1fr 320px',gap:48,alignItems:'center'}}>
+        <div className="co-hero co-s1" style={{borderRadius:24,position:'relative',overflow:'hidden',marginBottom:16}}>
+          <div className="co-hero-inner" style={{position:'relative',zIndex:1,padding:'38px 44px',display:'grid',gridTemplateColumns:'1fr 320px',gap:48,alignItems:'center'}}>
             <div>
-              <div style={{fontSize:11,fontWeight:700,color:'rgba(255,255,255,.4)',letterSpacing:2,textTransform:'uppercase',marginBottom:10}}>УТЦ «ВОЕВОДА» · с 2016 года</div>
-              <h1 style={{fontSize:32,fontWeight:800,color:'#fff',lineHeight:1.15,letterSpacing:'-.4px',marginBottom:0}}>Военно-тактический<br/>учебный центр</h1>
-              <div style={{width:56,height:3,borderRadius:2,background:'var(--accent-2)',margin:'12px 0 18px',animation:'co-hero-line .6s .2s ease both'}}/>
-              <p style={{fontSize:14,color:'rgba(255,255,255,.6)',lineHeight:1.8,maxWidth:480,marginBottom:28}}>Профессиональная военная подготовка граждан России. Обучаем защищать Родину — на реальных полигонах, с ветеранами ВС РФ и спецназа.</p>
-              <div style={{display:'flex',gap:12}}>
-                <button onClick={()=>navigate('/courses')} style={{padding:'12px 26px',background:'var(--accent)',border:'none',borderRadius:12,color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer',fontFamily:'var(--font)',transition:'all .15s'}}
-                  onMouseEnter={e=>{e.currentTarget.style.background='var(--accent-2)';e.currentTarget.style.transform='translateY(-1px)';}}
-                  onMouseLeave={e=>{e.currentTarget.style.background='var(--accent)';e.currentTarget.style.transform='none';}}>Записаться на курс</button>
-                <button onClick={()=>setActive('contacts')} style={{padding:'12px 22px',background:'rgba(255,255,255,.1)',border:'1.5px solid rgba(255,255,255,.2)',borderRadius:12,color:'#fff',fontSize:14,cursor:'pointer',fontFamily:'var(--font)',transition:'all .15s'}}
-                  onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,.18)'} onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,.1)'}>Связаться</button>
+              <div style={{fontSize:11,fontWeight:800,color:'#5E79BD',letterSpacing:2,textTransform:'uppercase',marginBottom:10}}>УТЦ «ВОЕВОДА» · с 2016 года</div>
+              <h1 className="co-hero-title" style={{fontSize:32,fontWeight:800,color:'#173B8F',lineHeight:1.15,letterSpacing:'-.4px',marginBottom:0}}>Военно-тактический<br/>учебный центр</h1>
+              <div style={{width:56,height:3,borderRadius:2,background:'var(--accent)',margin:'12px 0 18px',animation:'co-hero-line .6s .2s ease both'}}/>
+              <p style={{fontSize:14,color:'#4E6392',lineHeight:1.8,maxWidth:480,marginBottom:28}}>Профессиональная военная подготовка граждан России. Обучаем защищать Родину — на реальных полигонах, с ветеранами ВС РФ и спецназа.</p>
+              <div className="co-hero-actions" style={{display:'flex',gap:12}}>
+                <button className="co-primary-cta" onClick={()=>navigate('/courses')} style={{padding:'13px 27px',background:'var(--accent)',border:'1px solid var(--accent)',borderRadius:12,color:'#fff',fontSize:14,fontWeight:800,cursor:'pointer',fontFamily:'var(--font)'}}>Записаться на курс</button>
+                <button className="co-secondary-cta" onClick={()=>setActive('contacts')} style={{padding:'13px 22px',background:'#fff',border:'1.5px solid #C2D2FB',borderRadius:12,color:'var(--accent-2)',fontSize:14,fontWeight:750,cursor:'pointer',fontFamily:'var(--font)',boxShadow:'0 6px 18px rgba(55,93,251,.08)'}}>Связаться</button>
               </div>
             </div>
-            <div style={{display:'flex',flexDirection:'column',gap:8}}>
+            <div className="co-hero-metrics" style={{display:'flex',flexDirection:'column',gap:8}}>
               {[['18 400','Активных пользователей'],['40+','Программ подготовки'],['23','Города присутствия']].map(([v,l])=>(
-                <div key={l} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 16px',background:'rgba(255,255,255,.07)',border:'1px solid rgba(255,255,255,.10)',borderRadius:12,backdropFilter:'blur(6px)'}}>
-                  <span style={{fontSize:12,color:'rgba(255,255,255,.55)'}}>{l}</span>
-                  <span style={{fontSize:18,fontWeight:800,color:'#fff'}}>{v}</span>
+                <div key={l} className="co-hero-metric" style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'13px 16px',background:'rgba(255,255,255,.68)',border:'1px solid #C9D8FF',borderRadius:12,backdropFilter:'blur(10px)'}}>
+                  <span style={{fontSize:12,color:'#6579A7'}}>{l}</span>
+                  <span style={{fontSize:18,fontWeight:800,color:'#2148D8'}}>{v}</span>
                 </div>
               ))}
             </div>
@@ -148,7 +179,7 @@ export function Company(){
         </div>
 
         {/* Stats */}
-        <div className="co-s2" style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:14,marginBottom:16}}>
+        <div className="co-stats-grid co-s2" style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:14,marginBottom:16}}>
           {STATS.map((s,i)=>(
             <div key={i} className="co-stat" style={{background:'#fff',borderRadius:18,border:'1px solid var(--border)',padding:'20px 22px',animationDelay:`${i*.05}s`}}>
               <div style={{width:44,height:44,borderRadius:12,background:s.bg,display:'flex',alignItems:'center',justifyContent:'center',marginBottom:12}}>
@@ -160,9 +191,9 @@ export function Company(){
           ))}
         </div>
 
-        <div style={{display:'grid',gridTemplateColumns:'220px 1fr',gap:16,alignItems:'start'}}>
+        <div className="co-main-grid" style={{display:'grid',gridTemplateColumns:'220px 1fr',gap:16,alignItems:'start'}}>
           {/* Left nav */}
-          <div style={{background:'#fff',borderRadius:16,border:'1px solid var(--border)',overflow:'hidden',position:'sticky',top:80}}>
+          <div className="co-left-nav" style={{background:'#fff',borderRadius:16,border:'1px solid var(--border)',overflow:'hidden',position:'sticky',top:80}}>
             {NAV.map(n=>(
               <button key={n.id} onClick={()=>setActive(n.id)} className={`co-nav-btn${active===n.id?' active':''}`}
                 style={{fontSize:13,fontWeight:active===n.id?600:400,color:active===n.id?'var(--accent)':'var(--text-secondary)'}}>
@@ -186,7 +217,7 @@ export function Company(){
                 </Card>
                 <Card>
                   <SHeader icon="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" title="Направления подготовки"/>
-                  <div style={{padding:'18px 22px',display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+                  <div className="co-two-grid" style={{padding:'18px 22px',display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
                     {DIRECTIONS.slice(0,4).map(d=>(
                       <div key={d.title} style={{display:'flex',alignItems:'flex-start',gap:10,padding:'14px',background:'var(--surface)',borderRadius:12,border:'1px solid var(--border)'}}>
                         <div style={{width:36,height:36,borderRadius:10,background:'var(--accent-light)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
@@ -210,7 +241,7 @@ export function Company(){
                     <div style={{fontSize:11,fontWeight:700,color:'var(--accent)',textTransform:'uppercase',letterSpacing:1,marginBottom:8}}>Миссия</div>
                     <p style={{fontSize:16,fontWeight:700,color:'var(--text-primary)',lineHeight:1.6}}>Формировать физически и морально подготовленных граждан, способных защитить себя, близких и Родину в любых условиях.</p>
                   </div>
-                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+                  <div className="co-two-grid" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
                     {[
                       {title:'Профессионализм',text:'Только подтверждённый боевой опыт. Каждый инструктор прошёл реальную службу.',icon:'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'},
                       {title:'Патриотизм',text:'Воспитываем любовь к Родине через действие. Не слова — результат.',icon:'M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9'},
@@ -232,7 +263,7 @@ export function Company(){
             {active==='team'&&(
               <Card>
                 <SHeader icon="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" title="Руководство"/>
-                <div style={{padding:'20px 22px',display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:14}}>
+                <div className="co-team-grid" style={{padding:'20px 22px',display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:14}}>
                   {TEAM.map(m=>(
                     <div key={m.name} className="co-member" onClick={()=>setSelectedMember(m)} style={{background:'var(--surface)',borderRadius:16,border:'1px solid var(--border)',overflow:'hidden'}}>
                       <div style={{height:160,overflow:'hidden',background:'var(--surface-2)'}}>
@@ -270,7 +301,7 @@ export function Company(){
             {active==='directions'&&(
               <Card>
                 <SHeader icon="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" title="Направления подготовки"/>
-                <div style={{padding:'20px 22px',display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+                <div className="co-directions-grid" style={{padding:'20px 22px',display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
                   {DIRECTIONS.map(d=>(
                     <div key={d.title} style={{display:'flex',alignItems:'flex-start',gap:12,padding:'16px',background:'var(--surface)',borderRadius:14,border:'1px solid var(--border)',transition:'border-color .15s,box-shadow .15s',cursor:'default'}}
                       onMouseEnter={e=>{(e.currentTarget as HTMLDivElement).style.borderColor='var(--accent-mid)';(e.currentTarget as HTMLDivElement).style.boxShadow='var(--shadow)';}}
@@ -319,7 +350,7 @@ export function Company(){
               </Card>
             )}
             {active==='contacts'&&(
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+              <div className="co-contacts-grid" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
                 <Card>
                   <SHeader icon="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" title="Контакты"/>
                   <div style={{padding:'20px 22px'}}>
@@ -388,7 +419,7 @@ export function Company(){
 
       {/* Member Modal */}
       {selectedMember&&(
-        <div onClick={()=>setSelectedMember(null)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,.55)',zIndex:500,display:'flex',alignItems:'center',justifyContent:'center',padding:24,backdropFilter:'blur(5px)',animation:'co-fade .15s ease'}}>
+        <div onClick={()=>setSelectedMember(null)} style={{position:'fixed',inset:0,background:'rgba(29,63,153,.56)',zIndex:500,display:'flex',alignItems:'center',justifyContent:'center',padding:24,backdropFilter:'blur(7px)',animation:'co-fade .15s ease'}}>
           <div onClick={e=>e.stopPropagation()} style={{background:'#fff',borderRadius:24,maxWidth:520,width:'100%',boxShadow:'var(--shadow-lg)',animation:'co-modal .25s cubic-bezier(.34,1.56,.64,1)',overflow:'hidden'}}>
             <div style={{height:220,background:'var(--surface-2)',position:'relative'}}>
               <img src={selectedMember.img} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>{(e.target as HTMLImageElement).style.display='none';}}/>

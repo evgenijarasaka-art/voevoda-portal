@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { PortalBreadcrumb } from '../components/PortalBreadcrumb';
 
 /* ─────────────────────────────────────────────
    STYLES
@@ -778,22 +779,7 @@ export function Referral() {
       <style>{CSS}</style>
       <div style={{ padding: '24px 28px 60px' }}>
 
-        {/* Breadcrumb */}
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 12, color: 'var(--text-muted)', marginBottom: 22 }}>
-          <span onClick={() => navigate('/')} style={{ cursor: 'pointer', transition: 'color .15s' }}
-            onMouseEnter={e => (e.currentTarget.style.color = 'var(--accent)')}
-            onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}>
-            Главная
-          </span>
-          <Icon d="M9 18l6-6-6-6" size={10} stroke="var(--border-2)" />
-          <span onClick={() => navigate('/profile')} style={{ cursor: 'pointer', transition: 'color .15s' }}
-            onMouseEnter={e => (e.currentTarget.style.color = 'var(--accent)')}
-            onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}>
-            Личный кабинет
-          </span>
-          <Icon d="M9 18l6-6-6-6" size={10} stroke="var(--border-2)" />
-          <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>Партнёрская программа</span>
-        </div>
+        <PortalBreadcrumb items={[{ label:'Главная', to:'/' }, { label:'Личный кабинет', to:'/profile' }, { label:'Партнёрская программа' }]} />
 
         {/* Hero */}
         <div className="rf-hero rf-s1" style={{ padding: '32px 36px 34px', marginBottom: 18 }}>

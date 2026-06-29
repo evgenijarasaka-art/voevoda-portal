@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useMediaQuery } from "../useMediaQuery";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -7,6 +7,9 @@ import {
   PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar as RcRadar,
 } from "recharts";
 import { MeasurementsPanel } from "../components/IndexCharts";
+import { BadgeBox, BADGE_TOOLTIPS, ElitaBadge, ExtraBadge, IVDisplay } from "../components/PeopleSection";
+import { VoevodaSocialLinks } from "../components/Footer";
+import { Profile } from "./Profile";
 
 /* ─── SVG wrapper ─── */
 function Svg({ size = 20, color = "currentColor", children }: { size?: number; color?: string; children: React.ReactNode }) {
@@ -18,7 +21,6 @@ function Svg({ size = 20, color = "currentColor", children }: { size?: number; c
   );
 }
 
-function IcBuilding({ size = 20 }: { size?: number }) { return <Svg size={size}><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></Svg>; }
 function IcRun({ size = 20, color = "currentColor" }: { size?: number; color?: string }) { return <Svg size={size} color={color}><circle cx="12" cy="5" r="1"/><path d="m9 20 3-7 4 4"/><path d="m6 15 3-7 6-2"/><path d="m2 22 4-2"/><path d="m22 22-4-2"/></Svg>; }
 function IcTactic({ size = 20, color = "currentColor" }: { size?: number; color?: string }) { return <Svg size={size} color={color}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></Svg>; }
 function IcCmd({ size = 20, color = "currentColor" }: { size?: number; color?: string }) { return <Svg size={size} color={color}><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10l1 7H6L7 4z"/><path d="M6 11c0 3.31 2.69 6 6 6s6-2.69 6-6"/></Svg>; }
@@ -28,9 +30,6 @@ function IcDiploma({ size = 20 }: { size?: number }) { return <Svg size={size}><
 function IcPeople({ size = 16 }: { size?: number }) { return <Svg size={size}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></Svg>; }
 function IcCity({ size = 16 }: { size?: number }) { return <Svg size={size}><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></Svg>; }
 function IcGroup({ size = 16 }: { size?: number }) { return <Svg size={size}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></Svg>; }
-function IcPhone({ size = 17 }: { size?: number }) { return <Svg size={size}><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.18 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.6a16 16 0 0 0 6 6l.94-.94a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></Svg>; }
-function IcMail({ size = 17 }: { size?: number }) { return <Svg size={size}><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22 6 12 13 2 6"/></Svg>; }
-function IcVk({ size = 17 }: { size?: number }) { return <Svg size={size}><rect x="2" y="2" width="20" height="20" rx="3"/><path d="M7 12.5c3 2 5.5 2.5 8.5.5"/><path d="M7 8v9"/><path d="M15.5 8c0 2-.5 4.5-2.5 5.5"/></Svg>; }
 function IcArrow({ dir }: { dir: "left" | "right" }) {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -106,8 +105,14 @@ function AreaChartRC({ series, labels, yMax = 1, height = 230 }: { series: Chart
 function RadarChartRC({ data }: { data: { label: string; value: number; color: string; max: number }[] }) {
   const chartData = data.map(d => ({ subject: d.label, value: d.value, fullMark: d.max }));
   return (
-    <ResponsiveContainer width="100%" height={300}>
-      <RcRadarChart data={chartData} cx="50%" cy="50%" outerRadius="68%">
+    <ResponsiveContainer width="100%" height={340}>
+      <RcRadarChart
+        data={chartData}
+        cx="50%"
+        cy="49%"
+        outerRadius="84%"
+        margin={{ top: 24, right: 42, bottom: 24, left: 42 }}
+      >
         <PolarGrid stroke="#E5E7EB" strokeWidth={1}/>
         <PolarAngleAxis dataKey="subject" tick={{ fontSize: 12, fill: "#6B7280", fontWeight: 600 }}/>
         <PolarRadiusAxis domain={[0, 5]} tick={false} axisLine={false} tickCount={6}/>
@@ -206,35 +211,16 @@ function DonutChart({ segments }: { segments: { label: string; pct: number; colo
   );
 }
 
-function TooltipBadge({ src, active, tooltip, elita }: { src: string; active: boolean; tooltip?: { title: string; desc: string; course: string }; elita?: boolean }) {
-  const [show, setShow] = useState(false);
+function TooltipBadge({ src, active, tooltip, elita, onClick }: { src: string; active: boolean; tooltip?: { title: string; desc: string; course: string }; elita?: boolean; onClick?: () => void }) {
+  const label = tooltip?.title ?? BADGE_TOOLTIPS[0];
   return (
-    <div style={{ position: "relative", flexShrink: 0 }} onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
-      {elita && (
-        <div style={{ position: "absolute", top: -12, left: "50%", transform: "translateX(-50%)", zIndex: 10, background: "#F59E0B", borderRadius: 10, padding: "2px 8px", whiteSpace: "nowrap" }}>
-          <span style={{ fontSize: 9, fontWeight: 700, color: "#fff", textTransform: "uppercase" }}>элита</span>
-        </div>
-      )}
-      <div style={{ width: 72, height: 72, borderRadius: 12, background: active ? "#fff" : "#F3F4F6", border: `1.5px solid ${active ? "#375DFB" : "#E5E7EB"}`, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", cursor: "pointer", opacity: active ? 1 : 0.5, transition: "all .2s", boxShadow: active ? "0 0 0 2px rgba(55,93,251,.15)" : "none" }}>
-        <img src={src} alt="" style={{ width: "80%", height: "80%", objectFit: "contain" }} onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}/>
-      </div>
-      {show && tooltip && (
-        <div style={{ position: "absolute", bottom: "calc(100% + 10px)", left: "50%", transform: "translateX(-50%)", background: "#fff", border: "1px solid #E5E7EB", borderRadius: 14, padding: 16, zIndex: 500, width: 280, boxShadow: "0 8px 32px rgba(0,0,0,.15)", pointerEvents: "none" }}>
-          <div style={{ display: "flex", gap: 14, marginBottom: 12 }}>
-            <div style={{ width: 64, height: 64, borderRadius: 10, background: "#F3F4F6", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <img src={src} alt="" style={{ width: "80%", height: "80%", objectFit: "contain" }} onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}/>
-            </div>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "#111", marginBottom: 4 }}>{tooltip.title}</div>
-              <div style={{ fontSize: 12, color: "#6B7280", lineHeight: 1.5 }}>{tooltip.desc}</div>
-            </div>
-          </div>
-          <div style={{ background: "#FEF3C7", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "#374151" }}>
-            Для получения знака пройдите курс&nbsp;
-            <span style={{ color: "#375DFB", textDecoration: "underline" as const, cursor: "pointer" }}>{tooltip.course}</span>
-          </div>
-        </div>
-      )}
+    <div style={{ flexShrink: 0, opacity: active ? 1 : 0.5 }} onClick={onClick} onKeyDown={e => { if ((e.key === "Enter" || e.key === " ") && onClick) onClick(); }} role={onClick ? "button" : undefined} tabIndex={onClick ? 0 : undefined} aria-label={label}>
+      <BadgeBox
+        src={src}
+        size={72}
+        tooltip={label}
+        topRight={elita ? <ElitaBadge small /> : undefined}
+      />
     </div>
   );
 }
@@ -287,9 +273,13 @@ const RATING_ROWS = [
 ];
 
 const COMPETITIONS = [
-  { id: 1, name: "Тактическое ориентирование", place: "2 место", location: "г. Москва, ул. Шоссейная, 24", date: "1 июня, 2024", img: "/sorev1.png" },
-  { id: 2, name: "Марафон на 10 км",           place: "1 место", location: "г. Москва, ул. Шоссейная, 24", date: "1 июня, 2024", img: "/sorev2.png" },
-  { id: 3, name: "Марафон на 10 км",           place: "1 место", location: "г. Москва, ул. Шоссейная, 24", date: "1 июня, 2024", img: "/sorev1.png" },
+  { id: 1, name: "Тактическое ориентирование", status: "past", place: "2 место", location: "г. Санкт-Петербург", date: "5 марта, 2024", img: "/sorev1.png" },
+  { id: 6, name: "Полоса препятствий «Рубеж»", status: "past", place: "1 место", location: "г. Москва, полигон Алабино", date: "18 апреля, 2024", img: "/sorev2.png" },
+  { id: 7, name: "Командный марш-бросок", status: "past", place: "3 место", location: "г. Краснодар", date: "27 апреля, 2024", img: "/sorev1.png" },
+  { id: 2, name: "Марш-бросок на 10 км", status: "upcoming", place: "Регистрация открыта", location: "г. Москва", date: "14 мая, 2024", img: "/sorev2.png" },
+  { id: 3, name: "Линия обороны", status: "upcoming", place: "Командный зачёт", location: "г. Краснодар", date: "16 мая, 2024", img: "/sorev1.png" },
+  { id: 4, name: "Стрельба из АК-74", status: "upcoming", place: "Регистрация открыта", location: "г. Москва", date: "20 мая, 2024", img: "/sorev2.png" },
+  { id: 5, name: "Военный триатлон", status: "upcoming", place: "Личный и командный зачёт", location: "г. Казань", date: "1 июня, 2024", img: "/sorev1.png" },
 ];
 
 const SPORT_ACH = [
@@ -308,18 +298,18 @@ const DIPLOMAS = [
 ];
 
 const DEFAULT_TOOLTIP = { title: "За заслуги перед группой", desc: "Краткое описание в самом тылу противника в районе сирийской Пальмиры", course: "КМБ V4" };
-const POGONS = Array.from({ length: 11 }, (_, i) => ({ src: "/pogon1.png", active: i === 0 }));
+const POGONS = Array.from({ length: 11 }, (_, i) => ({ src: "/pogon1.png", active: i === 0, achievementId: i + 1 }));
 const SHEVRONS = [
-  { src: "/1.png", active: true }, { src: "/2.png", active: true },
-  { src: "/3.png", active: false }, { src: "/1.png", active: false },
-  { src: "/2.png", active: false }, { src: "/3.png", active: false }, { src: "/1.png", active: false },
+  { src: "/1.png", active: true, achievementId: 12 }, { src: "/2.png", active: true, achievementId: 13 },
+  { src: "/3.png", active: false, achievementId: 14 }, { src: "/1.png", active: false, achievementId: 15 },
+  { src: "/2.png", active: false, achievementId: 16 }, { src: "/3.png", active: false, achievementId: 17 }, { src: "/1.png", active: false, achievementId: 18 },
 ];
 const BERETS = [
-  { src: "/1.png", active: false, elita: false }, { src: "/2.png", active: true, elita: true },
-  { src: "/3.png", active: false, elita: false }, { src: "/1.png", active: false, elita: false },
+  { src: "/1.png", active: false, elita: false, achievementId: 19 }, { src: "/2.png", active: true, elita: true, achievementId: 20 },
+  { src: "/3.png", active: false, elita: false, achievementId: 21 }, { src: "/1.png", active: false, elita: false, achievementId: 22 },
 ];
-const ZNAKI = Array.from({ length: 10 }, (_, i) => ({ src: "/3.png", active: i < 4 }));
-const OTHER_ZNAKI = Array.from({ length: 20 }, (_, i) => ({ src: "/3.png", active: i === 8 }));
+const ZNAKI = Array.from({ length: 10 }, (_, i) => ({ src: "/3.png", active: i < 4, achievementId: 23 + i }));
+const OTHER_ZNAKI = Array.from({ length: 20 }, (_, i) => ({ src: "/3.png", active: i === 8, achievementId: 33 + (i % 11) }));
 
 (() => {
   if (document.querySelector("[data-mp-css]")) return;
@@ -332,11 +322,41 @@ const OTHER_ZNAKI = Array.from({ length: 20 }, (_, i) => ({ src: "/3.png", activ
     .mp-tab-btn:hover { opacity: .85; }
     .mp-dip-nav-btn { transition: background .15s, opacity .15s; }
     .mp-dip-nav-btn:hover { background: rgba(255,255,255,.2) !important; }
+    .mp-competition-scroll { scrollbar-width:thin; scrollbar-color:#375DFB #EEF3FF; }
+    .mp-competition-scroll::-webkit-scrollbar { width:8px; }
+    .mp-competition-scroll::-webkit-scrollbar-track { background:#EEF3FF; border-radius:999px; margin:8px 0; }
+    .mp-competition-scroll::-webkit-scrollbar-thumb { background:linear-gradient(180deg,#2F52F0,#7B9FFF); border:2px solid #EEF3FF; border-radius:999px; }
+    .mp-competition-scroll::-webkit-scrollbar-thumb:hover { background:linear-gradient(180deg,#1F46E5,#5678FF); }
+    .mp-competition-row:hover { background:#F7F9FF; }
+    .mp-dip-badge { filter:grayscale(35%); transition:filter .25s ease, transform .25s cubic-bezier(.34,1.4,.64,1), box-shadow .25s ease, border-color .25s ease; }
+    .mp-dip-badge:hover { filter:grayscale(0%); transform:translateY(-5px) scale(1.14) rotate(-3deg); box-shadow:0 10px 22px rgba(55,93,251,.28); border-color:#C7D2FE !important; z-index:1; }
+    .mp-dip-card:hover .mp-dip-badge { filter:grayscale(0%); }
+    .mp-dip-open { transition:transform .2s ease, box-shadow .2s ease, background .2s ease, color .2s ease, border-color .2s ease; }
+    .mp-dip-open svg { transition:transform .2s ease; }
+    .mp-dip-open:hover { background:#375DFB !important; color:#fff !important; border-color:#375DFB !important; box-shadow:0 10px 24px rgba(55,93,251,.3) !important; transform:translateY(-2px); }
+    .mp-dip-open:hover svg { transform:translateX(3px); }
+    .mp-dip-open:active { transform:translateY(0) scale(.98); }
   `;
   document.head.appendChild(s);
 })();
 
 type SectionKey = "all" | "phys" | "tact" | "cmd" | "instr";
+type SectionView = "chart" | "edit" | "history";
+type EditableSectionKey = Exclude<SectionKey, "all">;
+
+const UPOR_LABELS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+const UPOR_LEGEND = [
+  { c: "#10B981", l: "Физическая" },
+  { c: "#06B6D4", l: "Тактическая" },
+  { c: "#F59E0B", l: "Командирская" },
+  { c: "#A78BFA", l: "Инструкторская" },
+];
+const UPOR_SERIES_INIT: ChartSeries[] = [
+  { color: "#10B981", data: [3.0, 4.0, 2.5, 3.5, 2.0, 5.0, 1.5] },
+  { color: "#06B6D4", data: [1.5, 2.0, 3.0, 1.0, 2.5, 1.5, 2.0] },
+  { color: "#F59E0B", data: [1.0, 1.5, 1.0, 2.0, 1.0, 2.0, 0.5] },
+  { color: "#A78BFA", data: [0.5, 0.5, 1.0, 0.5, 1.0, 1.0, 0.5] },
+];
 
 const SECTION_META: Record<Exclude<SectionKey, "all">, {
   title: string; icon: React.ReactNode; noteText: string; noteColor: string; noteBg: string; noteBorder: string;
@@ -387,39 +407,120 @@ const SECTION_META: Record<Exclude<SectionKey, "all">, {
   },
 };
 
-function SectionContent({ sectionKey, isMobile }: { sectionKey: Exclude<SectionKey, "all">; isMobile: boolean }) {
+const SEG_BTNS: [SectionView, string][] = [
+  ["chart", "История замеров"],
+  ["edit", "Редактировать данные"],
+  ["history", "Смотреть историю"],
+];
+
+function SectionContent({ sectionKey, isMobile, series, onSeriesChange, initialView }: {
+  sectionKey: EditableSectionKey;
+  isMobile: boolean;
+  series: ChartSeries[];
+  onSeriesChange: (s: ChartSeries[]) => void;
+  initialView?: SectionView;
+}) {
   const m = SECTION_META[sectionKey];
+  const [view, setView] = useState<SectionView>(initialView ?? "chart");
+
+  const updatePoint = (si: number, di: number, raw: string) => {
+    const n = parseFloat(raw.replace(",", "."));
+    if (isNaN(n)) return;
+    onSeriesChange(
+      series.map((s, ri) =>
+        ri === si ? { ...s, data: s.data.map((v, vi) => vi === di ? n : v) } : s
+      )
+    );
+  };
+
   return (
     <div className="mp-section-fade">
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, background: m.noteBg, border: `1px solid ${m.noteBorder}`, borderRadius: 8, padding: "6px 14px" }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill={m.noteColor} stroke="none"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12" stroke="#fff" strokeWidth="2"/><line x1="12" y1="8" x2="12.01" y2="8" stroke="#fff" strokeWidth="2"/></svg>
-          <span style={{ fontSize: 13, color: m.noteColor, fontWeight: 500 }}>{m.noteText}</span>
-        </div>
+      {/* 3-button segmented control */}
+      <div style={{ display: "inline-flex", background: "#F3F4F6", borderRadius: 10, padding: 2, marginBottom: 18, gap: 0 }}>
+        {SEG_BTNS.map(([v, label], i) => (
+          <button key={v} onClick={() => setView(v)} style={segBtn(view === v, i === SEG_BTNS.length - 1)}>{label}</button>
+        ))}
       </div>
-      <div style={{ display: "flex", gap: 24, flexWrap: isMobile ? "wrap" : "nowrap", alignItems: "stretch" }}>
-        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
-            <DD label="Среднее"/>
-            <DD label="31.04 – 12.05"/>
-            {(sectionKey === "tact" || sectionKey === "cmd" || sectionKey === "instr") && (
-              <button onClick={() => window.alert("Ведомость сформирована в демо-режиме")} style={{ padding: "7px 14px", border: "1px solid #E5E7EB", borderRadius: 10, fontSize: 13, color: "#374151", background: "#fff", cursor: "pointer" }}>Ведомость</button>
-            )}
-            {sectionKey === "phys" && <span style={{ fontSize: 13, color: "#374151" }}>Возраст <strong>29 лет</strong></span>}
+
+      {view === "chart" && (
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, background: m.noteBg, border: `1px solid ${m.noteBorder}`, borderRadius: 8, padding: "6px 14px" }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill={m.noteColor} stroke="none"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12" stroke="#fff" strokeWidth="2"/><line x1="12" y1="8" x2="12.01" y2="8" stroke="#fff" strokeWidth="2"/></svg>
+              <span style={{ fontSize: 13, color: m.noteColor, fontWeight: 500 }}>{m.noteText}</span>
+            </div>
           </div>
-          <div style={{ flex: 1, minHeight: 220 }}>
-            <AreaChartRC series={m.series} labels={m.labels} yMax={m.yMax} height="100%" />
-          </div>
-          <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 10 }}>
-            {m.legend.map(x => (
-              <span key={x.l} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#6B7280" }}>
-                <span style={{ width: 10, height: 10, borderRadius: "50%", background: x.c, display: "inline-block" }}/>{x.l}
-              </span>
-            ))}
+          <div style={{ display: "flex", gap: 24, flexWrap: isMobile ? "wrap" : "nowrap", alignItems: "stretch" }}>
+            <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+                <DD label="Среднее"/>
+                <DD label="31.04 – 12.05"/>
+                {(sectionKey === "tact" || sectionKey === "cmd" || sectionKey === "instr") && (
+                  <button onClick={() => window.alert("Ведомость сформирована в демо-режиме")} style={{ padding: "7px 14px", border: "1px solid #E5E7EB", borderRadius: 10, fontSize: 13, color: "#374151", background: "#fff", cursor: "pointer" }}>Ведомость</button>
+                )}
+                {sectionKey === "phys" && <span style={{ fontSize: 13, color: "#374151" }}>Возраст <strong>29 лет</strong></span>}
+              </div>
+              <div style={{ flex: 1, minHeight: 220 }}>
+                <AreaChartRC series={series} labels={m.labels} yMax={m.yMax} height="100%" />
+              </div>
+              <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 10 }}>
+                {m.legend.map(x => (
+                  <span key={x.l} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#6B7280" }}>
+                    <span style={{ width: 10, height: 10, borderRadius: "50%", background: x.c, display: "inline-block" }}/>{x.l}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <StatPanel score={m.score} delta={m.delta} up={m.up} items={m.items} ratings={RATING_ROWS}/>
           </div>
         </div>
-        <StatPanel score={m.score} delta={m.delta} up={m.up} items={m.items} ratings={RATING_ROWS}/>
-      </div>
+      )}
+
+      {view === "edit" && (
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ borderCollapse: "collapse", width: "100%", fontSize: 13 }}>
+            <thead>
+              <tr>
+                <th style={{ textAlign: "left", padding: "6px 10px", color: "#6B7280", fontWeight: 500, borderBottom: "1px solid #E5E7EB" }}>Серия</th>
+                {m.labels.map(l => (
+                  <th key={l} style={{ textAlign: "center", padding: "6px 10px", color: "#6B7280", fontWeight: 500, borderBottom: "1px solid #E5E7EB", whiteSpace: "nowrap" }}>{l}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {series.map((s, si) => (
+                <tr key={si}>
+                  <td style={{ padding: "6px 10px", borderBottom: "1px solid #F3F4F6" }}>
+                    <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ width: 10, height: 10, borderRadius: "50%", background: s.color, display: "inline-block", flexShrink: 0 }}/>
+                      <span style={{ color: "#374151" }}>{m.legend[si]?.l ?? `Серия ${si + 1}`}</span>
+                    </span>
+                  </td>
+                  {s.data.map((v, di) => (
+                    <td key={di} style={{ padding: "4px 6px", borderBottom: "1px solid #F3F4F6" }}>
+                      <input
+                        type="number"
+                        step="0.01"
+                        defaultValue={v}
+                        onBlur={e => updatePoint(si, di, e.target.value)}
+                        onChange={e => updatePoint(si, di, e.target.value)}
+                        style={{ width: 64, padding: "4px 6px", border: "1px solid #E5E7EB", borderRadius: 6, fontSize: 13, textAlign: "center", outline: "none" }}
+                      />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div style={{ marginTop: 16, minHeight: 180 }}>
+            <AreaChartRC series={series} labels={m.labels} yMax={m.yMax} height="180px" />
+          </div>
+        </div>
+      )}
+
+      {view === "history" && (
+        <MeasurementsPanel />
+      )}
     </div>
   );
 }
@@ -444,8 +545,11 @@ const segBtn = (active: boolean, isLast = false): React.CSSProperties => ({
 export function MyPath() {
   const isMobile = useMediaQuery("(max-width:900px)");
   const [overviewTab, setOverviewTab] = useState<"chart" | "measures">("chart");
+  const [measuresView, setMeasuresView] = useState<SectionView>("chart");
   const [activeSection, setActiveSection] = useState<SectionKey>("all");
   const [compTab, setCompTab] = useState<"past" | "upcoming">("past");
+  const visibleCompetitions = COMPETITIONS.filter(competition => competition.status === compTab);
+  const [personalTab, setPersonalTab] = useState<"Данные" | "График подготовки" | "Сводка замеров">("Данные");
   const [avatarErr, setAvatarErr] = useState(false);
   const [rankErr, setRankErr] = useState(false);
   const [imgErrs, setImgErrs] = useState<Record<string, boolean>>({});
@@ -453,6 +557,18 @@ export function MyPath() {
   const BADGE_W = 64;
   const badgesRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+
+  type SeriesMap = Record<EditableSectionKey, ChartSeries[]>;
+  const [seriesData, setSeriesData] = useState<SeriesMap>({
+    phys: PHYS_SERIES.map(s => ({ ...s, data: [...s.data] })),
+    tact: TACT_SERIES.map(s => ({ ...s, data: [...s.data] })),
+    cmd:  CMD_SERIES.map(s => ({ ...s, data: [...s.data] })),
+    instr: INSTR_SERIES.map(s => ({ ...s, data: [...s.data] })),
+  });
+  const [uporSeries, setUporSeries] = useState<ChartSeries[]>(
+    UPOR_SERIES_INIT.map(s => ({ ...s, data: [...s.data] }))
+  );
+  const [uporView, setUporView] = useState<"chart" | "edit">("chart");
 
   const [dipIndex, setDipIndex] = useState<number | null>(null);
   const dipModal = dipIndex !== null ? DIPLOMAS[dipIndex] : null;
@@ -489,19 +605,13 @@ export function MyPath() {
     <div style={{ paddingTop: 60, marginLeft: 56, background: "#F8F9FA", minHeight: "100vh" }}>
       <div style={{ padding: "14px 20px 40px" }}>
 
-        {/* ── Breadcrumb ── */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, fontSize: 13, color: "#9CA3AF" }}>
-          <Link to="/" style={{ color: "#9CA3AF", textDecoration: "none" }} onMouseEnter={e => (e.currentTarget.style.color = "#375DFB")} onMouseLeave={e => (e.currentTarget.style.color = "#9CA3AF")}>Личный кабинет</Link>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="1.5"><polyline points="9 18 15 12 9 6"/></svg>
-          <span style={{ color: "#374151", fontWeight: 500 }}>Мой путь Воеводы</span>
+        <div id="my-path-personal-file">
+          <Profile mode="personal-only" embedded requestedTab={personalTab} />
         </div>
 
-        {/* ── Заголовок ── */}
-        <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 20 }}>
-          <IcBuilding size={26}/>
-          <h1 style={{ fontSize: 28, fontWeight: 700, color: "#111", margin: 0 }}>Мой путь Воеводы</h1>
-        </div>
-
+        {/* Старый обзор заменен единым блоком «Личное дело». */}
+        {false && (
+        <>
         {/* ══ OVERVIEW BLOCK ══ */}
         <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #E5E7EB", marginBottom: 16 }}>
           <div style={{ padding: "20px 28px 0" }}>
@@ -524,26 +634,21 @@ export function MyPath() {
                 <div style={{ fontSize: 12, color: "#9CA3AF", marginBottom: 6 }}>Майор</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 8 }}>
                   <span style={{ fontSize: 26, fontWeight: 700, color: "#111" }}>Торнадо</span>
-                  <span style={{ display: "flex", alignItems: "center", gap: 4, background: "#F9FAFB", padding: "4px 12px", borderRadius: 8, border: "1px solid #E5E7EB" }}>
-                    <span style={{ fontSize: 11, color: "#6B7280" }}>ИВ</span>
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="#375DFB"><path d="M12 2l2.09 6.26L22 9.27l-5.18 4.87 1.18 6.88L12 17.77l-6 3.25L7.18 14.14 2 9.27l7.91-1.01L12 2z"/></svg>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: "#375DFB" }}>2463</span>
-                  </span>
-                  <span style={{ background: "#FFF7ED", padding: "4px 12px", borderRadius: 8, border: "1px solid #FDE68A", fontSize: 14, color: "#F59E0B", fontWeight: 700 }}>★ 5.0</span>
+                  <IVDisplay index={2463} rating={5.0} />
                 </div>
                 <div style={{ fontSize: 14, color: "#6B7280" }}>КР 2-й роты, 77-й учебный батальон</div>
               </div>
-              <div style={{ paddingTop: 22, position: "relative", flexShrink: 0 }}>
-                <div style={{ position: "absolute", top: 0, left: BADGE_W / 2, zIndex: 10, background: "#F59E0B", borderRadius: 20, padding: "4px 14px", boxShadow: "0 2px 10px rgba(245,158,11,.5)", whiteSpace: "nowrap" }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: "#fff", textTransform: "uppercase", letterSpacing: ".8px" }}>элита</span>
-                </div>
+              <div style={{ position: "relative", flexShrink: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   {["/1.png", "/2.png", "/3.png"].map((src, i) => (
-                    <div key={i} style={{ width: BADGE_W, height: BADGE_W, borderRadius: 10, background: "#F3F4F6", border: "1px solid #E5E7EB", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-                      <img src={src} alt="" style={{ width: "85%", height: "85%", objectFit: "contain" }} onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}/>
+                    <div key={i} style={{ position:"relative", flexShrink:0 }}>
+                      <div style={{ width: BADGE_W, height: BADGE_W, borderRadius: 10, background: "#F3F4F6", border: "1px solid #E5E7EB", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                        <img src={src} alt="" style={{ width: "85%", height: "85%", objectFit: "contain" }} onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}/>
+                      </div>
+                      {i === 0 && <div style={{ position:"absolute", top:-7, right:-7, zIndex:10, pointerEvents:"none" }}><ElitaBadge small /></div>}
                     </div>
                   ))}
-                  <div onClick={() => badgesRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })} style={{ width: BADGE_W, height: BADGE_W, borderRadius: 10, background: "#EBF1FF", border: "1px solid #C7D2FE", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#375DFB", cursor: "pointer" }} title="Все знаки отличия">4+</div>
+                  <ExtraBadge count={4} size={BADGE_W} onClick={() => badgesRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })} />
                 </div>
               </div>
             </div>
@@ -598,7 +703,7 @@ export function MyPath() {
                       { label: "Инструктор.", value: 4.5, color: "#A78BFA", max: 5 },
                       { label: "Интеллект.",  value: 3.2, color: "#06B6D4", max: 5 },
                     ]}/>
-                    <div style={{ display: "flex", gap: 16, flexWrap: "wrap", justifyContent: "center", marginTop: 10 }}>
+                      <div style={{ display: "flex", gap: 16, flexWrap: "wrap", justifyContent: "center", marginTop: 4 }}>
                       {[
                         { c: "#10B981", l: "Физическая", v: "3.6" },
                         { c: "#375DFB", l: "Тактическая", v: "4.1" },
@@ -657,7 +762,13 @@ export function MyPath() {
 
               {activeSection !== "all" && (
                 <div style={{ padding: "20px 28px 24px" }}>
-                  <SectionContent sectionKey={activeSection} isMobile={isMobile}/>
+                  <SectionContent
+                    key={activeSection}
+                    sectionKey={activeSection as EditableSectionKey}
+                    isMobile={isMobile}
+                    series={seriesData[activeSection as EditableSectionKey]}
+                    onSeriesChange={s => setSeriesData(p => ({ ...p, [activeSection]: s }))}
+                  />
                 </div>
               )}
             </div>
@@ -666,29 +777,32 @@ export function MyPath() {
           {/* ── Measures tab ── */}
           {overviewTab === "measures" && (
             <div style={{ padding: "20px 28px 24px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
-                <div style={{ display: "flex", border: "1px solid #E5E7EB", borderRadius: 10, overflow: "hidden" }}>
-                  <button onClick={() => window.alert("История замеров уже открыта")} style={segBtn(true)}>
-                    Смотреть историю
-                  </button>
-                  <button
-                    onClick={() => navigate("/profile")}
-                    style={segBtn(false, true)}
-                    title="Редактирование доступно только в разделе «Профиль»"
-                  >
-                    Редактировать данные
-                  </button>
+              <div style={{ display: "inline-flex", background: "#F3F4F6", borderRadius: 10, padding: 2, marginBottom: 18, gap: 0 }}>
+                {SEG_BTNS.map(([v, label], i) => (
+                  <button key={v} onClick={() => setMeasuresView(v as SectionView)} style={segBtn(measuresView === v, i === SEG_BTNS.length - 1)}>{label}</button>
+                ))}
+              </div>
+              {measuresView === "chart" && (
+                <div style={{ minHeight: 200, display: "flex", alignItems: "center", justifyContent: "center", color: "#9CA3AF", fontSize: 14 }}>
+                  Выберите раздел в «График подготовки» для просмотра графика
                 </div>
-                <span style={{ fontSize: 12, color: "#9CA3AF" }}>
-                  Редактирование замеров доступно только в разделе «Профиль»
-                </span>
-              </div>
-              <div style={{ overflowX: "auto" }}>
-                <MeasurementsPanel />
-              </div>
+              )}
+              {measuresView === "edit" && (
+                <div style={{ minHeight: 200, display: "flex", alignItems: "center", justifyContent: "center", color: "#9CA3AF", fontSize: 14 }}>
+                  Выберите раздел в «График подготовки» для редактирования
+                </div>
+              )}
+              {measuresView === "history" && (
+                <div style={{ overflowX: "auto" }}>
+                  <MeasurementsPanel />
+                </div>
+              )}
             </div>
           )}
         </div>
+
+        </>
+        )}
 
         {/* ══ БАННЕР «ТРЕНИРУЙСЯ» ══ */}
         <div style={{ background: "conic-gradient(from 242.85deg at 60.57% 63.68%, #7AA2D1 -88.18deg, #0A072A 52.22deg, #7AA2D1 271.82deg, #0A072A 412.22deg)", borderRadius: 16, padding: "22px 32px", marginBottom: 16, display: "flex", alignItems: "center", gap: 24, overflow: "hidden", position: "relative" }}>
@@ -700,7 +814,7 @@ export function MyPath() {
             <div style={{ width: 120, height: 110, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
               <img src="/cubock.png" alt="" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", objectPosition: "bottom" }} onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}/>
             </div>
-            <button onClick={() => { setOverviewTab("measures"); window.scrollTo({ top: 0, behavior: "smooth" }); }} style={{ flexShrink: 0, background: "#375DFB", border: "none", borderRadius: 8, padding: "13px 28px", color: "#fff", fontSize: 15, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}
+            <button onClick={() => { setOverviewTab("measures"); setPersonalTab("График подготовки"); document.getElementById("my-path-personal-file")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} style={{ flexShrink: 0, background: "#375DFB", border: "none", borderRadius: 8, padding: "13px 28px", color: "#fff", fontSize: 15, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}
               onMouseEnter={e => (e.currentTarget.style.background = "#1E3F9F")} onMouseLeave={e => (e.currentTarget.style.background = "#375DFB")}>
               К показателям
             </button>
@@ -710,12 +824,82 @@ export function MyPath() {
         {/* ══ DONUT + СОРЕВНОВАНИЯ ══ */}
         <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 16, marginBottom: 16 }}>
           <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #E5E7EB" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "18px 24px", borderBottom: "1px solid #F0F0F0" }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-              <span style={{ fontSize: 20, fontWeight: 700, color: "#111" }}>Упор на тренировки</span>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "18px 24px", borderBottom: "1px solid #F0F0F0", flexWrap: "wrap" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                <span style={{ fontSize: 20, fontWeight: 700, color: "#111" }}>Упор на тренировки</span>
+              </div>
+              <div style={{ display: "inline-flex", background: "#F3F4F6", borderRadius: 10, padding: 2 }}>
+                <button onClick={() => setUporView("chart")} style={segBtn(uporView === "chart")}>График</button>
+                <button onClick={() => setUporView("edit")} style={segBtn(uporView === "edit", true)}>Редактировать</button>
+              </div>
             </div>
             <div style={{ padding: "20px 24px" }}>
-              <DonutChart segments={[{ label: "Физическая", pct: .43, color: "#10B981" }, { label: "Тактическая", pct: .27, color: "#06B6D4" }, { label: "Командирская", pct: .20, color: "#F59E0B" }, { label: "Инструкторская", pct: .10, color: "#A78BFA" }]}/>
+              <div style={{ marginTop: 0 }}>
+                {uporView === "chart" && (
+                  <>
+                    <AreaChartRC series={uporSeries} labels={UPOR_LABELS} yMax={6} height="200px" />
+                    <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 10 }}>
+                      {UPOR_LEGEND.map(x => (
+                        <span key={x.l} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#6B7280" }}>
+                          <span style={{ width: 10, height: 10, borderRadius: "50%", background: x.c, display: "inline-block" }}/>{x.l}
+                        </span>
+                      ))}
+                    </div>
+                  </>
+                )}
+                {uporView === "edit" && (
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ borderCollapse: "collapse", width: "100%", fontSize: 13 }}>
+                      <thead>
+                        <tr>
+                          <th style={{ textAlign: "left", padding: "6px 10px", color: "#6B7280", fontWeight: 500, borderBottom: "1px solid #E5E7EB" }}>Нагрузка (ч)</th>
+                          {UPOR_LABELS.map(l => (
+                            <th key={l} style={{ textAlign: "center", padding: "6px 10px", color: "#6B7280", fontWeight: 500, borderBottom: "1px solid #E5E7EB" }}>{l}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {uporSeries.map((s, si) => (
+                          <tr key={si}>
+                            <td style={{ padding: "6px 10px", borderBottom: "1px solid #F3F4F6" }}>
+                              <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                <span style={{ width: 10, height: 10, borderRadius: "50%", background: s.color, flexShrink: 0, display: "inline-block" }}/>
+                                <span style={{ color: "#374151" }}>{UPOR_LEGEND[si].l}</span>
+                              </span>
+                            </td>
+                            {s.data.map((v, di) => (
+                              <td key={di} style={{ padding: "4px 6px", borderBottom: "1px solid #F3F4F6" }}>
+                                <input
+                                  type="number" step="0.5" defaultValue={v}
+                                  onBlur={e => {
+                                    const n = parseFloat(e.target.value.replace(",", "."));
+                                    if (isNaN(n)) return;
+                                    setUporSeries(prev => prev.map((row, ri) =>
+                                      ri === si ? { ...row, data: row.data.map((val, vi) => vi === di ? n : val) } : row
+                                    ));
+                                  }}
+                                  onChange={e => {
+                                    const n = parseFloat(e.target.value.replace(",", "."));
+                                    if (isNaN(n)) return;
+                                    setUporSeries(prev => prev.map((row, ri) =>
+                                      ri === si ? { ...row, data: row.data.map((val, vi) => vi === di ? n : val) } : row
+                                    ));
+                                  }}
+                                  style={{ width: 56, padding: "4px 6px", border: "1px solid #E5E7EB", borderRadius: 6, fontSize: 13, textAlign: "center", outline: "none" }}
+                                />
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    <div style={{ marginTop: 16 }}>
+                      <AreaChartRC series={uporSeries} labels={UPOR_LABELS} yMax={6} height="180px" />
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
           <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #E5E7EB" }}>
@@ -730,9 +914,9 @@ export function MyPath() {
                 ))}
               </div>
             </div>
-            <div style={{ padding: "8px 0", maxHeight: 340, overflowY: "auto" }}>
-              {COMPETITIONS.map((c, i) => (
-                <div key={c.id} style={{ padding: "14px 24px", borderBottom: i < COMPETITIONS.length - 1 ? "1px solid #F0F0F0" : "none" }}>
+            <div className="mp-competition-scroll" style={{ padding: "8px 6px 8px 0", maxHeight: 430, minHeight: 400, overflowY: "auto" }}>
+              {visibleCompetitions.map((c, i) => (
+                <div className="mp-competition-row" key={c.id} onClick={() => navigate(`/competitions?competition=${c.id}`)} style={{ padding: "14px 18px 14px 24px", borderBottom: i < visibleCompetitions.length - 1 ? "1px solid #F0F0F0" : "none", cursor: "pointer", transition: "background .16s ease" }}>
                   <div style={{ fontSize: 16, fontWeight: 700, color: "#111", marginBottom: 10 }}>{c.name}</div>
                   <div style={{ display: "flex", gap: 14 }}>
                     <div style={{ width: 80, height: 80, borderRadius: 12, overflow: "hidden", flexShrink: 0, background: "#F3F4F6" }}>
@@ -741,12 +925,15 @@ export function MyPath() {
                         : <div style={{ width: "100%", height: "100%", background: "#EBF1FF" }}/>}
                     </div>
                     <div style={{ flex: 1 }}>
-                      {[{ l: "Вы заняли", v: c.place }, { l: "Проводился", v: c.location }, { l: "Дата проведения", v: c.date }].map(r => (
+                      {[{ l: compTab === "past" ? "Результат" : "Формат", v: c.place }, { l: compTab === "past" ? "Проводился" : "Пройдёт", v: c.location }, { l: "Дата проведения", v: c.date }].map(r => (
                         <div key={r.l} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: 13 }}>
                           <span style={{ color: "#9CA3AF" }}>{r.l}</span>
                           <span style={{ color: "#111", fontWeight: 500, textAlign: "right", maxWidth: 200 }}>{r.v}</span>
                         </div>
                       ))}
+                      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 6 }}>
+                        <button onClick={e => { e.stopPropagation(); navigate(`/competitions?competition=${c.id}`); }} style={{ border: 0, background: "transparent", color: "#375DFB", fontSize: 12, fontWeight: 700, cursor: "pointer", padding: 0 }}>Подробнее →</button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -763,7 +950,7 @@ export function MyPath() {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 16, flexShrink: 0 }}>
             <div style={{ width: 110, height: 100, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-              <img src="/medal.png" alt="" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", objectPosition: "bottom" }} onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}/>
+              <img src="/медаль2.png" alt="" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", objectPosition: "bottom" }} onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}/>
             </div>
             <button onClick={() => navigate("/courses")} style={{ flexShrink: 0, background: "#375DFB", border: "none", borderRadius: 8, padding: "13px 28px", color: "#fff", fontSize: 15, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}
               onMouseEnter={e => (e.currentTarget.style.background = "#1E3F9F")} onMouseLeave={e => (e.currentTarget.style.background = "#375DFB")}>
@@ -781,10 +968,10 @@ export function MyPath() {
                   <IcAward size={20}/>
                   <span style={{ fontSize: 18, fontWeight: 700, color: "#111" }}>{sec.title}</span>
                 </div>
-                <button onClick={() => navigate("/profile")} style={{ width: 32, height: 32, background: "#F9FAFB", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 20, color: "#374151", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+                <button onClick={() => navigate("/achievements")} style={{ width: 32, height: 32, background: "#F9FAFB", border: "1px solid #E5E7EB", borderRadius: 8, fontSize: 20, color: "#374151", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
               </div>
               {sec.items.map((it, i) => (
-                <div key={it.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 24px", borderBottom: i < sec.items.length - 1 ? "1px solid #F0F0F0" : "none" }}>
+                <div key={it.id} onClick={() => navigate(`/achievements?achievement=${sec.title === "Спортивные достижения" ? 20 + it.id : 39 + it.id}`)} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 24px", borderBottom: i < sec.items.length - 1 ? "1px solid #F0F0F0" : "none", cursor: "pointer" }}>
                   <div style={{ width: 80, height: 80, borderRadius: 12, overflow: "hidden", flexShrink: 0, background: "#F3F4F6", border: "1px solid #E5E7EB" }}>
                     {!imgErrs[`ach${i}${sec.title}`]
                       ? <img src={it.img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={() => setErr(`ach${i}${sec.title}`)}/>
@@ -794,7 +981,7 @@ export function MyPath() {
                     <div style={{ fontSize: 15, fontWeight: 600, color: "#111", marginBottom: 3 }}>{it.name}</div>
                     <div style={{ fontSize: 12, color: "#6B7280", lineHeight: 1.4 }}>{it.info}</div>
                   </div>
-                  <button onClick={() => navigate("/profile")} style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF", padding: 4 }}>
+                  <button onClick={e => { e.stopPropagation(); navigate(`/achievements?achievement=${sec.title === "Спортивные достижения" ? 20 + it.id : 39 + it.id}`); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF", padding: 4 }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                   </button>
                 </div>
@@ -813,7 +1000,7 @@ export function MyPath() {
             <div style={{ width: 120, height: 110, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
               <img src="/gift.png" alt="" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", objectPosition: "bottom" }} onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}/>
             </div>
-            <button onClick={() => navigate("/profile")} style={{ flexShrink: 0, background: "#2D9F75", border: "none", borderRadius: 8, padding: "13px 28px", color: "#fff", fontSize: 15, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}
+            <button onClick={() => navigate("/achievements")} style={{ flexShrink: 0, background: "#2D9F75", border: "none", borderRadius: 8, padding: "13px 28px", color: "#fff", fontSize: 15, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}
               onMouseEnter={e => (e.currentTarget.style.background = "#1e7a58")} onMouseLeave={e => (e.currentTarget.style.background = "#2D9F75")}>
               Указать достижения
             </button>
@@ -825,12 +1012,13 @@ export function MyPath() {
           <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "18px 28px", borderBottom: "1px solid #F0F0F0" }}>
             <IcCmd size={22}/>
             <span style={{ fontSize: 20, fontWeight: 700, color: "#111" }}>Знаки отличия и различия</span>
+            <button className="voevoda-view-all" onClick={() => navigate("/achievements")} style={{ marginLeft: "auto", border: "1px solid #C7D2FE", background: "#EEF3FF", color: "#375DFB", borderRadius: 9, padding: "7px 13px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Все достижения</button>
           </div>
           <div style={{ padding: "20px 28px 28px" }}>
             {[
               { label: "Погон",          items: POGONS },
               { label: "Шеврон",         items: SHEVRONS },
-              { label: "Берет",          items: BERETS as { src: string; active: boolean; elita?: boolean }[] },
+              { label: "Берет",          items: BERETS },
               { label: "Знаки",          items: ZNAKI },
               { label: "Остальные знаки",items: OTHER_ZNAKI },
             ].map(section => (
@@ -838,7 +1026,7 @@ export function MyPath() {
                 <div style={{ fontSize: 15, fontWeight: 600, color: "#374151", marginBottom: 14 }}>{section.label}</div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
                   {section.items.map((b, i) => (
-                    <TooltipBadge key={i} src={b.src} active={b.active} elita={(b as any).elita} tooltip={DEFAULT_TOOLTIP}/>
+                    <TooltipBadge key={i} src={b.src} active={b.active} elita={(b as any).elita} tooltip={DEFAULT_TOOLTIP} onClick={() => navigate(`/achievements?achievement=${b.achievementId}`)}/>
                   ))}
                 </div>
               </div>
@@ -856,6 +1044,7 @@ export function MyPath() {
             {DIPLOMAS.map((d, i) => (
               <div
                 key={d.id}
+                className="mp-dip-card"
                 onClick={() => openDip(i)}
                 style={{ display: "flex", alignItems: "flex-start", gap: 20, padding: "20px 0", borderBottom: i < DIPLOMAS.length - 1 ? "1px solid #F0F0F0" : "none", cursor: "pointer", borderRadius: 12, transition: "background .15s" }}
                 onMouseEnter={e => (e.currentTarget.style.background = "#F8FAFF")}
@@ -871,7 +1060,7 @@ export function MyPath() {
                   <div style={{ fontSize: 13, color: "#6B7280", marginBottom: 16, lineHeight: 1.5 }}>{d.desc}</div>
                   <div style={{ display: "flex", gap: 10 }}>
                     {d.badges.map((src, j) => (
-                      <div key={j} style={{ width: 52, height: 52, borderRadius: 10, overflow: "hidden", border: "1px solid #E5E7EB", background: "#F3F4F6", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <div key={j} className="mp-dip-badge" style={{ width: 52, height: 52, borderRadius: 10, overflow: "hidden", border: "1px solid #E5E7EB", background: "#F3F4F6", display: "flex", alignItems: "center", justifyContent: "center" }}>
                         <img src={src} alt="" style={{ width: "80%", height: "80%", objectFit: "contain" }} onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}/>
                       </div>
                     ))}
@@ -879,10 +1068,10 @@ export function MyPath() {
                 </div>
                 <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
                   <span style={{ fontSize: 13, color: "#9CA3AF", whiteSpace: "nowrap" }}>Дата получения {d.date}</span>
-                  <span style={{ fontSize: 12, color: "#375DFB", display: "flex", alignItems: "center", gap: 4, fontWeight: 500 }}>
-                    Открыть
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
-                  </span>
+                  <button onClick={e => { e.stopPropagation(); openDip(i); }} className="mp-dip-open" style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 13px", borderRadius: 9, border: "1px solid #C7D2FE", background: "linear-gradient(135deg,#F4F7FF,#E8EEFF)", color: "#2F52F0", fontSize: 12, fontWeight: 700, cursor: "pointer", boxShadow: "0 5px 14px rgba(55,93,251,.12)" }}>
+                    Смотреть
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+                  </button>
                 </div>
               </div>
             ))}
@@ -892,20 +1081,7 @@ export function MyPath() {
         {/* Footer */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 16, borderTop: "1px solid #E5E7EB", flexWrap: "wrap", gap: 12 }}>
           <span style={{ fontSize: 14, color: "#9CA3AF" }}>© 2015–2026 УТЦ «ВОЕВОДА»</span>
-          <div style={{ display: "flex", gap: 10 }}>
-            {[{ label: "Тел", icon: <IcPhone/> }, { label: "Почта", icon: <IcMail/> }, { label: "ВКонтакте", icon: <IcVk/> }].map(s => (
-              <button key={s.label} title={s.label} onClick={() => {
-                if (s.label === "Почта") window.location.href = "mailto:info@voevoda.ru";
-                else if (s.label === "ВКонтакте") window.open("https://vk.com/voevoda", "_blank", "noopener,noreferrer");
-                else window.location.href = "tel:+74951234567";
-              }}
-                style={{ width: 38, height: 38, background: "#F3F4F6", border: "1px solid #E5E7EB", borderRadius: 8, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#6B7280" }}
-                onMouseEnter={e => { e.currentTarget.style.background = "#EBF1FF"; e.currentTarget.style.borderColor = "#C7D2FE"; e.currentTarget.style.color = "#375DFB"; }}
-                onMouseLeave={e => { e.currentTarget.style.background = "#F3F4F6"; e.currentTarget.style.borderColor = "#E5E7EB"; e.currentTarget.style.color = "#6B7280"; }}>
-                {s.icon}
-              </button>
-            ))}
-          </div>
+          <VoevodaSocialLinks size={42} gap={10}/>
         </div>
       </div>
 
@@ -937,8 +1113,13 @@ export function MyPath() {
                 <button onClick={closeDip} style={{ background: "#F3F4F6", border: "none", width: 32, height: 32, borderRadius: 8, cursor: "pointer", fontSize: 18, color: "#6B7280", display: "flex", alignItems: "center", justifyContent: "center" }} onMouseEnter={e => (e.currentTarget.style.background = "#E5E7EB")} onMouseLeave={e => (e.currentTarget.style.background = "#F3F4F6")}>×</button>
               </div>
             </div>
-            <div style={{ background: "#F3F4F6", display: "flex", alignItems: "center", justifyContent: "center", minHeight: 300 }}>
+            <div style={{ background: "#F3F4F6", display: "flex", alignItems: "center", justifyContent: "center", minHeight: 300, position: "relative" }}>
               <img src={dipModal.img} alt="" style={{ width: "100%", maxHeight: "62vh", objectFit: "contain", display: "block" }} onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}/>
+              <div className="voevoda-slider-panel">
+                {DIPLOMAS.map((_, i) => (
+                  <button key={i} className={`voevoda-slider-dot${i === dipIndex ? " is-active" : ""}`} onClick={() => setDipIndex(i)} aria-label={`Диплом ${i + 1}`}/>
+                ))}
+              </div>
             </div>
             <div style={{ padding: "16px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #F0F0F0" }}>
               <div style={{ display: "flex", gap: 10 }}>
@@ -952,13 +1133,13 @@ export function MyPath() {
                 <button onClick={e => { e.stopPropagation(); prevDip(); }} style={{ display: "flex", alignItems: "center", gap: 6, background: "#F3F4F6", border: "none", borderRadius: 10, padding: "10px 16px", color: "#374151", fontSize: 13, cursor: "pointer", transition: "background .15s" }} onMouseEnter={e => (e.currentTarget.style.background = "#E5E7EB")} onMouseLeave={e => (e.currentTarget.style.background = "#F3F4F6")}><IcArrow dir="left"/> Пред.</button>
                 <button onClick={e => {
                   e.stopPropagation();
-                  const blob = new Blob([`Диплом: ${dipModal.title}\nДата получения: ${dipModal.date}`], { type: "text/plain;charset=utf-8" });
-                  const url = URL.createObjectURL(blob);
+                  const extension = dipModal.img.split(".").pop()?.split("?")[0] || "png";
                   const a = document.createElement("a");
-                  a.href = url;
-                  a.download = `diplom-${dipModal.id}.txt`;
+                  a.href = dipModal.img;
+                  a.download = `diplom-${dipModal.id}.${extension}`;
+                  document.body.appendChild(a);
                   a.click();
-                  URL.revokeObjectURL(url);
+                  a.remove();
                 }} style={{ background: "#375DFB", border: "none", borderRadius: 10, padding: "10px 20px", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "opacity .15s" }} onMouseEnter={e => (e.currentTarget.style.opacity = ".85")} onMouseLeave={e => (e.currentTarget.style.opacity = "1")}>Скачать</button>
                 <button onClick={e => { e.stopPropagation(); nextDip(); }} style={{ display: "flex", alignItems: "center", gap: 6, background: "#F3F4F6", border: "none", borderRadius: 10, padding: "10px 16px", color: "#374151", fontSize: 13, cursor: "pointer", transition: "background .15s" }} onMouseEnter={e => (e.currentTarget.style.background = "#E5E7EB")} onMouseLeave={e => (e.currentTarget.style.background = "#F3F4F6")}>След. <IcArrow dir="right"/></button>
               </div>

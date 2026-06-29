@@ -1,6 +1,8 @@
-﻿import { useState, useMemo, useRef } from 'react';
+﻿import { useState, useMemo, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { userProfilePath } from '../api/testApi';
 import { useMediaQuery } from '../useMediaQuery';
 import { TrainingPanel, MeasurementsPanel } from './IndexCharts';
 
@@ -102,13 +104,12 @@ const BADGE_COL_W = 100;
 const BADGE_SIZE = 76;
 const PERSON_CHAT_IDS: Record<string, number> = {
   Торнадо: 1,
-  Бек: 2,
   Коба: 3,
-  Бор: 5,
-  Призрак: 7,
-  Рысь: 5,
-  Титан: 3,
-  Волк: 2,
+  Бор: 13,
+  Призрак: 18,
+  Рысь: 16,
+  Титан: 11,
+  Волк: 17,
 };
 
 function personChatPath(name: string) {
@@ -119,9 +120,11 @@ if (typeof document !== 'undefined' && !document.getElementById('voevoda-ps-styl
   const s = document.createElement('style');
   s.id = 'voevoda-ps-styles';
   s.textContent = `
-  @keyframes vCardIn     { from{opacity:0;transform:translateY(22px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
-  @keyframes vElita      { 0%,100%{box-shadow:0 2px 8px rgba(245,136,58,.28)} 50%{box-shadow:0 4px 18px rgba(245,136,58,.55)} }
+  @keyframes vCardIn     { 0%{opacity:0;transform:translateY(10px) scaleY(0.94);max-height:0;overflow:hidden} 60%{opacity:1} 100%{transform:translateY(0) scaleY(1);max-height:1000px;overflow:visible} }
+  @keyframes vElita      { 0%,100%{transform:translateY(0);box-shadow:0 3px 9px rgba(42,55,82,.16)} 50%{transform:translateY(-1px);box-shadow:0 5px 14px rgba(42,55,82,.24)} }
   @keyframes vBadgeIn    { from{opacity:0;transform:scale(.8)} to{opacity:1;transform:scale(1)} }
+  @keyframes psTooltipInTop { from{opacity:0;transform:translateX(-50%) translateY(calc(-100% + 6px)) scale(.95)} to{opacity:1;transform:translateX(-50%) translateY(-100%) scale(1)} }
+  @keyframes psTooltipInBottom { from{opacity:0;transform:translateX(-50%) translateY(6px) scale(.95)} to{opacity:1;transform:translateX(-50%) translateY(0) scale(1)} }
   @keyframes psTooltipIn { from{opacity:0;transform:translateX(-50%) translateY(calc(-100% + 6px)) scale(.95)} to{opacity:1;transform:translateX(-50%) translateY(-100%) scale(1)} }
 `;
   document.head.appendChild(s);
@@ -154,61 +157,151 @@ const RATING_CRITERIA = [
   { label: 'Подготованность',         value: 5.0 },
 ];
 
+type TooltipPlacement = 'top' | 'bottom';
+type TooltipPosition = { top: number; left: number; placement: TooltipPlacement };
+
+const clampTooltip = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
+
+export const BADGE_TOOLTIPS = [
+  'Шеврон «ВОЕВОДА»',
+  'Знак подразделения',
+  'Медаль «За отличие»',
+] as const;
+
 export function IVDisplay({ index, rating }: { index: number; rating: number | null }) {
-  const [show, setShow] = useState(false);
-  const ref = useRef<HTMLSpanElement>(null);
-  const [pos, setPos] = useState({ top: 0, left: 0 });
-  const handleEnter = () => {
+  const [openCard, setOpenCard] = useState<'iv' | 'rating' | null>(null);
+  const ivRef = useRef<HTMLSpanElement>(null);
+  const ratingRef = useRef<HTMLSpanElement>(null);
+  const [pos, setPos] = useState<TooltipPosition>({ top: 0, left: 0, placement: 'top' });
+  const handleEnter = (kind: 'iv' | 'rating', ref: React.RefObject<HTMLSpanElement | null>) => {
     if (ref.current) {
       const r = ref.current.getBoundingClientRect();
-      setPos({ top: r.top + window.scrollY, left: r.left + r.width / 2 + window.scrollX });
+      const width = kind === 'iv' ? 292 : 286;
+      const estimatedHeight = kind === 'iv' ? 280 : 224;
+      const gutter = 14;
+      const minLeft = window.scrollX + gutter + width / 2;
+      const maxLeft = window.scrollX + window.innerWidth - gutter - width / 2;
+      const rawLeft = r.left + r.width / 2 + window.scrollX;
+      const left = maxLeft > minLeft
+        ? clampTooltip(rawLeft, minLeft, maxLeft)
+        : window.scrollX + window.innerWidth / 2;
+      const placement: TooltipPlacement = r.top > estimatedHeight + gutter ? 'top' : 'bottom';
+      setPos({
+        top: placement === 'top' ? r.top + window.scrollY - 11 : r.bottom + window.scrollY + 11,
+        left,
+        placement,
+      });
     }
-    setShow(true);
+    setOpenCard(kind);
   };
+  const tooltipStyle = (width: number): React.CSSProperties => ({
+    position: 'absolute',
+    top: pos.top,
+    left: pos.left,
+    transform: pos.placement === 'top' ? 'translateX(-50%) translateY(-100%)' : 'translateX(-50%) translateY(0)',
+    width,
+    overflow: 'hidden',
+    background: '#fff',
+    border: '1px solid #C8D6FF',
+    borderRadius: 18,
+    boxShadow: '0 20px 55px rgba(35,73,180,.2)',
+    zIndex: 99999,
+    pointerEvents: 'none',
+    animation: `${pos.placement === 'top' ? 'psTooltipInTop' : 'psTooltipInBottom'} .18s ease`,
+  });
+  const arrowStyle = (borderColor = '#C8D6FF'): React.CSSProperties => ({
+    position: 'absolute',
+    left: '50%',
+    transform: 'translateX(-50%) rotate(45deg)',
+    width: 10,
+    height: 10,
+    background: '#fff',
+    ...(pos.placement === 'top'
+      ? { bottom: -5, borderRight: `1px solid ${borderColor}`, borderBottom: `1px solid ${borderColor}` }
+      : { top: -5, borderLeft: `1px solid ${borderColor}`, borderTop: `1px solid ${borderColor}` }),
+  });
+  const level = index >= 2200 ? 'Высокий' : index >= 1500 ? 'Уверенный' : 'Развивающийся';
+  const percentile = Math.min(98, Math.max(12, Math.round(index / 28)));
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-      <span style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#F9FAFB', padding: '3px 9px', borderRadius: 8, border: '1px solid #E5E7EB' }}>
-        <span style={{ fontSize: 11, color: '#9CA3AF', fontWeight: 500 }}>ИВ</span>
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+      <span
+        ref={ivRef}
+        tabIndex={0}
+        aria-label={`Индекс Воеводы ${index}. Наведите, чтобы узнать подробнее`}
+        onMouseEnter={() => handleEnter('iv', ivRef)}
+        onMouseLeave={() => setOpenCard(null)}
+        onFocus={() => handleEnter('iv', ivRef)}
+        onBlur={() => setOpenCard(null)}
+        style={{ display: 'flex', alignItems: 'center', gap: 4, background: openCard === 'iv' ? '#EBF1FF' : '#F9FAFB', padding: '3px 9px', borderRadius: 8, border: `1px solid ${openCard === 'iv' ? '#9DB5FF' : '#E5E7EB'}`, cursor: 'help', boxShadow: openCard === 'iv' ? '0 6px 16px rgba(55,93,251,.15)' : 'none', transform: openCard === 'iv' ? 'translateY(-1px)' : 'none', transition: 'all .2s ease', outline: 'none' }}
+      >
+        <span style={{ fontSize: 11, color: openCard === 'iv' ? '#375DFB' : '#9CA3AF', fontWeight: 700 }}>ИВ</span>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#375DFB" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
         <span style={{ fontSize: 13, fontWeight: 700, color: '#111' }}>{index}</span>
       </span>
+      {openCard === 'iv' && createPortal(
+        <div style={tooltipStyle(292)}>
+          <div style={{ padding: '14px 16px 12px', background: 'linear-gradient(135deg,#EEF4FF,#FFFFFF)', borderBottom: '1px solid #DCE5FF' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+              <div>
+                <div style={{ color: '#375DFB', fontSize: 10, fontWeight: 800, letterSpacing: '.09em', textTransform: 'uppercase' }}>Индекс Воеводы</div>
+                <div style={{ color: '#102A72', fontSize: 24, fontWeight: 900, lineHeight: 1.15, marginTop: 3 }}>{index}</div>
+              </div>
+              <div style={{ padding: '6px 10px', borderRadius: 999, background: '#375DFB', color: '#fff', fontSize: 11, fontWeight: 800 }}>{level}</div>
+            </div>
+          </div>
+          <div style={{ padding: '13px 16px 15px' }}>
+            <p style={{ margin: '0 0 12px', color: '#4B5C80', fontSize: 12, lineHeight: 1.55 }}>Сводный показатель активности, обучения, дисциплины и вклада в сообщество.</p>
+            {[['Обучение', Math.min(100, Math.round(index / 27))], ['Активность', Math.min(100, Math.round(index / 31 + 10))], ['Дисциплина', Math.min(100, Math.round(index / 29 + 6))]].map(([label, value]) => (
+              <div key={label as string} style={{ marginTop: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#53648A', fontSize: 11, fontWeight: 650, marginBottom: 4 }}><span>{label}</span><span>{value}%</span></div>
+                <div style={{ height: 5, borderRadius: 999, background: '#E8EEFF', overflow: 'hidden' }}><div style={{ width: `${value}%`, height: '100%', borderRadius: 999, background: 'linear-gradient(90deg,#244CD8,#6F91FF)' }} /></div>
+              </div>
+            ))}
+            <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid #EDF1FA', color: '#375DFB', fontSize: 11, fontWeight: 750 }}>Выше, чем у {percentile}% участников</div>
+          </div>
+          <div style={arrowStyle()} />
+        </div>,
+        document.body
+      )}
       {rating !== null && (
         <>
           <span
-            ref={ref}
+            ref={ratingRef}
             style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#FFFBEB', padding: '3px 9px', borderRadius: 8, border: '1px solid #FDE68A', cursor: 'pointer' }}
-            onMouseEnter={handleEnter}
-            onMouseLeave={() => setShow(false)}
+            onMouseEnter={() => handleEnter('rating', ratingRef)}
+            onMouseLeave={() => setOpenCard(null)}
+            onFocus={() => handleEnter('rating', ratingRef)}
+            onBlur={() => setOpenCard(null)}
+            tabIndex={0}
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="#F59E0B" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
             <span style={{ fontSize: 13, fontWeight: 700, color: '#374151' }}>{rating}</span>
           </span>
-          {show && createPortal(
-            <div style={{
-              position: 'absolute',
-              top: pos.top - 10,
-              left: pos.left,
-              transform: 'translateX(-50%) translateY(-100%)',
-              background: '#fff',
-              border: '1px solid #E5E7EB',
-              borderRadius: 16,
-              padding: '14px 18px',
-              boxShadow: '0 12px 40px rgba(0,0,0,.14)',
-              zIndex: 99999,
-              width: 260,
-              pointerEvents: 'none',
-              animation: 'psTooltipIn .18s ease',
-            }}>
-              {RATING_CRITERIA.map(({ label, value }, i) => (
-                <div key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 0', borderBottom: i < RATING_CRITERIA.length - 1 ? '1px solid #F5F5F7' : 'none' }}>
-                  <span style={{ fontSize: 13, color: '#374151' }}>{label}</span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontWeight: 700, fontSize: 14, color: '#111' }}>
-                    {value}
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="#F59E0B" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                  </span>
+          {openCard === 'rating' && createPortal(
+            <div style={tooltipStyle(286)}>
+              <div style={{ padding: '14px 16px 12px', background: 'linear-gradient(135deg,#EEF4FF,#FFFFFF)', borderBottom: '1px solid #DCE5FF' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                  <div>
+                    <div style={{ color: '#375DFB', fontSize: 10, fontWeight: 800, letterSpacing: '.09em', textTransform: 'uppercase' }}>Общий рейтинг</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 7, color: '#102A72', fontSize: 24, fontWeight: 900, lineHeight: 1.15, marginTop: 3 }}>
+                      {rating}<svg width="17" height="17" viewBox="0 0 24 24" fill="#F59E0B" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    </div>
+                  </div>
+                  <div style={{ padding: '6px 10px', borderRadius: 999, background: '#375DFB', color: '#fff', fontSize: 11, fontWeight: 800 }}>Отличный</div>
                 </div>
-              ))}
-              <div style={{ position: 'absolute', bottom: -5, left: '50%', transform: 'translateX(-50%) rotate(45deg)', width: 10, height: 10, background: '#fff', borderRight: '1px solid #E5E7EB', borderBottom: '1px solid #E5E7EB' }} />
+              </div>
+              <div style={{ padding: '8px 16px 12px' }}>
+                {RATING_CRITERIA.map(({ label, value }, i) => (
+                  <div key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 0', borderBottom: i < RATING_CRITERIA.length - 1 ? '1px solid #EDF1FA' : 'none' }}>
+                    <span style={{ fontSize: 12, color: '#4B5C80' }}>{label}</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontWeight: 800, fontSize: 13, color: '#102A72' }}>
+                      {value}
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="#F59E0B" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div style={arrowStyle()} />
             </div>,
             document.body
           )}
@@ -221,20 +314,59 @@ export function IVDisplay({ index, rating }: { index: number; rating: number | n
 export function ElitaBadge({ small = false, animate = false }: { small?: boolean; animate?: boolean }) {
   return (
     <div style={{
-      background: 'linear-gradient(134.1deg, #FFDD2D 27.4%, #F5883A 143.8%)',
-      borderRadius: 14, padding: small ? '2px 8px' : '4px 12px',
-      boxShadow: '0 2px 8px rgba(245,136,58,.32)', whiteSpace: 'nowrap', flexShrink: 0,
-      animation: animate ? 'vElita 2.6s ease-in-out infinite' : undefined,
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      height: small ? 17 : 20,
+      boxSizing: 'border-box',
+      background: 'linear-gradient(180deg,#FFFFFF 0%,#F1F3F7 54%,#E5E9F0 100%)',
+      border: '1px solid #B9C1CE',
+      borderRadius: 999, padding: small ? '1px 7px' : '2px 9px',
+      boxShadow: '0 2px 6px rgba(42,55,82,.15), inset 0 1px 0 #FFFFFF',
+      whiteSpace: 'nowrap', flexShrink: 0,
+      animation: animate ? 'eliteBadgeFloat 2.8s ease-in-out infinite' : undefined,
     }}>
-      <span style={{ fontSize: small ? 7 : 9, fontWeight: 800, color: '#fff', textTransform: 'uppercase' as const, letterSpacing: '.7px' }}>элита</span>
+      <span style={{
+        fontSize: small ? 7 : 8, fontWeight: 900, color: '#26334B',
+        textTransform: 'uppercase' as const, letterSpacing: small ? '.65px' : '.85px',
+        lineHeight: 1,
+      }}>элита</span>
     </div>
+  );
+}
+
+// ─── ExtraBadge ─────────────────────────────────────────────────────────────
+// Кнопка «+N» (показать все знаки отличия). Анимация 1-в-1 как у бейджа «+N»
+// в карточках на главной (PersonCard): градиент, белый текст, scale, тень.
+export function ExtraBadge({ count, size = 60, onClick, title = 'Все знаки отличия' }: { count: number; size?: number; onClick?: () => void; title?: string }) {
+  const [hov, setHov] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      aria-label={`Все знаки отличия, ещё ${count}`}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        width: size, height: size, borderRadius: 12, flexShrink: 0,
+        background: hov ? 'linear-gradient(135deg,#375DFB,#7B9FFF)' : '#EBF1FF',
+        border: `1.5px solid ${hov ? 'transparent' : '#C7D2FE'}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: size >= 56 ? 15 : 13, fontWeight: 800, fontFamily: 'inherit',
+        color: hov ? '#fff' : '#375DFB',
+        cursor: 'pointer', transition: 'all .3s ease',
+        transform: hov ? 'scale(1.06)' : 'scale(1)',
+        boxShadow: hov ? '0 6px 20px rgba(55,93,251,.38)' : 'none',
+      }}
+    >
+      +{count}
+    </button>
   );
 }
 
 // ─── BadgeBox ─────────────────────────────────────────────────────────────────
 // Тултип рендерится через Portal в document.body — полностью вне любого
 // stacking context карточки, поэтому всегда поверх ElitaBadge.
-export function BadgeBox({ src, tooltip, size = 52 }: { src: string; tooltip?: string; size?: number }) {
+export function BadgeBox({ src, tooltip, size = 52, topRight }: { src: string; tooltip?: string; size?: number; topRight?: ReactNode }) {
   const [err, setErr] = useState(false);
   const [show, setShow] = useState(false);
   const [hovered, setHovered] = useState(false);
@@ -276,6 +408,14 @@ export function BadgeBox({ src, tooltip, size = 52 }: { src: string; tooltip?: s
           ? <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} onError={() => setErr(true)} />
           : <svg width={size * 0.4} height={size * 0.4} viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="1.5"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>
         }
+        {topRight && (
+          <div style={{
+            position: 'absolute', top: size <= 48 ? -7 : -8, right: size <= 48 ? -7 : -8,
+            zIndex: 10, pointerEvents: 'none',
+          }}>
+            {topRight}
+          </div>
+        )}
       </div>
       {tooltip && show && createPortal(
         <div style={{
@@ -283,15 +423,19 @@ export function BadgeBox({ src, tooltip, size = 52 }: { src: string; tooltip?: s
           top: pos.top - 10,
           left: pos.left,
           transform: 'translateX(-50%) translateY(-100%)',
-          background: 'rgba(17,17,17,.93)',
-          color: '#fff', fontSize: 12, padding: '7px 13px', borderRadius: 9,
+          background: 'rgba(37, 62, 167, 0.48)',
+          border: '1px solid rgba(255,255,255,0.12)',
+          color: '#fff', fontSize: 12, fontWeight: 700, padding: '8px 13px', borderRadius: 10,
           whiteSpace: 'nowrap', zIndex: 99999, pointerEvents: 'none',
         }}>
           {tooltip}
           <div style={{
             position: 'absolute', bottom: -3, left: '50%',
             transform: 'translateX(-50%) rotate(45deg)',
-            width: 6, height: 6, background: 'rgba(17,17,17,.93)',
+            width: 7, height: 7,
+            background: 'rgba(37, 62, 167, 0.48)',
+            borderRight: '1px solid rgba(255,255,255,0.12)',
+            borderBottom: '1px solid rgba(255,255,255,0.12)',
           }} />
         </div>,
         document.body
@@ -386,8 +530,8 @@ export function EditableMeasurements({ personId }: { personId: number }) {
         onClick={save}
         style={{
           marginTop: 18, width: '100%', padding: '12px 0',
-          background: ok ? 'linear-gradient(135deg,#10B981,#34D399)' : 'linear-gradient(135deg,#2F52F0,#6B8FFF)',
-          border: 'none', borderRadius: 12, color: '#fff', fontSize: 13, fontWeight: 700,
+          background: ok ? '#10B981' : '#375DFB',
+          border: 'none', borderRadius: 8, color: '#fff', fontSize: 13, fontWeight: 700,
           cursor: 'pointer', transition: 'background .3s', display: 'flex', alignItems: 'center',
           justifyContent: 'center', gap: 7,
           boxShadow: ok ? '0 4px 14px rgba(16,185,129,.35)' : '0 4px 14px rgba(55,93,251,.3)',
@@ -415,8 +559,7 @@ function PersonCard({ p, onOpenModal, onOpenAll, animDelay = 0 }: {
 
   const goToZnaki = (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigate('/my-path');
-    setTimeout(() => document.getElementById('znaki-section')?.scrollIntoView({ behavior: 'auto', block: 'start' }), 300);
+    navigate('/achievements');
   };
 
   return (
@@ -442,6 +585,7 @@ function PersonCard({ p, onOpenModal, onOpenAll, animDelay = 0 }: {
           <span style={{ fontSize: 15, fontWeight: 700, color: '#111' }}>{p.category}</span>
         </div>
         <button
+          className="voevoda-view-all voevoda-view-all--inverse"
           onClick={(e) => { e.stopPropagation(); onOpenAll(); }}
           onMouseEnter={() => setBtnHovered(true)}
           onMouseLeave={() => setBtnHovered(false)}
@@ -499,11 +643,9 @@ function PersonCard({ p, onOpenModal, onOpenAll, animDelay = 0 }: {
           position: 'relative', display: 'flex', flexDirection: 'column',
           alignItems: 'center', gap: 8, paddingTop: 10,
         }}>
-          <div style={{ position: 'absolute', top: 0, right: 0, zIndex: 10, pointerEvents: 'none' }}>
-            <ElitaBadge animate />
-          </div>
           {p.smallImages.slice(0, 3).map((src, i) => (
-            <BadgeBox key={i} src={src} size={BADGE_SIZE} tooltip={i === 0 ? 'Шеврон «ВОЕВОДА»' : undefined} />
+            <BadgeBox key={i} src={src} size={BADGE_SIZE} tooltip={BADGE_TOOLTIPS[i]}
+              topRight={i === 0 ? <ElitaBadge animate /> : undefined} />
           ))}
           {p.extraCount > 0 && (
             <div
@@ -533,8 +675,6 @@ function PersonCard({ p, onOpenModal, onOpenAll, animDelay = 0 }: {
           <span
             style={{ fontSize: 19, fontWeight: 800, color: '#0D0F14', cursor: 'pointer', letterSpacing: '-.3px', transition: 'color .18s' }}
             onClick={(e) => { e.stopPropagation(); onOpenModal(p.id); }}
-            onMouseEnter={e => (e.currentTarget.style.color = '#375DFB')}
-            onMouseLeave={e => (e.currentTarget.style.color = '#0D0F14')}
           >
             {p.name}
           </span>
@@ -547,9 +687,9 @@ function PersonCard({ p, onOpenModal, onOpenAll, animDelay = 0 }: {
       <div style={{ display: 'flex', gap: 9, padding: '0 14px 15px' }}>
         <button
           onClick={(e) => { e.stopPropagation(); onOpenModal(p.id); }}
-          style={{ flex: 1, background: 'linear-gradient(to right, #2F52F0 0%, #5B7FFF 60%, #7B9FFF 100%)', border: 'none', borderRadius: 8, padding: '12px 0', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', boxShadow: '0 5px 18px rgba(55,93,251,.32)', transition: 'transform .22s ease, box-shadow .22s ease' }}
-          onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 26px rgba(55,93,251,.46)'; }}
-          onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 5px 18px rgba(55,93,251,.32)'; }}
+          style={{ flex: 1, background: '#375DFB', border: 'none', borderRadius: 8, padding: '12px 0', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', boxShadow: '0 5px 18px rgba(55,93,251,.32)', transition: 'transform .22s ease, box-shadow .22s ease, background .22s ease' }}
+          onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 26px rgba(55,93,251,.46)'; e.currentTarget.style.background = '#1E3F9F'; }}
+          onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 5px 18px rgba(55,93,251,.32)'; e.currentTarget.style.background = '#375DFB'; }}
         >
           Личное дело
         </button>
@@ -569,9 +709,11 @@ function PersonCard({ p, onOpenModal, onOpenAll, animDelay = 0 }: {
 function RowBadges({ p, onZnaki }: { p: Person; onZnaki: (e: React.MouseEvent) => void }) {
   const BR = 44;
   return (
-    <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, paddingTop: 10 }}>
-      <div style={{ position: 'absolute', top: 0, left: BR / 2 + 4, zIndex: 10, pointerEvents: 'none' }}><ElitaBadge small /></div>
-      {p.smallImages.slice(0, 3).map((src, i) => <BadgeBox key={i} src={src} size={BR} tooltip={i === 0 ? 'Шеврон «ВОЕВОДА»' : undefined} />)}
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+      {p.smallImages.slice(0, 3).map((src, i) => (
+        <BadgeBox key={i} src={src} size={BR} tooltip={BADGE_TOOLTIPS[i]}
+          topRight={i === 0 ? <ElitaBadge small /> : undefined} />
+      ))}
       {p.extraCount > 0 && (
         <div
           onClick={onZnaki}
@@ -611,7 +753,7 @@ function PersonRow({ p, onOpen, onZnaki, isLast = false }: {
       <div onClick={onOpen} style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 10, color: '#9CA3AF', marginBottom: 2, textTransform: 'uppercase' as const, letterSpacing: '.5px' }}>{p.rank}</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 16, fontWeight: 700, color: hov ? '#375DFB' : '#111', transition: 'color .15s' }}>{p.name}</span>
+          <span style={{ fontSize: 16, fontWeight: 700, color: '#111' }}>{p.name}</span>
           <IVDisplay index={p.index} rating={p.rating} />
         </div>
         <div style={{ fontSize: 12, color: '#6B7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.position}</div>
@@ -628,9 +770,12 @@ export function PeopleModal({ people, mode, onClose }: { people: Person[]; mode:
   const navigate = useNavigate();
   const [current, setCurrent] = useState<ModalMode>(mode);
   const [tab, setTab] = useState<'Данные' | 'Подготовка' | 'Замеры'>('Данные');
+  const [activeTrainingSection, setActiveTrainingSection] = useState<string>('phys');
   const [search, setSearch] = useState('');
   const [cityFilter, setCityFilter] = useState('Все города');
   const [showCityDD, setShowCityDD] = useState(false);
+  const cityBtnRef = useRef<HTMLButtonElement>(null);
+  const [cityBtnRect, setCityBtnRect] = useState<DOMRect | null>(null);
 
   const categoryPeople = useMemo(
     () => current.type === 'list' ? people.filter(p => p.category === current.category) : [],
@@ -647,8 +792,7 @@ export function PeopleModal({ people, mode, onClose }: { people: Person[]; mode:
   }), [categoryPeople, search, cityFilter]);
 
   const goToZnaki = (e: React.MouseEvent) => {
-    e.stopPropagation(); onClose(); navigate('/my-path');
-    setTimeout(() => document.getElementById('znaki-section')?.scrollIntoView({ behavior: 'auto', block: 'start' }), 300);
+    e.stopPropagation(); onClose(); navigate('/achievements');
   };
 
   if (current.type === 'list') {
@@ -666,18 +810,29 @@ export function PeopleModal({ people, mode, onClose }: { people: Person[]; mode:
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Поиск" style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: 13, color: '#111', width: '100%' }} />
             </div>
             <div style={{ position: 'relative' }}>
-              <button onClick={() => setShowCityDD(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: 10, padding: '6px 12px', fontSize: 13, color: '#374151', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              <button
+                ref={cityBtnRef}
+                onClick={() => {
+                  if (cityBtnRef.current) setCityBtnRect(cityBtnRef.current.getBoundingClientRect());
+                  setShowCityDD(v => !v);
+                }}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: 10, padding: '6px 12px', fontSize: 13, color: '#374151', cursor: 'pointer', whiteSpace: 'nowrap' }}
+              >
                 {cityFilter} <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
               </button>
-              {showCityDD && (
-                <div style={{ position: 'absolute', top: 'calc(100% + 4px)', right: 0, background: '#fff', border: '1px solid #E5E7EB', borderRadius: 12, boxShadow: '0 10px 28px rgba(0,0,0,.12)', zIndex: 100, minWidth: 150, overflow: 'hidden' }}>
+              {showCityDD && cityBtnRect && createPortal(
+                <div
+                  style={{ position: 'fixed', top: cityBtnRect.bottom + 4, right: window.innerWidth - cityBtnRect.right, background: '#fff', border: '1px solid #E5E7EB', borderRadius: 12, boxShadow: '0 10px 28px rgba(0,0,0,.12)', zIndex: 100001, minWidth: 160, overflow: 'hidden' }}
+                  onClick={e => e.stopPropagation()}
+                >
                   {cities.map(c => (
                     <div key={c} onClick={() => { setCityFilter(c); setShowCityDD(false); }} style={{ padding: '9px 14px', fontSize: 13, cursor: 'pointer', color: c === cityFilter ? '#375DFB' : '#374151', fontWeight: c === cityFilter ? 600 : 400, background: c === cityFilter ? '#EBF1FF' : 'transparent', transition: 'background .12s' }}
                       onMouseOver={e => { if (c !== cityFilter) e.currentTarget.style.background = '#F9FAFB'; }}
                       onMouseOut={e => { if (c !== cityFilter) e.currentTarget.style.background = 'transparent'; }}
                     >{c}</div>
                   ))}
-                </div>
+                </div>,
+                document.body
               )}
             </div>
             <button onClick={onClose} style={{ background: '#F3F4F6', border: 'none', width: 32, height: 32, borderRadius: 8, cursor: 'pointer', fontSize: 18, color: '#6B7280', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }} onMouseEnter={e => (e.currentTarget.style.background = '#E5E7EB')} onMouseLeave={e => (e.currentTarget.style.background = '#F3F4F6')}>×</button>
@@ -700,15 +855,15 @@ export function PeopleModal({ people, mode, onClose }: { people: Person[]; mode:
 
   const p = people.find(x => x.id === current.personId) ?? people[0];
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: 20, backdropFilter: 'blur(3px)' }}>
-      <div onClick={e => e.stopPropagation()} style={{ maxWidth: 700, width: '100%', background: '#fff', borderRadius: 22, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 28px 70px rgba(0,0,0,.22)' }}>
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 10000, padding: '5vh 20px 20px', backdropFilter: 'blur(3px)', overflowY: 'auto' }}>
+      <div onClick={e => e.stopPropagation()} style={{ maxWidth: 700, width: '100%', background: '#fff', borderRadius: 22, boxShadow: '0 28px 70px rgba(0,0,0,.22)', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', borderBottom: '1px solid #F0F0F0' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <CatIcon cat={p.category} />
             <span style={{ fontSize: 16, fontWeight: 700 }}>{p.category}</span>
           </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            <button onClick={() => { setCurrent({ type: 'list', category: p.category }); setSearch(''); setCityFilter('Все города'); }} style={{ background: 'none', border: 'none', color: '#375DFB', fontSize: 13, cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
+            <button className="voevoda-view-all voevoda-view-all--inverse" onClick={() => { setCurrent({ type: 'list', category: p.category }); setSearch(''); setCityFilter('Все города'); }} style={{ background: 'none', border: 'none', color: '#375DFB', fontSize: 13, cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
               Все <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="9 18 15 12 9 6"/></svg>
             </button>
             <button onClick={onClose} style={{ background: '#F3F4F6', border: 'none', width: 32, height: 32, borderRadius: 8, cursor: 'pointer', fontSize: 18, color: '#6B7280', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onMouseEnter={e => (e.currentTarget.style.background = '#E5E7EB')} onMouseLeave={e => (e.currentTarget.style.background = '#F3F4F6')}>×</button>
@@ -730,8 +885,9 @@ export function PeopleModal({ people, mode, onClose }: { people: Person[]; mode:
             <div style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>{p.position}</div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <ElitaBadge animate />
-            {p.smallImages.map((src, i) => <BadgeBox key={i} src={src} size={44} />)}
+            {p.smallImages.map((src, i) => (
+              <BadgeBox key={i} src={src} size={44} tooltip={BADGE_TOOLTIPS[i]} topRight={i === 0 ? <ElitaBadge small animate /> : undefined} />
+            ))}
             {p.extraCount > 0 && (
               <div onClick={goToZnaki} style={{ width: 44, height: 44, borderRadius: 12, background: '#EBF1FF', border: '1px solid #C7D2FE', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#375DFB', cursor: 'pointer', transition: 'all .2s' }} onMouseEnter={e => { e.currentTarget.style.background = 'linear-gradient(135deg,#375DFB,#7B9FFF)'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = 'transparent'; }} onMouseLeave={e => { e.currentTarget.style.background = '#EBF1FF'; e.currentTarget.style.color = '#375DFB'; e.currentTarget.style.borderColor = '#C7D2FE'; }}>
                 +{p.extraCount}
@@ -745,32 +901,58 @@ export function PeopleModal({ people, mode, onClose }: { people: Person[]; mode:
           ))}
         </div>
         <div style={{ padding: '20px 24px' }}>
+          <div key={tab} style={{ animation: 'vCardIn .32s cubic-bezier(0.4,0,0.2,1)', transformOrigin: 'top center', overflow: 'hidden' }}>
           {tab === 'Данные' && (
             <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
-              <div style={{ flex: '0 0 200px' }}>
+              <div style={{ flex: '0 0 240px' }}>
                 {([['Город', p.city], ['Год рождения', p.birthYear], ['На портале', p.joinedDate], ['Сообщество', p.community], ['Прошёл курсов', String(p.coursesCompleted)], ['Наград', String(p.awards)], ['Подписчиков', p.followers.toLocaleString()]] as [string, string][]).map(([l, v]) => (
-                  <div key={l} style={{ display: 'flex', padding: '8px 0', borderBottom: '1px solid #F5F5F7', gap: 8 }}>
-                    <span style={{ fontSize: 13, color: '#9CA3AF', width: 110, flexShrink: 0 }}>{l}</span>
-                    <span style={{ fontSize: 13, color: '#111', fontWeight: 600 }}>{v}</span>
+                  <div key={l} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #F5F5F7' }}>
+                    <span style={{ fontSize: 13, color: '#9CA3AF' }}>{l}</span>
+                    <span style={{ fontSize: 14, color: '#111', fontWeight: 600, textAlign: 'right' }}>{v}</span>
                   </div>
                 ))}
               </div>
-              <div style={{ flex: 1, minWidth: 180 }}>
-                <div style={{ borderRadius: 12, overflow: 'hidden', height: 180, background: '#F3F4F6', marginBottom: 12 }}>
+              <div style={{ flex: 1, minWidth: 160 }}>
+                <div style={{ borderRadius: 12, overflow: 'hidden', aspectRatio: '1 / 1', background: '#F3F4F6', marginBottom: 12 }}>
                   <img src={p.bioImage} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 </div>
                 <p style={{ fontSize: 13, color: '#374151', lineHeight: 1.65, margin: 0 }}>{p.bio}</p>
               </div>
             </div>
           )}
-          {tab === 'Подготовка' && <TrainingPanel compact />}
-          {tab === 'Замеры' && <MeasurementsPanel compact />}
+          {tab === 'Подготовка' && (
+            <TrainingPanel
+              compact
+              onSectionChange={s => setActiveTrainingSection(s)}
+            />
+          )}
+          {tab === 'Замеры' && (
+            <MeasurementsPanel
+              compact
+              onEdit={() => { onClose(); navigate('/profile', { state: { tab: 'Сводка замеров', measuresView: 'edit' } }); }}
+            />
+          )}
+          </div>
         </div>
         <div style={{ display: 'flex', gap: 10, padding: '0 24px 22px' }}>
-          <button onClick={() => { onClose(); navigate('/profile'); }} style={{ flex: 1, background: 'linear-gradient(to right, #2F52F0 0%, #5B7FFF 60%, #7B9FFF 100%)', border: 'none', borderRadius: 8, padding: '13px 0', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', boxShadow: '0 5px 18px rgba(55,93,251,.32)', transition: 'all .22s ease' }} onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 26px rgba(55,93,251,.46)'; }} onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 5px 18px rgba(55,93,251,.32)'; }}>
+          <button onClick={() => { onClose(); navigate(userProfilePath(p.name)); }} style={{ flex: 1, background: '#375DFB', border: 'none', borderRadius: 8, padding: '13px 0', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', boxShadow: '0 5px 18px rgba(55,93,251,.32)', transition: 'all .22s ease' }} onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 26px rgba(55,93,251,.46)'; e.currentTarget.style.background = '#1E3F9F'; }} onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 5px 18px rgba(55,93,251,.32)'; e.currentTarget.style.background = '#375DFB'; }}>
             Личное дело
           </button>
-          <button onClick={() => { onClose(); navigate('/edit-profile'); }} style={{ flex: 1, background: '#F8F9FC', border: '1.5px solid #E5E7EB', borderRadius: 8, padding: '13px 0', color: '#374151', fontSize: 14, fontWeight: 500, cursor: 'pointer', transition: 'all .22s ease', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#C7D2FE'; e.currentTarget.style.color = '#375DFB'; e.currentTarget.style.background = '#EEF3FF'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = '#E5E7EB'; e.currentTarget.style.color = '#374151'; e.currentTarget.style.background = '#F8F9FC'; }}>
+          <button
+            onClick={() => {
+              onClose();
+              if (tab === 'Данные') {
+                navigate('/profile', { state: { openEdit: true } });
+              } else if (tab === 'Подготовка') {
+                navigate('/profile', { state: { tab: 'График подготовки', chartSection: activeTrainingSection, chartView: 'edit' } });
+              } else {
+                navigate('/profile', { state: { tab: 'Сводка замеров', measuresView: 'edit' } });
+              }
+            }}
+            style={{ flex: 1, background: '#F8F9FC', border: '1.5px solid #E5E7EB', borderRadius: 8, padding: '13px 0', color: '#374151', fontSize: 14, fontWeight: 500, cursor: 'pointer', transition: 'all .22s ease', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = '#C7D2FE'; e.currentTarget.style.color = '#375DFB'; e.currentTarget.style.background = '#EEF3FF'; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = '#E5E7EB'; e.currentTarget.style.color = '#374151'; e.currentTarget.style.background = '#F8F9FC'; }}
+          >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
             Редактировать
           </button>
@@ -783,12 +965,30 @@ export function PeopleModal({ people, mode, onClose }: { people: Person[]; mode:
   );
 }
 
-export function PeopleSection() {
+export function PeopleSection({
+  noOuterPadding = false,
+}: {
+  noOuterPadding?: boolean;
+}) {
   const isMobile = useMediaQuery('(max-width: 768px)');
   const [modal, setModal] = useState<{ mode: ModalMode } | null>(null);
+
+  useEffect(() => {
+    if (!modal) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [modal]);
+
   return (
     <>
-      <section style={{ padding: isMobile ? '16px 16px 0' : '24px 24px 0' }}>
+      <section
+        style={{
+          padding: noOuterPadding ? 0 : isMobile ? '16px 16px 0' : '24px 24px 0',
+        }}
+      >
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3,1fr)', gap: 18 }}>
           {FEATURED_PEOPLE.map((p, i) => (
             <PersonCard key={p.id} p={p} animDelay={i * 80}
@@ -798,7 +998,14 @@ export function PeopleSection() {
           ))}
         </div>
       </section>
-      {modal && <PeopleModal people={PEOPLE} mode={modal.mode} onClose={() => setModal(null)} />}
+      {modal && createPortal(
+        <PeopleModal
+          people={PEOPLE}
+          mode={modal.mode}
+          onClose={() => setModal(null)}
+        />,
+        document.body
+      )}
     </>
   );
 }

@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { PortalBreadcrumb } from '../components/PortalBreadcrumb';
 
 /* ─────────────────────────────────────────────
    STYLES
@@ -8,21 +9,21 @@ const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap');
 
   :root {
-    --navy-900: #07111F;
-    --navy-800: #0D1B2A;
-    --navy-700: #102236;
-    --navy-600: #1A3A5C;
-    --accent:   #1A56DB;
-    --accent-2: #2563EB;
-    --accent-light: #EBF2FF;
-    --accent-mid:   #C7D9FA;
-    --surface:  #F4F6FB;
-    --surface-2:#EEF1F8;
-    --border:   #DDE3EE;
-    --border-2: #C8D0E2;
-    --text-primary: #0D1B2A;
-    --text-secondary: #4A5568;
-    --text-muted: #8A96A8;
+    --navy-900: #2148D8;
+    --navy-800: #294FD0;
+    --navy-700: #375DFB;
+    --navy-600: #7397FF;
+    --accent:   #375DFB;
+    --accent-2: #2148D8;
+    --accent-light: #EDF3FF;
+    --accent-mid:   #C9D8FF;
+    --surface:  #F5F8FF;
+    --surface-2:#EDF2FC;
+    --border:   #DCE5F7;
+    --border-2: #C5D2ED;
+    --text-primary: #13234A;
+    --text-secondary: #4C608A;
+    --text-muted: #8290AD;
     --success:  #1A8A57;
     --success-bg:#E8F7EE;
     --success-mid:#B3E6CC;
@@ -34,12 +35,12 @@ const CSS = `
     --radius:   14px;
     --radius-lg:20px;
     --radius-xl:28px;
-    --shadow:    0 4px 14px rgba(13,27,42,.10);
-    --shadow-lg: 0 12px 32px rgba(13,27,42,.14);
+    --shadow:    0 12px 32px rgba(45,83,181,.11);
+    --shadow-lg: 0 24px 65px rgba(35,70,160,.18);
     --font: 'Montserrat', sans-serif;
   }
   * { box-sizing:border-box; margin:0; padding:0; }
-  .ad-wrap { font-family:var(--font); }
+  .ad-wrap { font-family:var(--font); background:radial-gradient(circle at 82% 3%,rgba(55,93,251,.1),transparent 27%),var(--surface)!important; }
 
   /* ── ANIMATIONS ── */
   @keyframes ad-slide-up {
@@ -74,6 +75,10 @@ const CSS = `
     from { width:0; opacity:0; }
     to   { width:48px; opacity:1; }
   }
+  @keyframes ad-orbit {
+    0%,100% { transform:translate3d(0,0,0) rotate(0); }
+    50% { transform:translate3d(-8px,8px,0) rotate(8deg); }
+  }
 
   .ad-s1 { animation: ad-slide-up .42s ease both; }
   .ad-s2 { animation: ad-slide-up .42s .07s ease both; }
@@ -83,22 +88,28 @@ const CSS = `
 
   /* ── HERO ── */
   .ad-hero {
-    background: linear-gradient(140deg, var(--navy-900) 0%, var(--navy-700) 55%, var(--navy-600) 100%);
+    background: linear-gradient(132deg, #2148D8 0%, #375DFB 52%, #7397FF 100%);
     border-radius: var(--radius-xl);
     position: relative; overflow: hidden;
+    box-shadow:0 24px 65px rgba(55,93,251,.24);
+    border:1px solid rgba(255,255,255,.26);
   }
   .ad-hero::before {
     content:''; position:absolute; inset:0;
-    background:
-      repeating-linear-gradient(0deg,  transparent, transparent 39px, rgba(255,255,255,.022) 40px),
-      repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(255,255,255,.022) 40px);
+    background:linear-gradient(115deg,rgba(255,255,255,.12),transparent 35%),
+      repeating-linear-gradient(135deg,transparent 0 31px,rgba(255,255,255,.055) 32px,transparent 33px 64px);
   }
   .ad-hero::after {
     content:''; position:absolute;
-    bottom:-100px; right:-100px;
-    width:360px; height:360px;
-    background: radial-gradient(circle, rgba(26,86,219,.18) 0%, transparent 70%);
+    top:-98px; right:-76px;
+    width:260px; height:260px;
+    border:54px solid rgba(255,255,255,.08);border-radius:50%;
+    animation:ad-orbit 8s ease-in-out infinite;
   }
+  .ad-hero-metric{transition:transform .22s ease,background .22s ease,border-color .22s ease;}
+  .ad-hero-metric:hover{transform:translateX(-5px);background:rgba(255,255,255,.18)!important;border-color:rgba(255,255,255,.34)!important;}
+  .ad-hero-cta{display:inline-flex;align-items:center;gap:9px;margin-top:20px;padding:12px 18px;border:0;border-radius:12px;background:#fff;color:var(--accent-2);font:700 13px var(--font);cursor:pointer;box-shadow:0 10px 26px rgba(27,55,155,.2);transition:transform .2s ease,box-shadow .2s ease;}
+  .ad-hero-cta:hover{transform:translateY(-3px);box-shadow:0 16px 34px rgba(27,55,155,.27);}
 
   /* ── STAT ── */
   .ad-stat {
@@ -107,7 +118,8 @@ const CSS = `
     transition: transform .2s, box-shadow .2s;
     animation: ad-count-pop .4s ease both;
   }
-  .ad-stat:hover { transform:translateY(-2px); box-shadow:var(--shadow); }
+  .ad-stat{box-shadow:0 8px 24px rgba(50,79,145,.055);}
+  .ad-stat:hover { transform:translateY(-5px); box-shadow:0 18px 40px rgba(55,93,251,.14);border-color:var(--accent-mid); }
 
   /* ── TAB ── */
   .ad-tab {
@@ -247,7 +259,10 @@ const CSS = `
     background:#fff; border-radius:var(--radius-lg);
     border:1px solid var(--border); overflow:hidden;
     margin-bottom:16px;
+    box-shadow:0 10px 32px rgba(46,72,132,.055);
+    transition:border-color .22s ease,box-shadow .22s ease;
   }
+  .ad-card:hover{border-color:var(--accent-mid);box-shadow:0 16px 44px rgba(46,79,166,.09);}
   .ad-card-header {
     display:flex; align-items:center; justify-content:space-between;
     padding:18px 24px; border-bottom:1px solid var(--border);
@@ -306,6 +321,29 @@ const CSS = `
   .ad-wrap ::-webkit-scrollbar { width:4px; }
   .ad-wrap ::-webkit-scrollbar-track { background:transparent; }
   .ad-wrap ::-webkit-scrollbar-thumb { background:var(--border-2); border-radius:4px; }
+  @media(max-width:1050px){
+    .ad-hero-grid{grid-template-columns:1fr 270px!important;gap:28px!important;}
+    .ad-stats-grid{grid-template-columns:repeat(2,1fr)!important;}
+  }
+  @media(max-width:760px){
+    .ad-wrap{margin-left:40px!important;padding-top:58px!important;}
+    .ad-page{padding:16px 14px 42px!important;}
+    .ad-hero{padding:28px 22px!important;border-radius:20px!important;}
+    .ad-hero-grid{grid-template-columns:1fr!important;gap:24px!important;}
+    .ad-hero-title{font-size:25px!important;}
+    .ad-stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important;}
+    .ad-stat{padding:16px!important;}
+    .ad-tabs{overflow-x:auto;padding-bottom:3px;scrollbar-width:none;}
+    .ad-tabs::-webkit-scrollbar{display:none;}
+    .ad-tab{min-width:max-content;padding:10px 15px!important;}
+    .ad-card-header{padding:16px!important;gap:10px;}
+    .ad-thead{display:none!important;}
+    .ad-row{padding:16px!important;grid-template-columns:1fr 1fr!important;gap:12px 18px;align-items:start!important;}
+    .ad-info-grid,.ad-create-grid{grid-template-columns:1fr!important;gap:18px!important;}
+    .ad-format-grid,.ad-date-grid{grid-template-columns:1fr!important;}
+    .ad-form-body,.ad-analytics-body{padding:20px 16px!important;}
+  }
+  @media(max-width:430px){.ad-hero-title br{display:none}.ad-hero-metrics{gap:7px!important}}
 `;
 
 /* ─────────────────────────────────────────────
@@ -436,8 +474,6 @@ function CardHeader({
    CAMPAIGNS LIST
 ───────────────────────────────────────────── */
 function CampaignsList({ onNew }: { onNew: () => void }) {
-  const activeCnt = CAMPAIGNS.filter(c => c.status === 'active').length;
-
   return (
     <>
       <div className="ad-card ad-s3">
@@ -500,7 +536,7 @@ function CampaignsList({ onNew }: { onNew: () => void }) {
           iconD="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
           title="Условия размещения"
         />
-        <div style={{ padding: '24px 28px', display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 20 }}>
+        <div className="ad-info-grid" style={{ padding: '24px 28px', display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 20 }}>
           {[
             {
               title: 'Модерация', body: 'Каждое объявление проходит проверку содержания, соответствия тематике портала и требованиям законодательства. Срок — до 24 часов.',
@@ -576,8 +612,8 @@ function CreateForm({ onSuccess }: { onSuccess: () => void }) {
         title="Создать рекламную кампанию"
       />
 
-      <div style={{ padding: '28px 28px 32px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
+      <div className="ad-form-body" style={{ padding: '28px 28px 32px' }}>
+        <div className="ad-create-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
           {/* LEFT COLUMN */}
           <div>
             <div style={{ marginBottom: 22 }}>
@@ -613,7 +649,7 @@ function CreateForm({ onSuccess }: { onSuccess: () => void }) {
 
             <div style={{ marginBottom: 22 }}>
               <label className="ad-label">Формат объявления</label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div className="ad-format-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 {FORMATS.map(f => {
                   const isActive = selectedFormat === f.id;
                   return (
@@ -719,7 +755,7 @@ function CreateForm({ onSuccess }: { onSuccess: () => void }) {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 22 }}>
+            <div className="ad-date-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 22 }}>
               <div>
                 <label className="ad-label">Дата начала</label>
                 <input className="ad-input" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
@@ -803,7 +839,7 @@ function AnalyticsPanel() {
         iconD="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
         title="Аналитика за неделю"
       />
-      <div style={{ padding: '24px 28px' }}>
+      <div className="ad-analytics-body" style={{ padding: '24px 28px' }}>
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, height: 140, marginBottom: 8 }}>
           {weekData.map((d, i) => (
             <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
@@ -888,52 +924,50 @@ export function Advertising() {
   return (
     <div className="ad-wrap" style={{ paddingTop: 60, marginLeft: 56, minHeight: '100vh', background: 'var(--surface)' }}>
       <style>{CSS}</style>
-      <div style={{ padding: '24px 28px 60px' }}>
+      <div className="ad-page" style={{ padding: '24px 28px 60px' }}>
 
-        {/* Breadcrumb */}
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 12, color: 'var(--text-muted)', marginBottom: 22 }}>
-          <span onClick={() => navigate('/')} style={{ cursor: 'pointer', transition: 'color .15s' }}
-            onMouseEnter={e => (e.currentTarget.style.color = 'var(--accent)')}
-            onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}>
-            Главная
-          </span>
-          <Icon d="M9 18l6-6-6-6" size={10} stroke="var(--border-2)" />
-          <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>Рекламный кабинет</span>
-        </div>
+        <PortalBreadcrumb items={[{ label:'Главная', to:'/' }, { label:'Рекламный кабинет' }]} />
 
         {/* Hero */}
         <div className="ad-hero ad-s1" style={{ padding: '30px 36px 32px', marginBottom: 18 }}>
           <div style={{ position: 'relative', zIndex: 1 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 48, alignItems: 'center' }}>
+            <div className="ad-hero-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 48, alignItems: 'center' }}>
               <div>
                 <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,.44)', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: 8 }}>
                   Рекламный кабинет
                 </div>
-                <h1 style={{ fontSize: 26, fontWeight: 800, color: '#fff', letterSpacing: '-.3px', lineHeight: 1.2 }}>
+                <h1 className="ad-hero-title" style={{ fontSize: 28, fontWeight: 800, color: '#fff', letterSpacing: '-.3px', lineHeight: 1.2 }}>
                   Размещение рекламы<br />на портале «Воевода»
                 </h1>
                 <div className="ad-accent-line" />
-                <p style={{ fontSize: 14, color: 'rgba(255,255,255,.6)', lineHeight: 1.75, maxWidth: 480 }}>
+                <p style={{ fontSize: 14, color: 'rgba(255,255,255,.82)', lineHeight: 1.75, maxWidth: 480 }}>
                   Целевая аудитория — военно-патриотически ориентированные граждане.
                   Размещайте объявления в разделах портала и управляйте кампаниями в режиме реального времени.
                 </p>
+                <button className="ad-hero-cta" onClick={() => {
+                  setView('create');
+                  window.setTimeout(() => document.querySelector('.ad-tabs')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+                }}>
+                  Создать рекламную кампанию
+                  <Icon d="M5 12h14m-6-6l6 6-6 6" size={16} stroke="currentColor" />
+                </button>
               </div>
 
               {/* Hero quick stats */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div className="ad-hero-metrics" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {[
                   { label: 'Активных пользователей',       val: '18 400' },
                   { label: 'Среднее время на сайте',        val: '12 мин' },
                   { label: 'Тематический CTR (среднее)',     val: '6.8%' },
                 ].map((s, i) => (
-                  <div key={i} style={{
+                  <div key={i} className="ad-hero-metric" style={{
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                     padding: '12px 16px',
-                    background: 'rgba(255,255,255,.07)',
-                    border: '1px solid rgba(255,255,255,.10)',
-                    borderRadius: 12, backdropFilter: 'blur(6px)',
+                    background: 'rgba(255,255,255,.12)',
+                    border: '1px solid rgba(255,255,255,.22)',
+                    borderRadius: 12, backdropFilter: 'blur(10px)',
                   }}>
-                    <span style={{ fontSize: 13, color: 'rgba(255,255,255,.6)' }}>{s.label}</span>
+                    <span style={{ fontSize: 13, color: 'rgba(255,255,255,.8)' }}>{s.label}</span>
                     <span style={{ fontSize: 17, fontWeight: 800, color: '#fff' }}>{s.val}</span>
                   </div>
                 ))}
@@ -943,7 +977,7 @@ export function Advertising() {
         </div>
 
         {/* Stats */}
-        <div className="ad-s2" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 18 }}>
+        <div className="ad-stats-grid ad-s2" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14, marginBottom: 18 }}>
           {STATS.map((s, i) => (
             <div key={i} className="ad-stat" style={{ animationDelay: `${i * 0.06}s` }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
@@ -973,7 +1007,7 @@ export function Advertising() {
         </div>
 
         {/* Tabs */}
-        <div className="ad-s3" style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+        <div className="ad-tabs ad-s3" style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
           <button
             onClick={() => setView('list')}
             className={`ad-tab${view === 'list' ? ' ad-tab--active' : ''}`}

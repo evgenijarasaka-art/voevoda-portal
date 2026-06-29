@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { io, type Socket } from 'socket.io-client';
 import { useAuth } from '../hooks/useAuth';
 
@@ -219,7 +219,7 @@ const CSS = `
   .msg-sticker-time{display:inline-flex;align-items:center;gap:4px;margin-top:2px;padding:2px 6px;border-radius:999px;background:rgba(0,0,0,.28);color:#fff;font-size:10px;font-weight:700;backdrop-filter:blur(6px);}
   @keyframes msg-sticker-wiggle{0%,100%{transform:rotate(0) scale(1)}20%{transform:rotate(-7deg) scale(1.05)}45%{transform:rotate(6deg) scale(1.08)}70%{transform:rotate(-3deg) scale(1.04)}}
   /* ── PROFILE MODAL ── */
-  .msg-profile-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:1000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(12px);animation:msg-fade .2s ease;padding:20px;}
+  .msg-profile-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:10000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(12px);animation:msg-fade .2s ease;padding:20px;}
   .msg-profile-modal{background:#fff;border-radius:26px;width:430px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.35);animation:msg-slide-up-panel .3s cubic-bezier(.34,1.56,.64,1);}
   .msg-profile-modal::-webkit-scrollbar{width:0;}
   .msg-profile-cover{width:100%;height:190px;object-fit:cover;display:block;}
@@ -353,6 +353,21 @@ const CHATS: ChatUser[] = [
     coverSeed: 'shooter-range', rating: 4.8, missions: 34, role: 'Огневой инструктор', location: 'Стрелковый комплекс', joined: '2021', skills: ['IPSC','3-Gun','Безопасность'], achievements: ['34 тренировки','Мастер спорта'],
   },
   {
+    id: 20, name: 'Сапсан', callsign: 'Сапсан', login: 'sapsan', avatar: '/teacher2-main.jpg',
+    rank: '', lastMsg: 'Снаряжение в наличии, пишите по обмену', time: 'Вт', unread: 0, online: false, lastSeen: 'вчера',
+    bio: 'Участник Каптёрки. Снаряжение, форма, обмен.', coverSeed: 'sapsan-gear', rating: 4.6, role: 'Продавец Каптёрки', location: 'Москва', joined: '2024',
+  },
+  {
+    id: 21, name: 'Барс', callsign: 'Барс', login: 'bars', avatar: '/teacher3-main.jpg',
+    rank: '', lastMsg: 'Готов обсудить сделку', time: 'Пн', unread: 0, online: true,
+    bio: 'Проверенный продавец Каптёрки. Оптика, снаряжение.', coverSeed: 'bars-gear', rating: 5.0, role: 'Продавец Каптёрки', location: 'Москва', joined: '2021',
+  },
+  {
+    id: 22, name: 'Стриж', callsign: 'Стриж', login: 'strizh', avatar: '/sold3.png',
+    rank: '', lastMsg: 'Интересует обмен на перчатки', time: 'Ср', unread: 0, online: false, lastSeen: '2 дня назад',
+    bio: 'Участник Каптёрки. Обмен снаряжением.', coverSeed: 'strizh-gear', rating: 4.5, role: 'Продавец Каптёрки', location: 'Новосибирск', joined: '2024',
+  },
+  {
     id: 6, name: 'Группа Снайпер-V4', callsign: 'Снайпер-V4', avatar: '',
     lastMsg: 'Следующее занятие 15 апреля в 09:00',
     time: 'Вс', unread: 0, online: false, isGroup: true, membersCount: 11,
@@ -409,6 +424,31 @@ const CHATS: ChatUser[] = [
     time: 'Пн', unread: 0, online: false, lastSeen: '2 дня назад', unit: 'Полоса препятствий',
     bio: 'Физподготовка, полоса препятствий и восстановление после нагрузок.',
     coverSeed: 'rubezh-fitness', rating: 4.7, missions: 22, role: 'Физподготовка', location: 'Полоса №1', joined: '2023', skills: ['Выносливость','Полоса','Восстановление'], achievements: ['22 тренировки','Темп'],
+  },
+  {
+    id: 14, name: 'Резак', callsign: 'Резак', login: 'rezak', avatar: '/teacher2-main.jpg',
+    rank: 'Майор', lastMsg: 'Увидимся на следующем занятии', time: 'Вчера', unread: 0, online: true,
+    bio: 'Снайпер учебной группы.', coverSeed: 'rezak-sniper', rating: 5, missions: 21, role: 'Снайпер', location: 'Полигон', joined: '2024', skills: ['Стрельба','Наблюдение'], achievements: ['Меткий стрелок'],
+  },
+  {
+    id: 15, name: 'Шторм', callsign: 'Шторм', login: 'shtorm', avatar: '/teacher3-main.jpg',
+    rank: 'Капитан', lastMsg: 'Аптечку проверил, всё на месте', time: 'Пн', unread: 0, online: false,
+    bio: 'Медик учебной группы.', coverSeed: 'shtorm-medic', rating: 4.6, missions: 17, role: 'Медик', location: 'Медблок', joined: '2024', skills: ['TCCC','Эвакуация'], achievements: ['Первая помощь'],
+  },
+  {
+    id: 16, name: 'Лис', callsign: 'Лис', login: 'lis', avatar: '/teacher1-main.jpg',
+    rank: 'Майор', lastMsg: 'Маршрут разведки согласован', time: 'Вс', unread: 0, online: false,
+    bio: 'Разведчик учебной группы.', coverSeed: 'lis-scout', rating: 4.9, missions: 26, role: 'Разведчик', location: 'Учебный штаб', joined: '2023', skills: ['Разведка','Ориентирование'], achievements: ['Тихий маршрут'],
+  },
+  {
+    id: 17, name: 'Волк', callsign: 'Волк', login: 'volk', avatar: '/teacher2-main.jpg',
+    rank: 'Майор', lastMsg: 'Снаряжение подготовлено', time: 'Сб', unread: 0, online: true,
+    bio: 'Сапёр учебной группы.', coverSeed: 'volk-sapper', rating: 4.7, missions: 19, role: 'Сапёр', location: 'Инженерный класс', joined: '2023', skills: ['Инженерное дело','Безопасность'], achievements: ['Чистый проход'],
+  },
+  {
+    id: 18, name: 'Ghost', callsign: 'Ghost', login: 'ghost', avatar: '/teacher3-main.jpg',
+    rank: 'Лейтенант', lastMsg: 'Связь проверена на всех каналах', time: 'Пт', unread: 0, online: false,
+    bio: 'Связист учебной группы.', coverSeed: 'ghost-radio', rating: 4.5, missions: 13, role: 'Связист', location: 'Узел связи', joined: '2024', skills: ['Радиосвязь','РЭБ'], achievements: ['Стабильный канал'],
   },
 ];
 
@@ -789,7 +829,7 @@ function ProfileModal({ user, onClose, onCall, onMessage, onOpenMedia, onOpenGal
           <div style={{ paddingTop:16, borderTop:'1px solid var(--border)', marginTop:8 }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
               <span style={{ fontSize:12, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.5px' }}>Медиа</span>
-              <button onClick={onOpenGallery} style={{ fontSize:12, color:'var(--accent)', fontWeight:700, cursor:'pointer', border:'none', background:'transparent', fontFamily:'var(--font)' }}>Все →</button>
+              <button className="voevoda-view-all" onClick={onOpenGallery} style={{ fontSize:12, color:'var(--accent)', fontWeight:700, cursor:'pointer', border:'none', background:'transparent', fontFamily:'var(--font)' }}>Все →</button>
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:6, marginBottom:20 }}>
               {media.slice(0, 6).map((item, i) => (
@@ -1854,18 +1894,26 @@ function ForwardModal({ message, chats, onClose }: { message: Message; chats: Ch
   );
 }
 
+/* Обработанные предложения из Каптёрки (защита от повторной вставки). */
+const processedKaptorkaOffers = new Set<number>();
+
 /* ─── MAIN COMPONENT ─── */
 export function Messages() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const { user } = useAuth();
-  const currentLogin = user?.login?.toLowerCase() || 'tornado';
+  const currentLogin = user?.login?.toLowerCase() || '';
   const isSelfChat = useCallback((chat: ChatUser) => Boolean(chat.login && chat.login === currentLogin && !chat.isGroup), [currentLogin]);
   const firstAvailableChat = useCallback(() => CHATS.find(c => !isSelfChat(c)) ?? CHATS[0], [isSelfChat]);
   const getInitialChat = () => {
     const queryId = Number(searchParams.get('chat'));
+    if (queryId) {
+      const direct = CHATS.find(c => c.id === queryId);
+      if (direct) return direct;
+    }
     const storedId = Number(localStorage.getItem('voevoda-active-chat') || 0);
-    const preferredId = queryId || storedId || 4;
+    const preferredId = storedId || 4;
     const preferred = CHATS.find(c => c.id === preferredId);
     if (preferred && !isSelfChat(preferred)) return preferred;
     return firstAvailableChat();
@@ -1877,6 +1925,47 @@ export function Messages() {
   const [msgSearch, setMsgSearch] = useState('');
   const [showMsgSearch, setShowMsgSearch] = useState(false);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
+  useEffect(() => {
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+    };
+  }, []);
+
+  // Приём предложения из Каптёрки: добавляем реальное сообщение в диалог
+  // с продавцом, указанным в объявлении, и открываем этот диалог.
+  useEffect(() => {
+    const offer = (location.state as { kaptorkaOffer?: { id?: number; chatId?: number; sellerName?: string; text: string; image?: string; title?: string } } | null)?.kaptorkaOffer;
+    if (!offer) return;
+    navigate(location.pathname + location.search, { replace: true, state: {} });
+    // Дедуп от повторного срабатывания эффекта (React StrictMode и т.п.).
+    if (offer.id != null) {
+      if (processedKaptorkaOffers.has(offer.id)) return;
+      processedKaptorkaOffers.add(offer.id);
+    }
+    const target = CHATS.find((c) => c.id === offer.chatId && !isSelfChat(c))
+      ?? CHATS.find((c) => c.name === offer.sellerName && !isSelfChat(c));
+    if (!target) return;
+    const now = new Date();
+    const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const newMsg: Message = {
+      id: Date.now(),
+      from: 'me',
+      text: offer.text,
+      time,
+      status: 'sent',
+      reactions: [],
+      senderLogin: 'tornado',
+      ...(offer.image ? { attachment: { type: 'image', url: offer.image, name: offer.title || 'Товар' } } : {}),
+    };
+    setMessages((prev) => ({ ...prev, [target.id]: [...(prev[target.id] || []), newMsg] }));
+    setActiveChat(target);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; msg: Message } | null>(null);
   const [currentUserId] = useState(() => getCurrentUserId());
@@ -1929,24 +2018,20 @@ export function Messages() {
     const queryId = Number(searchParams.get('chat'));
     if (!queryId) return;
     const nextChat = chats.find(c => c.id === queryId);
-    if (nextChat && isSelfChat(nextChat)) {
-      const fallback = chats.find(c => !isSelfChat(c)) ?? chats[0];
-      setActiveChat(fallback);
-      navigate(`/messages?chat=${fallback.id}`, { replace: true });
-      return;
-    }
     if (nextChat && nextChat.id !== activeChat.id) {
       setActiveChat(nextChat);
       setChats(prev => prev.map(c => c.id===nextChat.id ? { ...c, unread:0 } : c));
     }
-  }, [searchParams, chats, activeChat.id, isSelfChat, navigate]);
+  }, [searchParams, chats, activeChat.id, navigate]);
 
   useEffect(() => {
     if (!isSelfChat(activeChat)) return;
+    const queryId = Number(searchParams.get('chat'));
+    if (queryId === activeChat.id) return;
     const fallback = chats.find(c => !isSelfChat(c)) ?? chats[0];
     setActiveChat(fallback);
     navigate(`/messages?chat=${fallback.id}`, { replace: true });
-  }, [activeChat, chats, isSelfChat, navigate]);
+  }, [activeChat, chats, isSelfChat, navigate, searchParams]);
 
   useEffect(() => {
     localStorage.setItem('voevoda-active-chat', String(activeChat.id));
@@ -2244,7 +2329,7 @@ export function Messages() {
   const fmtRecord = (s: number) => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
 
   return (
-    <div className="msg-root" style={{ paddingTop:60, marginLeft:56, height:'100vh', background:'var(--surface)', display:'flex', flexDirection:'column' }}>
+    <div className="msg-root" style={{ width:'100%', height:'calc(100dvh - 60px)', overflow:'hidden', background:'var(--surface)', display:'flex', flexDirection:'column' }}>
       <style>{CSS}</style>
       <div style={{ flex:1, display:'flex', overflow:'hidden' }}>
 
@@ -2698,7 +2783,7 @@ export function Messages() {
             <div className="msg-info-section" style={{ flex:1 }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
                 <span style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'.5px' }}>Медиафайлы</span>
-                <button onClick={() => setGalleryUser(activeChat)} style={{ fontSize:11, color:'var(--accent)', fontWeight:700, cursor:'pointer', border:'none', background:'transparent', fontFamily:'var(--font)' }}>Все</button>
+                <button className="voevoda-view-all" onClick={() => setGalleryUser(activeChat)} style={{ fontSize:11, color:'var(--accent)', fontWeight:700, cursor:'pointer', border:'none', background:'transparent', fontFamily:'var(--font)' }}>Все</button>
               </div>
               <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:4 }}>
                 {['alpha','bravo','charlie','delta','echo','foxtrot'].map((s, i) => (

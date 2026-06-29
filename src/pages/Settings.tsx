@@ -156,15 +156,10 @@ export function Settings() {
   return (
     <div style={{ paddingTop: 60, marginLeft: 56, minHeight: '100vh', background: cs.bg, transition: 'background .25s' }}>
       <style>{ANIM}</style>
-      <div style={{ padding: '24px 24px 40px', maxWidth: 1000, margin: '0 auto' }}>
+      <div style={{ padding: '32px 32px 56px', maxWidth: 1180, margin: '0 auto' }}>
 
         <div className="s-fade" style={{ marginBottom: 20 }}>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: cs.text, margin: '0 0 4px' }}>Настройки</h1>
-          <div style={{ display: 'flex', gap: 6, fontSize: 12, color: cs.muted, alignItems: 'center' }}>
-            <span style={{ cursor: 'pointer' }} onClick={() => navigate('/')}>Главная</span>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={cs.border} strokeWidth="1.5"><polyline points="9 18 15 12 9 6"/></svg>
-            <span style={{ color: cs.text, fontWeight: 500 }}>Настройки</span>
-          </div>
         </div>
 
         {saved && (
@@ -174,7 +169,7 @@ export function Settings() {
           </div>
         )}
 
-        <div className="s-fade" style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 16, alignItems: 'start' }}>
+        <div className="s-fade" style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: 22, alignItems: 'start' }}>
 
           {/* Sidebar */}
           <div style={{ ...cardStyle, padding: '6px 0' }}>
@@ -197,7 +192,7 @@ export function Settings() {
           </div>
 
           {/* Content */}
-          <div style={{ ...cardStyle, padding: 22 }}>
+          <div style={{ ...cardStyle, padding: 30 }}>
 
             {/* ACCOUNT */}
             {tab === 'account' && (

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useCartStore, CartCourse, CartProduct } from '../store/useCartStore';
+import { useCartStore, type CartCourse, type CartProduct, type CartItem } from '../store/useCartStore';
 
 type Tab = 'Все товары' | 'Обучение' | 'Военмаркет' | 'Каптёрка';
 const TABS: Tab[] = ['Все товары', 'Обучение', 'Военмаркет', 'Каптёрка'];
@@ -28,15 +28,15 @@ function CourseRow({ item }: { item: CartCourse }) {
   const [imgErr, setImgErr] = useState(false);
   return (
     <div style={{ display: 'flex', gap: 14, padding: '16px 0', borderBottom: '1px solid #F5F5F7', alignItems: 'flex-start' }}>
-      <Checkbox checked={item.isSelected} onChange={() => toggleSelect(item.id)} />
+      <Checkbox checked={item.isSelected} onChange={() => toggleSelect(item.id, item.kind)} />
       <div style={{ width: 90, height: 68, borderRadius: 10, overflow: 'hidden', flexShrink: 0, background: '#F3F4F6' }}>
-        {!imgErr ? <img src={item.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={() => setImgErr(true)} /> : <div style={{ width: '100%', height: '100%', background: '#EBF1FF' }} />}
+        {!imgErr && item.image ? <img src={item.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }} onError={() => setImgErr(true)} /> : <div style={{ width: '100%', height: '100%', background: '#EBF1FF' }} />}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 14, fontWeight: 600, color: '#111', marginBottom: 4 }}>{item.title}</div>
         <div style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 8 }}>{item.city} · {item.duration} · {item.format}</div>
         <div style={{ display: 'flex', gap: 14 }}>
-          <button onClick={() => toggleFav(item.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex' }}>
+          <button onClick={() => toggleFav(item.id, item.kind)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex' }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill={item.isFav ? '#EF4444' : 'none'} stroke={item.isFav ? '#EF4444' : '#CDD0D5'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
           </button>
           <button onClick={() => remove(item.id, 'course')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex' }}>
@@ -70,15 +70,15 @@ function ProductRow({ item }: { item: CartProduct }) {
   const [imgErr, setImgErr] = useState(false);
   return (
     <div style={{ display: 'flex', gap: 14, padding: '16px 0', borderBottom: '1px solid #F5F5F7', alignItems: 'flex-start' }}>
-      <Checkbox checked={item.isSelected} onChange={() => toggleSelect(item.id)} />
+      <Checkbox checked={item.isSelected} onChange={() => toggleSelect(item.id, item.kind)} />
       <div style={{ width: 90, height: 68, borderRadius: 10, overflow: 'hidden', flexShrink: 0, background: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        {!imgErr ? <img src={item.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} onError={() => setImgErr(true)} /> : <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2" /></svg>}
+        {!imgErr && item.image ? <img src={item.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} onError={() => setImgErr(true)} /> : <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2" /></svg>}
       </div>
       <div style={{ flex: 1 }}>
         <div style={{ fontSize: 14, fontWeight: 600, color: '#111', marginBottom: 4 }}>{item.title}</div>
         <div style={{ fontSize: 12, color: '#9CA3AF', marginBottom: 8 }}>{[item.size && `Размер: ${item.size}`, item.color && `Цвет: ${item.color}`, item.brand].filter(Boolean).join(' · ')}</div>
         <div style={{ display: 'flex', gap: 14 }}>
-          <button onClick={() => toggleFav(item.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex' }}>
+          <button onClick={() => toggleFav(item.id, item.kind)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex' }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill={item.isFav ? '#EF4444' : 'none'} stroke={item.isFav ? '#EF4444' : '#CDD0D5'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
           </button>
           <button onClick={() => remove(item.id, 'product')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex' }}>
@@ -108,11 +108,12 @@ function OrderSummary() {
   const [promo, setPromo] = useState('');
   const totalAmt = total();
   const discountAmt = discount();
+  const selectedCount = items.filter(i => i.isSelected).length;
   return (
     <div style={{ position: 'sticky', top: 76 }}>
-      <button onClick={() => navigate('/checkout')} style={{ width: '100%', padding: '14px 0', background: '#375DFB', border: 'none', borderRadius: 12, color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', marginBottom: 12, transition: 'background .2s' }} onMouseEnter={e => (e.currentTarget.style.background = '#1E3F9F')} onMouseLeave={e => (e.currentTarget.style.background = '#375DFB')}>К оформлению заказа</button>
+      <button disabled={selectedCount === 0} onClick={() => selectedCount > 0 && navigate('/checkout')} style={{ width: '100%', padding: '14px 0', background: selectedCount > 0 ? '#375DFB' : '#B8C1D6', border: 'none', borderRadius: 12, color: '#fff', fontSize: 15, fontWeight: 700, cursor: selectedCount > 0 ? 'pointer' : 'not-allowed', marginBottom: 12, transition: 'background .2s' }} onMouseEnter={e => { if (selectedCount > 0) e.currentTarget.style.background = '#1E3F9F'; }} onMouseLeave={e => { if (selectedCount > 0) e.currentTarget.style.background = '#375DFB'; }}>К оформлению заказа</button>
       <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #E5E7EB', padding: '20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}><span style={{ color: '#374151' }}>Всего:</span><span style={{ color: '#9CA3AF' }}>{items.filter(i => i.isSelected).length} товаров</span></div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}><span style={{ color: '#374151' }}>Всего:</span><span style={{ color: '#9CA3AF' }}>{selectedCount} товаров</span></div>
         {discountAmt > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}><span style={{ color: '#374151' }}>Скидка:</span><span style={{ color: '#EF4444', fontWeight: 600 }}>−{discountAmt.toLocaleString()} ₽</span></div>}
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}><span style={{ color: '#374151' }}>Бонусы:</span><span style={{ color: '#375DFB', fontWeight: 600 }}>429 БР</span></div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13 }}><span style={{ color: '#374151' }}>Списать БР</span><div onClick={() => setWriteBonuses(b => !b)} style={{ cursor: 'pointer' }}><Toggle on={writeBonuses} /></div></div>
@@ -140,19 +141,16 @@ export function Cart() {
   const [activeTab, setActiveTab] = useState<Tab>('Все товары');
   const { items, selectAll, deselectAll, removeSelected } = useCartStore();
   const navigate = useNavigate();
-  const allSelected = items.length > 0 && items.every(i => i.isSelected);
-  const someSelected = items.some(i => i.isSelected);
   const filtered = activeTab === 'Все товары' ? items : activeTab === 'Обучение' ? items.filter(i => i.kind === 'course') : activeTab === 'Военмаркет' ? items.filter(i => i.kind === 'product') : [];
+  const activeKind: CartItem['kind'] | undefined = activeTab === 'Обучение' ? 'course' : activeTab === 'Военмаркет' ? 'product' : undefined;
+  const allSelected = filtered.length > 0 && filtered.every(i => i.isSelected);
+  const someSelected = filtered.some(i => i.isSelected);
 
   return (
     <div style={{ paddingTop: 60, marginLeft: 56, minHeight: '100vh', background: '#F8F9FB' }}>
       <div style={{ padding: '24px 24px 40px' }}>
         <div style={{ background: '#fff', borderRadius: 20, padding: '20px 24px', border: '1px solid #E5E7EB', marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" /></svg>
-              <h1 style={{ fontSize: 22, fontWeight: 700, color: '#111', margin: 0 }}>Корзина</h1>
-            </div>
             <div style={{ display: 'flex', gap: 5, background: '#F3F4F6', borderRadius: 12, padding: 4 }}>
               {TABS.map(tab => (
                 <button key={tab} onClick={() => setActiveTab(tab)} style={{ padding: '7px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 500, background: activeTab === tab ? '#fff' : 'transparent', color: activeTab === tab ? '#111' : '#6B7280', boxShadow: activeTab === tab ? '0 1px 4px rgba(0,0,0,.08)' : 'none', transition: 'all .15s' }}>{tab}</button>
@@ -173,11 +171,11 @@ export function Cart() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 20, alignItems: 'start' }}>
             <div style={{ background: '#fff', borderRadius: 20, border: '1px solid #E5E7EB', padding: '0 24px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 20, padding: '16px 0', borderBottom: '1px solid #F0F0F0' }}>  
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }} onClick={() => allSelected ? deselectAll() : selectAll()}>
-                  <Checkbox checked={allSelected} onChange={() => allSelected ? deselectAll() : selectAll()} />
-                  <span style={{ fontSize: 13, fontWeight: 500, color: '#374151' }}>Выбрать все {items.length}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <Checkbox checked={allSelected} onChange={() => allSelected ? deselectAll(activeKind) : selectAll(activeKind)} />
+                  <span onClick={() => allSelected ? deselectAll(activeKind) : selectAll(activeKind)} style={{ fontSize: 13, fontWeight: 500, color: '#374151', cursor: 'pointer' }}>Выбрать все {filtered.length}</span>
                 </div>
-                {someSelected && <button onClick={() => removeSelected()} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#9CA3AF', padding: 0 }} onMouseEnter={e => (e.currentTarget.style.color = '#EF4444')} onMouseLeave={e => (e.currentTarget.style.color = '#9CA3AF')}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>Удалить выбранные</button>}
+                {someSelected && <button onClick={() => removeSelected(activeKind)} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#9CA3AF', padding: 0 }} onMouseEnter={e => (e.currentTarget.style.color = '#EF4444')} onMouseLeave={e => (e.currentTarget.style.color = '#9CA3AF')}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>Удалить выбранные</button>}
               </div>
               {filtered.length === 0 ? (
                 <div style={{ padding: '40px 0', textAlign: 'center', color: '#9CA3AF', fontSize: 13 }}>Нет товаров в этой категории</div>
