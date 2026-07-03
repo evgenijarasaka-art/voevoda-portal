@@ -923,6 +923,36 @@ function mergeDeleted(a = {}, b = {}) {
   return merged;
 }
 
+// Детектор «сваренной» кодировки: однажды данные были залиты на прод с
+// битой кодировкой, и кириллица превратилась в «??????» / «�». Такие значения
+// не должны побеждать при слиянии состояний — иначе порча бесконечно
+// возвращается из старых вкладок и localStorage и перезатирает чистые данные.
+function valueCorrupted(value) {
+  if (typeof value === "string") return /\?{3,}/.test(value) || value.includes("�");
+  if (Array.isArray(value)) return value.some(valueCorrupted);
+  if (value && typeof value === "object") return Object.values(value).some(valueCorrupted);
+  return false;
+}
+
+// Новое значение поля побеждает, КРОМЕ случая, когда оно повреждено,
+// а старое — целое: тогда оставляем старое (само-исправление данных).
+function pickMergedValue(baseValue, overlayValue) {
+  if (valueCorrupted(overlayValue) && baseValue != null && baseValue !== "" && !valueCorrupted(baseValue)) {
+    return baseValue;
+  }
+  return overlayValue;
+}
+
+function mergeItem(baseItem = {}, overlayItem = {}) {
+  const merged = { ...baseItem };
+  Object.keys(overlayItem).forEach(key => {
+    merged[key] = Object.prototype.hasOwnProperty.call(merged, key)
+      ? pickMergedValue(merged[key], overlayItem[key])
+      : overlayItem[key];
+  });
+  return merged;
+}
+
 function mergeArrays(base = [], overlay = [], deletedIds = []) {
   const deleted = new Set((deletedIds || []).map(String));
   const output = [];
@@ -939,7 +969,7 @@ function mergeArrays(base = [], overlay = [], deletedIds = []) {
     if (item.id != null && deleted.has(String(item.id))) return;
     const key = String(item.id ?? `${output.length}-${titleOf(item)}`);
     if (positions.has(key)) {
-      output[positions.get(key)] = { ...output[positions.get(key)], ...item };
+      output[positions.get(key)] = mergeItem(output[positions.get(key)], item);
     } else {
       positions.set(key, output.length);
       output.push({ ...item });
@@ -4257,7 +4287,8 @@ function deepMerge(base, overlay) {
   Object.entries(overlay || {}).forEach(([key, value]) => {
     output[key] = value && typeof value === "object" && !Array.isArray(value)
       ? deepMerge(output[key] || {}, value)
-      : value;
+      // Повреждённые «??????»-значения не перезатирают целые (см. valueCorrupted)
+      : pickMergedValue(output[key], value);
   });
   return output;
 }
