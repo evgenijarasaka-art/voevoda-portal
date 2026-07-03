@@ -1,0 +1,30 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "admin",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "apps/admin", "run", "dev"],
+      "port": 3001,
+      "autoPort": false
+    },
+    {
+      "name": "portal",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "apps/portal", "run", "dev"],
+      "port": 5173
+    },
+    {
+      "name": "portal-preview",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "apps/portal", "run", "dev", "--", "--port", "5175", "--strictPort"],
+      "port": 5175
+    },
+    {
+      "name": "admin-preview",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "apps/admin", "run", "dev", "--", "--port", "3101", "--strictPort"],
+      "port": 3101
+    }
+  ]
+}

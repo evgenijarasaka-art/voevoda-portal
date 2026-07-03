@@ -1,0 +1,529 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: Inter, Arial, sans-serif;
+}
+
+html {
+  scrollbar-gutter: stable;
+}
+
+body {
+  background: #f5f6f8;
+  color: #1e1e1e;
+}
+
+.container {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* SIDEBAR */
+
+.sidebar {
+  width: 90px;
+  background: #ffffff;
+  border-right: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 10px;
+}
+
+.sidebar .logo {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 30px;
+}
+
+.sidebar .menu {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+}
+
+.sidebar .menu i {
+  font-size: 20px;
+  color: #6b7280;
+  cursor: pointer;
+}
+
+/* MAIN */
+
+.main {
+  flex: 1;
+  padding: 30px;
+}
+
+/* HERO */
+
+.hero {
+  background: linear-gradient(120deg, #e9efff, #dbeafe);
+  border-radius: 18px;
+  padding: 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+}
+
+.hero h1 {
+  font-size: 32px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.hero p {
+  color: #555;
+  margin-bottom: 20px;
+}
+
+.btn {
+  background: #4f6df5;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+/* SECTION */
+
+.section-title {
+  font-size: 22px;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+
+/* COURSES GRID */
+
+.courses {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+/* COURSE CARD */
+
+.card {
+  background: white;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.card img {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+}
+
+.card-body {
+  padding: 15px;
+}
+
+.card-location {
+  font-size: 12px;
+  color: #8b8b8b;
+  margin-bottom: 6px;
+}
+
+.card-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.price {
+  color: #16a34a;
+  font-weight: 700;
+}
+
+.old-price {
+  text-decoration: line-through;
+  color: #9ca3af;
+  margin-left: 10px;
+}
+
+/* FOOTER */
+
+.footer {
+  margin-top: 40px;
+  padding: 30px;
+  background: #ffffff;
+  border-radius: 16px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.footer h4 {
+  margin-bottom: 10px;
+}
+
+.footer ul {
+  list-style: none;
+}
+
+.footer li {
+  margin-bottom: 6px;
+  color: #6b7280;
+}
+
+/* Плавные переходы для всех интерактивных элементов */
+button,
+a,
+.card,
+.course-card,
+.teacher-card,
+.footer-link {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Лёгкое увеличение карточек при наведении */
+.card:hover,
+.course-card:hover,
+.teacher-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+}
+
+/* Эффект нажатия для кнопок */
+button:active {
+  transform: scale(0.97);
+}
+
+/* Плавное появление блоков при загрузке */
+section {
+  animation: fadeInUp 0.5s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Пульсирующий эффект для активных элементов */
+@keyframes gentlePulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+.pulse-on-hover:hover {
+  animation: gentlePulse 1.5s infinite;
+}
+
+/* Единая акцентная кнопка для переходов «Все» / «Все материалы». */
+.voevoda-view-all {
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center;
+  gap: 8px !important;
+  min-height: 36px;
+  padding: 8px 14px !important;
+  border: none !important;
+  border-radius: 8px !important;
+  background: #375DFB !important;
+  color: #fff !important;
+  font-weight: 700 !important;
+  letter-spacing: 0;
+  box-shadow: 0 5px 18px rgba(55, 93, 251, 0.32);
+  cursor: pointer;
+  transform: translateY(0);
+  transition: background-color .22s ease, box-shadow .22s ease, transform .22s ease !important;
+}
+
+.voevoda-view-all::before,
+.voevoda-view-all::after { content: none !important; }
+
+.voevoda-view-all:hover {
+  background: #1E3F9F !important;
+  color: #fff !important;
+  box-shadow: 0 8px 26px rgba(55, 93, 251, 0.46) !important;
+  transform: translateY(-2px) !important;
+}
+
+.voevoda-view-all svg {
+  width: 20px;
+  height: 20px;
+  padding: 5px;
+  box-sizing: border-box;
+  flex: 0 0 20px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.20);
+  color: #fff;
+  transition: transform .22s ease, background-color .22s ease;
+}
+
+.voevoda-view-all:hover svg {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.28);
+  transform: translateX(2px);
+}
+
+.voevoda-view-all:active {
+  transform: translateY(0) !important;
+  box-shadow: 0 3px 10px rgba(55, 93, 251, 0.16) !important;
+}
+
+.voevoda-view-all:focus-visible {
+  outline: 3px solid rgba(55,93,251,.22);
+  outline-offset: 3px;
+}
+
+/*
+ * Обратный вариант только для ссылок «Все» в карточках людей и журнала.
+ * Модификатор добавляется точечно — остальные кнопки портала не меняются.
+ */
+.voevoda-view-all.voevoda-view-all--inverse {
+  border: 1px solid #C7D2FE !important;
+  background: #FFFFFF !important;
+  color: #375DFB !important;
+  box-shadow: 0 3px 12px rgba(55, 93, 251, 0.10) !important;
+}
+
+.voevoda-view-all.voevoda-view-all--inverse svg {
+  background: #EBF1FF;
+  color: #375DFB;
+}
+
+.voevoda-view-all.voevoda-view-all--inverse:hover {
+  border-color: #375DFB !important;
+  background: #375DFB !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 8px 22px rgba(55, 93, 251, 0.30) !important;
+}
+
+.voevoda-view-all.voevoda-view-all--inverse:hover svg {
+  background: rgba(255, 255, 255, 0.20);
+  color: #FFFFFF;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .voevoda-view-all,
+  .voevoda-view-all svg { transition: none !important; }
+}
+
+/*
+ * Единая геометрия кнопок портала.
+ * Эталон — кнопка «Личное дело» в блоке людей на главной странице.
+ * Правило перекрывает локальные и inline-радиусы на всех страницах.
+ * Радиус управляется настройкой «Скругления» (data-radius на <html>).
+ */
+button {
+  border-radius: var(--btn-radius, 8px) !important;
+}
+
+img[src*="teacher1-main"],
+img[src*="teacher2-main"],
+img[src*="teacher3-main"],
+img[src*="сержант"] {
+  object-position: center top !important;
+}
+
+.voevoda-slider-arrow,
+.cl-photo-nav,
+.vdip-nav-btn,
+.mp-dip-nav-btn,
+.rv-lb-nav {
+  width: 48px !important;
+  height: 48px !important;
+  padding: 0 !important;
+  border: 2px solid rgba(255,255,255,.45) !important;
+  border-radius: 50% !important;
+  background: rgba(8,16,34,.62) !important;
+  color: #fff !important;
+  display: grid !important;
+  place-items: center !important;
+  box-shadow: 0 5px 18px rgba(0,0,0,.3) !important;
+  backdrop-filter: blur(10px);
+  transition: background .18s ease, transform .18s ease, opacity .18s ease !important;
+}
+
+.voevoda-slider-arrow:hover:not(:disabled),
+.cl-photo-nav:hover:not(:disabled),
+.vdip-nav-btn:hover:not(:disabled),
+.mp-dip-nav-btn:hover:not(:disabled),
+.rv-lb-nav:hover:not(:disabled) {
+  background: rgba(8,16,34,.86) !important;
+  transform: translateY(-50%) scale(1.08) !important;
+}
+
+.voevoda-slider-arrow:disabled {
+  opacity: .32 !important;
+  cursor: default !important;
+}
+
+.voevoda-slider-arrow--prev,
+.voevoda-slider-arrow--next {
+  position: absolute !important;
+  top: 50% !important;
+  z-index: 9 !important;
+  transform: translateY(-50%) !important;
+}
+
+.voevoda-slider-arrow--prev { left: 16px !important; }
+.voevoda-slider-arrow--next { right: 16px !important; }
+
+.voevoda-slider-panel {
+  position: absolute !important;
+  left: 50% !important;
+  bottom: 15px !important;
+  z-index: 8 !important;
+  transform: translateX(-50%) !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  margin: 0 !important;
+  padding: 7px 10px !important;
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 999px !important;
+  background: rgba(8,16,34,.46) !important;
+  box-shadow: 0 5px 20px rgba(0,0,0,.2);
+  backdrop-filter: blur(10px);
+}
+
+.voevoda-slider-dot {
+  width: 6px !important;
+  height: 6px !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: rgba(255,255,255,.48) !important;
+  cursor: pointer;
+  transition: width .25s ease, background .25s ease !important;
+}
+
+.voevoda-slider-dot.is-active {
+  width: 22px !important;
+  background: #fff !important;
+}
+@keyframes eliteBadgeFloat {
+  0%, 100% { transform: translateY(0); filter: brightness(1); }
+  50% { transform: translateY(-1px); filter: brightness(1.06); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [style*="eliteBadgeFloat"] { animation: none !important; }
+}
+
+/* ── Global image hover zoom ─────────────────────────────────────────────────
+   Only zooms object-fit:cover images. Uses > (direct child) combinator for the
+   hover rule so hovering a section doesn't zoom ALL nested images at once —
+   only the image's own overflow:hidden wrapper triggers the scale.
+   ────────────────────────────────────────────────────────────────────────── */
+[style*="overflow: hidden"] img[style*="object-fit: cover"],
+[style*="overflow:hidden"]  img[style*="object-fit: cover"] {
+  transition: transform 0.52s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: center center;
+}
+
+/* Zoom only when hovering the DIRECT parent overflow:hidden wrapper */
+[style*="overflow: hidden"]:hover > img[style*="object-fit: cover"],
+[style*="overflow:hidden"]:hover  > img[style*="object-fit: cover"] {
+  transform: scale(1.06);
+}
+
+/* Card-level zoom: hovering the whole card zooms the image inside */
+.zoom-on-hover:hover [style*="overflow: hidden"] > img[style*="object-fit: cover"],
+.zoom-on-hover:hover [style*="overflow:hidden"]  > img[style*="object-fit: cover"] {
+  transform: scale(1.06);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [style*="overflow: hidden"] img[style*="object-fit: cover"],
+  [style*="overflow:hidden"]  img[style*="object-fit: cover"] {
+    transition: none;
+  }
+}
+
+/* ── Каскадное появление секций страницы ──
+   Секции подхватывают базовую fadeInUp (объявлена выше) и получают
+   нарастающую задержку — контент «собирается» сверху вниз. */
+section {
+  animation-fill-mode: both;
+}
+
+section:nth-of-type(2) { animation-delay: 0.07s; }
+section:nth-of-type(3) { animation-delay: 0.14s; }
+section:nth-of-type(4) { animation-delay: 0.21s; }
+section:nth-of-type(5) { animation-delay: 0.28s; }
+section:nth-of-type(6) { animation-delay: 0.35s; }
+section:nth-of-type(n+7) { animation-delay: 0.4s; }
+
+/* Мягкая «жизнь» кнопок при наведении */
+button:not(:disabled):hover {
+  filter: brightness(1.04);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  section { animation: none !important; }
+  button:not(:disabled):hover { filter: none; }
+}
+
+/* ── Появление страниц при навигации (key=pathname в App.tsx) ── */
+@keyframes routeIn {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.portal-route-body {
+  animation: routeIn 0.32s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portal-route-body { animation: none; }
+}
+
+/* ── Доступность: видимый фокус с клавиатуры ── */
+:focus-visible {
+  outline: 2px solid #375DFB;
+  outline-offset: 2px;
+}
+
+/* ── Аккуратный скроллбар ── */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c3cad6;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #98a2b3;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Сайдбар: прокрутка работает, но полоса скроллбара скрыта — заказчик
+   пожаловался на видимый скролл в меню (особенно на мобильных). */
+.sidebar-no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.sidebar-no-scrollbar::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}

@@ -1,0 +1,54 @@
+.connections-page {
+  min-height: 100vh;
+  margin-left: 56px;
+  padding-top: 60px;
+  background:
+    radial-gradient(circle at 82% 4%, rgba(55, 93, 251, .08), transparent 280px),
+    #f4f5fb;
+  color: #0f172a;
+  font-family: 'Montserrat', system-ui, sans-serif;
+}
+
+.connections-shell { width: min(1280px, calc(100% - 48px)); margin: 0 auto; padding: 28px 0 56px; }
+.connections-head { display: flex; justify-content: space-between; gap: 20px; align-items: end; margin: 20px 0 16px; }
+.connections-kicker { color: #375dfb; font-size: 11px; font-weight: 850; letter-spacing: .12em; text-transform: uppercase; }
+.connections-title { margin: 5px 0 6px; font-size: 30px; line-height: 1.1; font-weight: 900; }
+.connections-copy { margin: 0; color: #667085; font-size: 13px; line-height: 1.55; }
+.connections-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+.connections-stat { padding: 15px 17px; border: 1px solid #e6e9f2; border-radius: 14px; background: #fff; }
+.connections-stat strong { display: block; font-size: 22px; font-weight: 900; color: #375dfb; }
+.connections-stat span { color: #98a2b3; font-size: 11px; font-weight: 650; }
+.connections-panel { overflow: hidden; border: 1px solid #e6e9f2; border-radius: 16px; background: #fff; box-shadow: 0 8px 24px rgba(15,23,42,.045); }
+.connections-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border-bottom: 1px solid #edf0f5; }
+.connections-filters { display: flex; gap: 6px; flex-wrap: wrap; }
+.connections-filter { min-height: 34px; padding: 0 12px; border: 1px solid #e4e8f0; background: #f9fafc; color: #667085; font-size: 12px; font-weight: 750; cursor: pointer; }
+.connections-filter.active { border-color: #b9c8ff; background: #ecf1ff; color: #375dfb; }
+.connections-search { width: 230px; min-height: 36px; padding: 0 12px; border: 1px solid #e4e8f0; border-radius: 8px; outline: none; font: inherit; font-size: 12px; }
+.connections-search:focus { border-color: #8fa8ff; box-shadow: 0 0 0 3px rgba(55,93,251,.1); }
+.connections-list { padding: 0 18px; }
+.connection-row { display: flex; align-items: center; gap: 14px; padding: 15px 4px; border-bottom: 1px solid #f0f2f6; }
+.connection-row:last-child { border-bottom: 0; }
+.connection-avatar { position: relative; width: 52px; height: 52px; flex: 0 0 52px; overflow: hidden; border: 1px solid #e5e9f0; border-radius: 14px; background: #eef1f6; }
+.connection-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.connection-online { position: absolute; right: 1px; bottom: 1px; width: 11px; height: 11px; border: 2px solid #fff; border-radius: 50%; background: #12b76a; }
+.connection-main { min-width: 0; flex: 1; }
+.connection-name { display: flex; align-items: center; gap: 7px; color: #101828; font-size: 14px; font-weight: 850; }
+.connection-badge { padding: 2px 7px; border-radius: 999px; background: #ecf1ff; color: #375dfb; font-size: 9px; font-weight: 800; }
+.connection-handle { margin-top: 2px; color: #375dfb; font-size: 11px; font-weight: 700; }
+.connection-desc { margin-top: 3px; color: #7b8495; font-size: 11px; }
+.connection-actions { display: flex; gap: 7px; }
+.connection-btn { min-height: 34px; padding: 0 12px; border: 1px solid #e4e8f0; background: #fff; color: #475467; font-size: 11px; font-weight: 800; cursor: pointer; }
+.connection-btn.primary { border-color: #c7d2fe; background: #ecf1ff; color: #375dfb; }
+.connection-btn:hover { background: #f2f5fb; }
+.connection-empty { padding: 50px 20px; color: #98a2b3; text-align: center; font-size: 13px; }
+
+@media (max-width: 720px) {
+  .connections-shell { width: calc(100% - 24px); padding: 18px 0 40px; }
+  .connections-head { align-items: flex-start; flex-direction: column; }
+  .connections-stats { grid-template-columns: 1fr; }
+  .connections-toolbar { align-items: stretch; flex-direction: column; }
+  .connections-search { width: 100%; }
+  .connection-row { align-items: flex-start; flex-wrap: wrap; }
+  .connection-main { min-width: calc(100% - 72px); }
+  .connection-actions { width: 100%; padding-left: 66px; }
+}

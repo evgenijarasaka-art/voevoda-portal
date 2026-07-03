@@ -1,0 +1,135 @@
+{
+  "version": "portal-seed-2026-06-29-v2",
+  "config": {
+    "siteName": "УТЦ «Воевода»",
+    "siteDescription": "Военно-патриотический тренировочный центр с курсами, городскими сообществами, соревнованиями, журналом и магазином.",
+    "siteUrl": "https://voevoda.ru",
+    "contacts": {
+      "phone": "+7 988 258 22 22",
+      "email": "support@voevoda.demo",
+      "address": "Москва"
+    },
+    "social": {
+      "vk": "https://vk.com/voevoda",
+      "tg": "https://t.me/voevoda",
+      "ok": "https://ok.ru/voevoda"
+    },
+    "stats": {
+      "revenue": 322024,
+      "participants": 12899,
+      "visits": 12899,
+      "avgTime": 144
+    }
+  },
+  "cities": [
+    { "id": 1, "name": "Москва", "count": 14, "image": "/gorod1.png", "route": "/city/москва" },
+    { "id": 2, "name": "Санкт-Петербург", "count": 12, "image": "/gorod2.png", "route": "/city/санкт-петербург" },
+    { "id": 3, "name": "Ростов-на-Дону", "count": 7, "image": "/gorod3.png", "route": "/city/ростов-на-дону" },
+    { "id": 4, "name": "Краснодар", "count": 4, "image": "/gorod4.png", "route": "/city/краснодар" },
+    { "id": 5, "name": "Казань", "count": 4, "image": "/gorod5.png", "route": "/city/казань" },
+    { "id": 6, "name": "Самара", "count": 3, "image": "/gorod6.png", "route": "/city/самара" },
+    { "id": 7, "name": "Уфа", "count": 2, "image": "/gorod1.png", "route": "/city/уфа" },
+    { "id": 8, "name": "Воронеж", "count": 2, "image": "/gorod2.png", "route": "/city/воронеж" },
+    { "id": 9, "name": "Саратов", "count": 2, "image": "/gorod4.png", "route": "/city/саратов" },
+    { "id": 10, "name": "Екатеринбург", "count": 2, "image": "/gorod5.png", "route": "/city/екатеринбург" },
+    { "id": 11, "name": "Нижний Новгород", "count": 1, "image": "/gorod6.png", "route": "/city/нижний-новгород" }
+  ],
+  "courses": [
+    { "id": 1, "title": "Курс молодого бойца V5", "category": "military", "city": "Москва", "duration": "4 месяца", "newPrice": 35000, "oldPrice": 40000, "image": "/kyrs1.png", "description": "Первый обязательный этап обучения в системе комплексной военной подготовки.", "seriesIndex": 1, "seriesId": 1, "seriesName": "Система комплексной военной подготовки", "isPaid": true, "format": "Оффлайн", "type": "Серия курсов", "published": true },
+    { "id": 2, "title": "Общевойсковой снайпер", "category": "military", "city": "Санкт-Петербург", "duration": "3 месяца", "newPrice": 29000, "image": "/kyrs2.png", "description": "Профессиональная подготовка снайперов для современных задач на поле боя.", "isPaid": true, "format": "Оффлайн", "type": "Курс", "published": true },
+    { "id": 3, "title": "Разведывательно-штурмовая подготовка", "category": "military", "city": "Москва", "duration": "3 месяца", "newPrice": 29000, "oldPrice": 40000, "image": "/kyrs3.png", "description": "Углубленный курс подготовки бойцов по программе второго уровня.", "seriesIndex": 2, "seriesId": 1, "seriesName": "Система комплексной военной подготовки", "isPaid": true, "format": "Комбинированный", "type": "Серия курсов", "locked": true, "prerequisite": "Курс молодого бойца V5", "published": true },
+    { "id": 4, "title": "Курс молодого бойца V5", "category": "military", "city": "Казань", "duration": "4 месяца", "newPrice": 35000, "image": "/voen2.png", "description": "Базовый курс военной подготовки для всех желающих освоить военное дело.", "seriesIndex": 1, "seriesId": 2, "seriesName": "Система комплексной военной подготовки", "isPaid": true, "format": "Оффлайн", "type": "Серия курсов", "published": true },
+    { "id": 5, "title": "Разведывательно-штурмовая подготовка", "category": "military", "city": "Москва", "duration": "4 месяца", "newPrice": 35000, "oldPrice": 40000, "image": "/voen3.png", "description": "Углубленная подготовка бойцов по программе второго уровня системы.", "seriesIndex": 2, "seriesId": 2, "seriesName": "Система комплексной военной подготовки", "isPaid": true, "format": "Оффлайн", "type": "Серия курсов", "locked": true, "prerequisite": "Общевойсковой снайпер", "published": true },
+    { "id": 6, "title": "Разведывательно-штурмовая подготовка", "category": "military", "city": "Краснодар", "duration": "3 месяца", "newPrice": 29000, "image": "/voen1.png", "description": "Финальный уровень подготовки бойцов разведывательных и штурмовых подразделений.", "seriesIndex": 3, "seriesId": 2, "seriesName": "Система комплексной военной подготовки", "isPaid": true, "format": "Онлайн", "type": "Серия курсов", "locked": true, "prerequisite": "Курс молодого бойца V5", "published": true },
+    { "id": 7, "title": "Специальная разведка", "category": "military", "city": "Москва", "duration": "3 месяца", "newPrice": 32000, "image": "/voen4.png", "description": "Наблюдение, скрытное перемещение, организация связи и работа разведывательной группы.", "seriesIndex": 4, "seriesId": 2, "seriesName": "Система комплексной военной подготовки", "isPaid": true, "format": "Оффлайн", "type": "Серия курсов", "locked": true, "prerequisite": "Разведывательно-штурмовая подготовка", "published": true },
+    { "id": 101, "title": "Управление проектами (PMP)", "category": "professional", "city": "Москва", "duration": "3 месяца", "newPrice": 45000, "image": "/проф1.png", "description": "Комплексная программа подготовки проектных менеджеров по стандарту PMI.", "seriesIndex": 1, "seriesId": 1, "seriesName": "Финансовый трек", "isPaid": true, "format": "Онлайн", "type": "Серия курсов", "published": true },
+    { "id": 102, "title": "Data Science & Machine Learning", "category": "professional", "city": "Москва", "duration": "6 месяцев", "newPrice": 89000, "image": "/проф2.png", "description": "Курс по анализу данных, Python, pandas, sklearn, нейросетям и production-решениям.", "isPaid": true, "format": "Онлайн", "type": "Курс", "published": true },
+    { "id": 103, "title": "Финансовый аналитик CFA Level I", "category": "professional", "city": "Москва", "duration": "4 месяца", "newPrice": 65000, "oldPrice": 80000, "image": "/проф3.png", "description": "Подготовка к международной сертификации CFA.", "seriesIndex": 2, "seriesId": 1, "seriesName": "Финансовый трек", "isPaid": true, "format": "Комбинированный", "type": "Серия курсов", "locked": true, "prerequisite": "Управление проектами (PMP)", "published": true },
+    { "id": 104, "title": "Корпоративное право и M&A", "category": "professional", "city": "Москва", "duration": "3 месяца", "newPrice": 55000, "image": "/проф1.png", "description": "Правовые основы корпоративных сделок, due diligence и договорная работа.", "seriesIndex": 1, "seriesId": 2, "seriesName": "Управленческий трек", "isPaid": true, "format": "Онлайн", "type": "Серия курсов", "published": true },
+    { "id": 105, "title": "Стратегический маркетинг", "category": "professional", "city": "Москва", "duration": "2 месяца", "newPrice": 39000, "oldPrice": 48000, "image": "/проф4.png", "description": "Маркетинговая стратегия, бренд-менеджмент, performance-маркетинг и аналитика.", "seriesIndex": 2, "seriesId": 2, "seriesName": "Управленческий трек", "isPaid": true, "format": "Онлайн", "type": "Серия курсов", "locked": true, "prerequisite": "Корпоративное право и M&A", "published": true },
+    { "id": 106, "title": "HR Business Partner", "category": "professional", "city": "Москва", "duration": "2 месяца", "newPrice": 35000, "image": "/проф5.png", "description": "Стратегическое управление персоналом по методологии HRBP.", "seriesIndex": 3, "seriesId": 2, "seriesName": "Управленческий трек", "isPaid": true, "format": "Онлайн", "type": "Серия курсов", "locked": true, "prerequisite": "Корпоративное право и M&A", "published": true },
+    { "id": 107, "title": "Введение в управление проектами", "category": "professional", "city": "Онлайн", "duration": "2 недели", "newPrice": 0, "image": "/проф1.png", "description": "Бесплатный вводный курс по базовым принципам PM.", "isPaid": false, "format": "Онлайн", "type": "Курс", "published": true },
+    { "id": 108, "title": "Основы финансовой грамотности", "category": "professional", "city": "Онлайн", "duration": "3 недели", "newPrice": 0, "image": "/проф3.png", "description": "Бюджет, накопления, инвестиции и налоги для личных финансов.", "isPaid": false, "format": "Онлайн", "type": "Курс", "published": true }
+  ],
+  "people": [
+    { "id": 1, "category": "Преподаватели", "rank": "Майор", "name": "Торнадо", "position": "Вице-капитан, КР 2-й роты, 77-й учебный батальон, Москва", "mainImage": "/sold1.png", "city": "Москва", "index": 2463, "rating": 5, "route": "/users/tornado" },
+    { "id": 2, "category": "Командиры", "rank": "Капитан", "name": "Коба", "position": "Вице-капитан, КР 2-й роты, 77-й учебный батальон, Москва", "mainImage": "/sold2.png", "city": "Санкт-Петербург", "index": 2463, "rating": 5, "route": "/users/koba" },
+    { "id": 3, "category": "Наши герои", "rank": "Старший лейтенант", "name": "Бор", "position": "Офицер морской пехоты", "mainImage": "/teacher3-main.jpg", "city": "Краснодар", "index": 2463, "rating": null, "route": "/leaders" },
+    { "id": 4, "category": "Преподаватели", "rank": "Подполковник", "name": "Призрак", "position": "Командир 1-го взвода, 12-й учебный батальон, Екатеринбург", "mainImage": "/sold1.png", "city": "Екатеринбург", "index": 1870, "rating": 4.8, "route": "/users/prizrak" },
+    { "id": 5, "category": "Преподаватели", "rank": "Лейтенант", "name": "Рысь", "position": "Инструктор тактической подготовки, 3-я рота, Новосибирск", "mainImage": "/sold2.png", "city": "Новосибирск", "index": 1540, "rating": 4.6, "route": "/users/rys" },
+    { "id": 6, "category": "Командиры", "rank": "Полковник", "name": "Титан", "position": "Командир 5-го батальона, Ростов-на-Дону", "mainImage": "/sold1.png", "city": "Ростов-на-Дону", "index": 3100, "rating": 5, "route": "/users/titan" },
+    { "id": 7, "category": "Командиры", "rank": "Майор", "name": "Волк", "position": "Заместитель командира роты, 8-й батальон, Казань", "mainImage": "/sold2.png", "city": "Казань", "index": 2210, "rating": 4.9, "route": "/users/volk" }
+  ],
+  "competitions": [
+    { "id": 1, "title": "Тактическое ориентирование", "subtitle": "Командный зачет · Санкт-Петербург · 5 марта, 2024", "description": "Маршрут с контрольными точками, вводными задачами и работой связок.", "image": "/sorev1.png", "status": "published", "route": "/competitions" },
+    { "id": 2, "title": "Марш-бросок на 10 км", "subtitle": "Личный зачет · Москва · 14 мая, 2024", "description": "Дистанция с полной выкладкой, контрольным временем и медицинским осмотром.", "image": "/sorev2.png", "status": "published", "route": "/competitions" },
+    { "id": 3, "title": "Линия обороны", "subtitle": "Тактическая группа · Краснодар · 16 мая, 2024", "description": "Удержание позиций, смена рубежей, эвакуация условно раненого.", "image": "/soobsh2.png", "status": "published", "route": "/competitions" },
+    { "id": 4, "title": "Стрельба из АК-74", "subtitle": "Огневой рубеж · Москва · 20 мая, 2024", "description": "Три дистанции, отдельный зачет для новичков и опытных участников.", "image": "/voen3.png", "status": "published", "route": "/competitions" },
+    { "id": 5, "title": "Военный триатлон", "subtitle": "Смешанный зачет · Казань · 1 июня, 2024", "description": "Бег, полоса препятствий и стрелковый этап.", "image": "/voen1.png", "status": "published", "route": "/competitions" },
+    { "id": 6, "title": "Полоса препятствий «Рубеж»", "subtitle": "Личный зачет · Москва · 18 апреля, 2024", "description": "Рукоход, стенка, перенос снаряжения и огневой рубеж.", "image": "/soobsh3.png", "status": "published", "route": "/competitions" }
+  ],
+  "communities": [
+    { "id": 1, "title": "Вымпел", "subtitle": "Москва · клуб Воевод", "description": "Городское сообщество курсантов и инструкторов.", "image": "/soobsh1.png", "status": "published", "route": "/communities" },
+    { "id": 2, "title": "Страж", "subtitle": "Санкт-Петербург · ВП-клуб", "description": "Тренировки, соревнования и взаимопомощь участников.", "image": "/soobsh2.png", "status": "published", "route": "/communities" },
+    { "id": 3, "title": "Рубеж", "subtitle": "Екатеринбург · тактическая группа", "description": "Подготовка малых групп и выездные занятия.", "image": "/soobsh3.png", "status": "published", "route": "/communities" },
+    { "id": 4, "title": "Форпост", "subtitle": "Краснодар · центр ВП", "description": "Полевые занятия, медподготовка и городские сборы.", "image": "/soobsh4.png", "status": "published", "route": "/communities" }
+  ],
+  "journal": [
+    { "id": 1001, "title": "Дороги обработали раствором гидрохлорида натрия", "subtitle": "Статьи · ВДВ СКОВ · 3 марта, 2024", "description": "Материал из журнала портала.", "image": "/journal-main.jpg", "status": "published", "route": "/journal/1001" },
+    { "id": 1005, "title": "Подразделения ЦВО отработали форсирование водных преград", "subtitle": "Статьи · ВДВ СКОВ · 1 марта, 2024", "description": "Новость о подготовке подразделений.", "image": "/journal-main.jpg", "status": "published", "route": "/journal/1005" },
+    { "id": 1010, "title": "ВКС России получили первую партию Су-35С", "subtitle": "Новости · Военный вестник · 28 февраля, 2024", "description": "Новостная публикация портала.", "image": "/journal-main.jpg", "status": "published", "route": "/journal/1010" },
+    { "id": 1022, "title": "Основы ориентирования на местности без GPS", "subtitle": "Блог · Инструктор Воронов А.", "description": "Практические советы для курсантов.", "image": "/journal-main.jpg", "status": "published", "route": "/journal/1022" }
+  ],
+  "products": [
+    { "id": 101, "name": "Комплект полевой формы «Воевода»", "brand": "Воевода", "category": "Форма", "price": 12900, "oldPrice": 14900, "img": "/военмаркет2.png", "meta": "Материал: рип-стоп · Размеры: 46-56", "published": true },
+    { "id": 102, "name": "Тактический пояс с платформой MOLLE", "brand": "Арсенал", "category": "Снаряжение", "price": 5700, "img": "/военмаркет5.png", "meta": "Вес: 780 г · Цвет: олива", "published": true },
+    { "id": 103, "name": "Аптечка инструктора: тренировочный набор", "brand": "МедТактик", "category": "Медицина", "price": 8400, "oldPrice": 9200, "img": "/военмаркет3.png", "meta": "Состав: 8 предметов", "published": true },
+    { "id": 104, "name": "Учебный макет автомата для занятий", "brand": "Полигон", "category": "Учебное", "price": 18900, "img": "/военмаркет7.png", "meta": "Тип: учебный макет", "published": true },
+    { "id": 105, "name": "Рюкзак рейдовый 35 л", "brand": "Сплав", "category": "Снаряжение", "price": 9900, "img": "/военмаркет1.png", "meta": "Объем: 35 л · Вес: 1.4 кг", "published": true },
+    { "id": 106, "name": "Шеврон «Путь Воеводы»", "brand": "Воевода", "category": "Сувениры", "price": 650, "img": "/shevron1.png", "meta": "Размер: 80 мм", "published": true }
+  ],
+  "reviews": [
+    { "id": 1, "name": "Коба", "rank": "Капитан", "stars": 5, "text": "Полевые занятия — сильнейшая часть курса. Каждый прием закрепляется на практике.", "photo": "/teacher2-main.jpg", "published": true },
+    { "id": 2, "name": "Бек", "rank": "Майор", "stars": 5, "text": "Материал собран последовательно — от базы до сложных сценариев.", "photo": "/teacher1-main.jpg", "published": true },
+    { "id": 3, "name": "Стрелок", "rank": "Старший лейтенант", "stars": 5, "text": "Получил новые навыки и понятный план самостоятельной подготовки.", "photo": "/sold1.png", "published": true },
+    { "id": 4, "name": "Нексус", "rank": "Лейтенант", "stars": 5, "text": "Здесь быстро учишься слышать напарника и отвечать за общий результат.", "photo": "/teacher2-main.jpg", "published": true }
+  ],
+  "venues": [
+    { "id": 1, "name": "УЦ «Воевода» — Зеленоград", "address": "Зеленоград, корп. 2006", "coords": "55.989, 37.198", "photo": "/teacher1-main.jpg", "status": "published", "route": "/courses" },
+    { "id": 2, "name": "УЦ «Воевода» — Новопетровское", "address": "Новопетровское, ул. Центральная", "coords": "55.921, 36.840", "photo": "/teacher2-main.jpg", "status": "published", "route": "/courses" },
+    { "id": 3, "name": "УЦ «Воевода» — Химки", "address": "ул. Родионова, 12, Химки", "coords": "55.895, 37.410", "photo": "/teacher3-main.jpg", "status": "published", "route": "/courses" },
+    { "id": 4, "name": "Полигон «Калибр»", "address": "улица Энергетиков, 125", "coords": "55.762, 37.625", "photo": "/СписокЗанятий.png", "status": "published", "route": "/courses" },
+    { "id": 5, "name": "Полигон «Восток»", "address": "Балашиха, ул. Лесная, 4", "coords": "55.781, 37.963", "photo": "/отжимание.png", "status": "published", "route": "/courses" }
+  ],
+  "documents": [
+    { "id": 1, "title": "Политика конфиденциальности", "category": "Правовые документы", "pages": 12, "downloads": 0, "fileUrl": "/documents", "status": "published", "route": "/documents" },
+    { "id": 2, "title": "Пользовательское соглашение", "category": "Правовые документы", "pages": 18, "downloads": 0, "fileUrl": "/documents", "status": "published", "route": "/documents" },
+    { "id": 3, "title": "Основные сведения", "category": "Сведения об организации", "pages": 8, "downloads": 0, "fileUrl": "/documents", "status": "published", "route": "/documents" },
+    { "id": 4, "title": "Структура и органы управления образовательной организацией", "category": "Сведения об организации", "pages": 10, "downloads": 0, "fileUrl": "/documents", "status": "published", "route": "/documents" },
+    { "id": 5, "title": "Платные образовательные услуги", "category": "Образование", "pages": 9, "downloads": 0, "fileUrl": "/documents", "status": "published", "route": "/documents" }
+  ],
+  "documentCategories": ["Правовые документы", "Сведения об организации", "Образование", "Материально-техническое обеспечение"],
+  "media": [
+    { "id": 1, "title": "Фото с курса", "image": "/фотоскурса.png", "status": "published", "route": "/courses" },
+    { "id": 2, "title": "Военное дело", "image": "/voendelo1.png", "status": "published", "route": "/courses" },
+    { "id": 3, "title": "Оружие", "image": "/оружие1.png", "status": "published", "route": "/courses" },
+    { "id": 4, "title": "Карта учений", "image": "/картаучений.png", "status": "published", "route": "/courses" },
+    { "id": 5, "title": "Медицина", "image": "/медицина1.png", "status": "published", "route": "/courses" }
+  ],
+  "ranks": [
+    { "id": 1, "title": "Шеврон «Путь Воеводы»", "subtitle": "Награда за прохождение программы", "image": "/shevron1.png", "status": "published", "route": "/achievements" },
+    { "id": 2, "title": "Медаль за курс молодого бойца", "subtitle": "Достижение учебного центра", "image": "/медаль1.png", "status": "published", "route": "/achievements" },
+    { "id": 3, "title": "Кубок соревнований", "subtitle": "Командный результат", "image": "/cubock.png", "status": "published", "route": "/achievements" }
+  ],
+  "path": [
+    { "id": 1, "title": "Базовый путь курсанта", "subtitle": "Курсы, нормативы, журнал и достижения", "description": "Путь Воеводы объединяет обучение, тренировки и личный прогресс.", "image": "/plan.png", "status": "published", "route": "/my-path" },
+    { "id": 2, "title": "Тактическая подготовка", "subtitle": "Физподготовка, тактика, командная работа", "description": "Раздел прогресса для регулярных занятий.", "image": "/картаучений.png", "status": "published", "route": "/my-path" }
+  ],
+  "users": [
+    { "id": "01", "name": "Александр Воеводов", "callsign": "Торнадо", "role": "super", "phone": "+7 988 222 32 24", "email": "tornado@voevoda.demo", "date": "5 марта, 2024", "photo": "/teacher2-main.jpg", "city": "Санкт-Петербург", "courses": 3 },
+    { "id": "02", "name": "Бек Куратор", "callsign": "Бек", "role": "admin", "phone": "+7 988 222 32 25", "email": "bek@voevoda.demo", "date": "18 марта, 2024", "photo": "/teacher1-main.jpg", "city": "Москва", "courses": 22 },
+    { "id": "03", "name": "Коба Инструктор", "callsign": "Коба", "role": "instructor", "phone": "+7 988 222 32 26", "email": "koba@voevoda.demo", "date": "11 апреля, 2024", "photo": "/teacher3-main.jpg", "city": "Москва", "courses": 14 },
+    { "id": "04", "name": "Сергей Стрелков", "callsign": "Стрелок", "role": "user", "phone": "+7 988 222 32 27", "email": "shooter@voevoda.demo", "date": "2 мая, 2024", "photo": "/sold1.png", "city": "Казань", "courses": 11 },
+    { "id": "05", "name": "Никита Связной", "callsign": "Нексус", "role": "user", "phone": "+7 988 222 32 28", "email": "nexus@voevoda.demo", "date": "23 мая, 2024", "photo": "/teacher2-main.jpg", "city": "Москва", "courses": 8 }
+  ]
+}
