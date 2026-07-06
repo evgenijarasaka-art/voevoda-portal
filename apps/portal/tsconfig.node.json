@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    "skipLibCheck": true,
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    // Без этого tsc -b эмитит vite.config.js рядом с vite.config.ts,
+    // а Vite подхватывает .js раньше .ts — стейл-конфиг ломает dev-сервер.
+    "declaration": true,
+    "emitDeclarationOnly": true
+  },
+  "include": ["vite.config.ts"]
+}

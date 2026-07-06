@@ -1,0 +1,24 @@
+﻿{
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit",
+    "source.organizeImports": "explicit"
+  },
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.tabSize": 2,
+  "editor.rulers": [100],
+  "tailwindCSS.experimental.classRegex": [
+    ["cva\\(([^)]*)\\)", "\"([^\"]*).*?\""],
+    ["cx\\(([^)]*)\\)", "(?:'|\"|`)([^']*)\"\""]
+  ],
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.patterns": {
+    "*.ts": "${capture}.test.ts, ${capture}.spec.ts",
+    "*.tsx": "${capture}.test.tsx, ${capture}.spec.tsx",
+    "package.json": "pnpm-lock.yaml, package-lock.json",
+    ".env": ".env.*"
+  },
+  "git.autofetch": true,
+  "typescript.updateImportsOnFileMove.enabled": "always",
+  "workbench.iconTheme": "material-icon-theme"
+}

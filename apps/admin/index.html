@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/fav.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Вход — УТЦ Воевода</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --bg: #f4f6f8;
+        --card: #ffffff;
+        --ink: #10131a;
+        --muted: #5f6878;
+        --soft: #8a93a3;
+        --line: #dfe5ed;
+        --blue: #315bff;
+        --blue-soft: #eef3ff;
+        --danger: #ef2b55;
+        --danger-soft: #fff0f3;
+        --shadow: 0 8px 22px rgba(15, 23, 42, .06);
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        font-family: "Inter", system-ui, sans-serif;
+        color: var(--ink);
+        background: var(--bg);
+        letter-spacing: 0;
+      }
+      .card {
+        width: min(440px, 100%);
+        padding: 40px 40px 36px;
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        background: var(--card);
+        box-shadow: var(--shadow);
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-bottom: 30px;
+      }
+      .brand-mark {
+        width: 54px;
+        height: 54px;
+        flex: 0 0 auto;
+      }
+      .brand-mark img { width: 100%; height: 100%; object-fit: contain; }
+      .brand-title {
+        font-size: 20px;
+        font-weight: 700;
+        color: #3f4249;
+        line-height: 1.15;
+      }
+      .brand-sub {
+        margin-top: 3px;
+        color: var(--soft);
+        font-size: 13px;
+        font-weight: 600;
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-size: 26px;
+        font-weight: 800;
+        line-height: 1.15;
+      }
+      .lead {
+        margin: 0 0 26px;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.5;
+        font-weight: 500;
+      }
+      label {
+        display: block;
+        margin-bottom: 8px;
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 700;
+      }
+      .field {
+        position: relative;
+        display: flex;
+        align-items: center;
+      }
+      input {
+        width: 100%;
+        min-height: 52px;
+        border: 1px solid #d7dde7;
+        border-radius: 14px;
+        padding: 13px 52px 13px 16px;
+        outline: none;
+        background: #fff;
+        color: var(--ink);
+        font-family: inherit;
+        font-size: 15px;
+        font-weight: 600;
+        transition: border-color .15s ease, box-shadow .15s ease;
+      }
+      input::placeholder { color: #8b93a1; font-weight: 500; }
+      input:focus {
+        border-color: var(--blue);
+        box-shadow: 0 0 0 4px rgba(49, 91, 255, .12);
+      }
+      .eye {
+        position: absolute;
+        right: 8px;
+        width: 40px;
+        height: 40px;
+        display: grid;
+        place-items: center;
+        border: 0;
+        border-radius: 10px;
+        background: transparent;
+        color: #7d8797;
+        cursor: pointer;
+      }
+      .eye:hover { background: #f6f8fb; color: var(--ink); }
+      .eye svg { width: 21px; height: 21px; }
+      .error {
+        display: none;
+        margin: 14px 0 0;
+        border-radius: 12px;
+        padding: 12px 14px;
+        color: var(--danger);
+        background: var(--danger-soft);
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .error.show { display: block; }
+      .submit {
+        width: 100%;
+        min-height: 52px;
+        margin-top: 22px;
+        border: 1px solid var(--ink);
+        border-radius: 14px;
+        padding: 13px 18px;
+        color: #fff;
+        background: var(--ink);
+        font-family: inherit;
+        font-size: 15px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: transform .12s ease, box-shadow .12s ease;
+      }
+      .submit:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 8px 18px rgba(16, 19, 26, .18);
+      }
+      .submit:active { transform: none; box-shadow: none; }
+      .portal-link {
+        display: block;
+        margin: 22px auto 0;
+        width: fit-content;
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 600;
+        text-decoration: none;
+      }
+      .portal-link:hover { color: var(--blue); }
+      @media (max-width: 480px) {
+        .card { padding: 30px 24px 26px; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <div class="brand">
+        <div class="brand-mark"><img src="/logo.png" alt="Воевода" /></div>
+        <div>
+          <div class="brand-title">УТЦ Воевода</div>
+          <div class="brand-sub">Панель управления</div>
+        </div>
+      </div>
+      <h1>Вход в админ панель</h1>
+      <p class="lead">Введите код доступа, чтобы открыть панель управления порталом.</p>
+      <label for="code">Код доступа</label>
+      <div class="field">
+        <input id="code" type="password" placeholder="Введите код" autocomplete="current-password" autofocus />
+        <button class="eye" id="eye" type="button" title="Показать код" aria-label="Показать код">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
+      <div class="error" id="error">Неверный код доступа. Проверьте раскладку и попробуйте ещё раз.</div>
+      <button class="submit" type="button" onclick="doLogin()">Войти</button>
+      <a class="portal-link" href="/" id="portal-link" target="_blank" rel="noopener">← Вернуться на портал</a>
+    </main>
+    <script>
+      const input = document.getElementById("code");
+      const error = document.getElementById("error");
+      const eye = document.getElementById("eye");
+      // Адрес портала — тот же принцип, что и в dashboard-redesign.js:
+      // локальная админка → локальный dev-портал, прод → портал на Vercel.
+      const isLocal = ["localhost", "127.0.0.1"].includes(location.hostname);
+      document.getElementById("portal-link").href = isLocal
+        ? "http://localhost:5173/"
+        : "https://portal-seven-silk.vercel.app/";
+      input.addEventListener("keydown", event => {
+        if (event.key === "Enter") doLogin();
+      });
+      input.addEventListener("input", () => error.classList.remove("show"));
+      eye.addEventListener("click", () => {
+        const hidden = input.type === "password";
+        input.type = hidden ? "text" : "password";
+        eye.title = hidden ? "Скрыть код" : "Показать код";
+        input.focus();
+      });
+      function doLogin() {
+        const code = input.value.trim();
+        if (code === "admin" || code === "voevoda2024" || code === "воевода2024") {
+          sessionStorage.setItem("admin_auth", "1");
+          window.location.href = "dashboard.html";
+          return;
+        }
+        error.classList.add("show");
+        input.value = "";
+        input.focus();
+      }
+    </script>
+  </body>
+</html>
